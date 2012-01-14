@@ -1,0 +1,8 @@
+*.swp
+*.pyc
+*.pyo
+
+*.rpy
+*.rpyc
+
+/renpy
