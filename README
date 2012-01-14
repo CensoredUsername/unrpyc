@@ -13,7 +13,7 @@ Options:
   -c, --clobber  overwrites existing output files
 Usage: unrpyc.py [options] script1 script2 ...
 
-You can give several .rpyc files on the command lines. Each script will be
+You can give several .rpyc files on the command line. Each script will be
 decompiled to a corresponding .rpy on the same directory. By default, the
 program will not overwrite existing files, use -c to do that.
 
