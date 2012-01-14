@@ -45,15 +45,16 @@ def print_Label(f, stmt, indent_level):
     # TODO parameters
     f.write(u':\n')
 
+    for sub_stmt in stmt.block:
+        print_statement(f, sub_stmt, indent_level + 1)
+
 def print_Say(f, stmt, indent_level):
     if stmt.who is not None:
         f.write(u"%s " % (stmt.who, ))
-        # TODO who_fast
     f.write(u"\"%s\"" % (escape_string(stmt.what), ))
     if stmt.with_ is not None:
         f.write(u" with TODO")
         # TODO with_
-    # TODO interact
     f.write(u'\n')
 
 statement_printer_dict = {
