@@ -24,9 +24,12 @@ def pretty_print_ast(out_file, ast):
     for stmt in ast:
         print_statement(out_file, stmt, 0)
 
-def print_statement(f, statement, indent_level=0):
+def indent(f, level):
     # Print indentation
-    f.write(u'\t' * indent_level)
+    f.write(u'    ' * level)
+
+def print_statement(f, statement, indent_level=0):
+    indent(f, indent_level)
 
     statement_printer_dict.get(statement.__class__, print_Unknown)(f, statement)
 
