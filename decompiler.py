@@ -57,9 +57,18 @@ def print_Say(f, stmt, indent_level):
         # TODO with_
     f.write(u'\n')
 
+def print_Jump(f, stmt, indent_level):
+    f.write(u"jump ")
+    if stmt.expression:
+        pass # TODO expression
+    else:
+        f.write(stmt.target)
+    f.write(u'\n')
+
 statement_printer_dict = {
         ast.Label: print_Label,
-        ast.Say: print_Say
+        ast.Say: print_Say,
+        ast.Jump: print_Jump,
     }
 
 def print_Unknown(f, stmt, indent_level):
