@@ -31,7 +31,8 @@ def indent(f, level):
 def print_statement(f, statement, indent_level=0):
     indent(f, indent_level)
 
-    statement_printer_dict.get(statement.__class__, print_Unknown)(f, statement)
+    func = statement_printer_dict.get(statement.__class__, print_Unknown)
+    func(f, statement, indent_level)
 
 def escape_string(s):
     s = s.replace('"', '\\"')
@@ -39,12 +40,12 @@ def escape_string(s):
     s = s.replace('\t', '\\t')
     return s
 
-def print_Label(f, stmt):
+def print_Label(f, stmt, indent_level):
     f.write(u"label %s" % (stmt.name, ))
     # TODO parameters
     f.write(u':\n')
 
-def print_Say(f, stmt):
+def print_Say(f, stmt, indent_level):
     if stmt.who is not None:
         f.write(u"%s " % (stmt.who, ))
         # TODO who_fast
@@ -60,6 +61,6 @@ statement_printer_dict = {
         ast.Say: print_Say
     }
 
-def print_Unknown(f, stmt):
+def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (stmt.__class__.__name__, )
     f.write(u"<<<UNKNOWN NODE %s>>>\n" % (stmt.__class__.__name__, ))
