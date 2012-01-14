@@ -68,10 +68,21 @@ def print_Jump(f, stmt, indent_level):
         f.write(stmt.target)
     f.write(u'\n')
 
+def print_Scene(f, stmt, indent_level):
+    f.write(u"scene")
+    if stmt.imspec is None:
+        if stmt.layer != 'master':
+            f.write(u" onlayer %s" % (stmt.layer, ))
+    else:
+        # TODO imspec
+        f.write(u" TODO imspec")
+    f.write(u'\n')
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
         ast.Jump: print_Jump,
+        ast.Scene: print_Scene,
     }
 
 def print_Unknown(f, stmt, indent_level):
