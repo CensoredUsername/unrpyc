@@ -22,6 +22,7 @@ import optparse
 import os.path
 import sys
 import cPickle as pickle
+import codecs
 
 # Needed for pickle to read the AST
 import renpy.object
@@ -46,7 +47,7 @@ def decompile_rpyc(input_filename, overwrite=False):
     if not overwrite and os.path.exists(out_filename):
         sys.exit("Output file already exists. Pass --clobber to overwrite.")
 
-    with open(out_filename, 'w') as out_file:
+    with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         decompiler.pretty_print_ast(out_file, ast)
 
 if __name__ == "__main__":
