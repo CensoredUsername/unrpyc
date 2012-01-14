@@ -42,7 +42,9 @@ def escape_string(s):
 
 def print_Label(f, stmt, indent_level):
     f.write(u"label %s" % (stmt.name, ))
-    # TODO parameters
+    if stmt.parameters is not None:
+        # TODO parameters
+        f.write(u"(parameters TODO)")
     f.write(u':\n')
 
     for sub_stmt in stmt.block:
@@ -60,7 +62,8 @@ def print_Say(f, stmt, indent_level):
 def print_Jump(f, stmt, indent_level):
     f.write(u"jump ")
     if stmt.expression:
-        pass # TODO expression
+        # TODO expression
+        f.write(u"expression TODO")
     else:
         f.write(stmt.target)
     f.write(u'\n')
