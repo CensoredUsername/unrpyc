@@ -1,0 +1,22 @@
+Unrpyc is a script to decompile Ren'Py (http://www.renpy.org/) compiled .rpyc
+script files. It will not extract files from .rpa archives. For that, use UnRPA
+(https://github.com/Lattyware/unrpa).
+
+Unrpyc needs some internal Ren'Py structures to work. You will need the renpy
+module in your Python module search path, or copy it to the unrpyc directory.
+
+Usage options:
+
+Options:
+  --version      show program's version number and exit
+  -h, --help     show this help message and exit
+  -c, --clobber  overwrites existing output files
+Usage: unrpyc.py [options] script1 script2 ...
+
+You can give several .rpyc files on the command lines. Each script will be
+decompiled to a corresponding .rpy on the same directory. By default, the
+program will not overwrite existing files, use -c to do that.
+
+This script is incomplete and won't disassemble all AST nodes. A warning will be
+printed and a placeholder inserted in the script when it finds a node it doesn't
+know how to handle.
