@@ -23,6 +23,8 @@ import os.path
 import sys
 import cPickle as pickle
 import codecs
+import glob
+import itertools
 
 # Needed for pickle to read the AST
 import renpy.object
@@ -59,6 +61,11 @@ if __name__ == "__main__":
             default=False, help="overwrites existing output files")
 
     options, args = parser.parse_args()
+
+    # Expand wildcards
+    args = map(glob.glob, args)
+    # Concatenate lists
+    args = list(itertools.chain(*args))
 
     if len(args) == 0:
         parser.print_help();
