@@ -171,8 +171,10 @@ def print_UserStatement(f, stmt, indent_level):
     f.write(u"%s\n" % (stmt.line, ))
 
 def print_Init(f, stmt, indent_level):
-    # TODO what does stmt.priority do?
-    f.write(u"init:\n")
+    f.write(u"init")
+    if stmt.priority != 0:
+        f.write(u" %d" % (stmt.priority, ))
+    f.write(u":\n")
     for s in stmt.block:
         print_statement(f, s, indent_level + 1)
 
