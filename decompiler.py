@@ -187,6 +187,31 @@ def print_Image(f, stmt, indent_level):
         f.write(u":\n")
         print_atl(f, stmt.atl, indent_level + 1)
 
+def print_Transform(f, stmt, indent_level):
+    f.write(u"transform %s" % (stmt.varname, ))
+    
+    paraminfo = stmt.parameters
+    if paraminfo is not None:
+        # not sure what the other fields of `paraminfo` do
+        f.write(u"(")
+        
+        first = True
+        for param in paraminfo.parameters:
+            if first:
+                first = False
+            else:
+                f.write(u", ")
+            
+            f.write(param[0])
+            
+            if param[1] is not None:
+                f.write(u" = %s" % param[1])
+        
+        f.write(u")")
+    
+    f.write(":\n")
+    print_atl(f, stmt.atl, indent_level + 1)
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -200,6 +225,7 @@ statement_printer_dict = {
         ast.UserStatement: print_UserStatement,
         ast.Init: print_Init,
         ast.Image: print_Image,
+        ast.Transform: print_Transform,
     }
 
 def print_Unknown(f, stmt, indent_level):
