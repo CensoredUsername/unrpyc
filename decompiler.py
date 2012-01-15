@@ -144,6 +144,23 @@ def print_Hide(f, stmt, indent_level):
 
     f.write('\n')
 
+def print_Python(f, stmt, indent_level):
+    # TODO figure out what to do with 'early'
+    code_src = stmt.code.source
+
+    stripped_code = code_src.strip()
+
+    if stripped_code.count('\n') == 0:
+        f.write(u"$ %s\n" % (stripped_code, ))
+    else:
+        f.write(u"python")
+        if stmt.hide:
+            f.write(u" hide")
+        f.write(u":\n")
+
+        # TODO do I need to fixup the indentation here?
+        f.write(code_src)
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -152,6 +169,7 @@ statement_printer_dict = {
         ast.With: print_With,
         ast.Show: print_Show,
         ast.Hide: print_Hide,
+        ast.Python: print_Python,
     }
 
 def print_Unknown(f, stmt, indent_level):
