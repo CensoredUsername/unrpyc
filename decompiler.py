@@ -78,11 +78,15 @@ def print_Scene(f, stmt, indent_level):
         f.write(u" TODO imspec")
     f.write(u'\n')
 
+def print_With(f, stmt, indent_level):
+    f.write(u"with %s\n" % (stmt.expr, ))
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
         ast.Jump: print_Jump,
         ast.Scene: print_Scene,
+        ast.With: print_With,
     }
 
 def print_Unknown(f, stmt, indent_level):
