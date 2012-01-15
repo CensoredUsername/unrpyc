@@ -212,6 +212,35 @@ def print_Transform(f, stmt, indent_level):
     f.write(":\n")
     print_atl(f, stmt.atl, indent_level + 1)
 
+def print_Menu(f, stmt, indent_level):
+    f.write(u"menu:\n")
+
+    if stmt.with_ is not None:
+        indent(f, indent_level + 1)
+        f.write(u"with %s\n" % (stmt.with_, ))
+
+    if stmt.set is not None:
+        indent(f, indent_level + 1)
+        f.write(u"set %s\n" % (stmt.with_, ))
+
+    for item in stmt.items:
+        indent(f, indent_level + 1)
+
+        # caption
+        f.write(u"\"%s\"" % (escape_string(item[0]), ))
+
+        if item[2] is not None:
+            # condition
+            if item[1] != 'True':
+                f.write(u" if %s" % (item[1], ))
+
+            f.write(u':\n')
+
+            for inner_stmt in item[2]:
+                print_statement(f, inner_stmt, indent_level + 2)
+        else:
+            f.write(u'\n')
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -226,6 +255,7 @@ statement_printer_dict = {
         ast.Init: print_Init,
         ast.Image: print_Image,
         ast.Transform: print_Transform,
+        ast.Menu: print_Menu,
     }
 
 def print_Unknown(f, stmt, indent_level):
