@@ -169,6 +169,9 @@ def print_Return(f, stmt, indent_level):
 
     f.write(u'\n')
 
+def print_UserStatement(f, stmt, indent_level):
+    f.write(u"%s\n" % (stmt.line, ))
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -179,6 +182,7 @@ statement_printer_dict = {
         ast.Hide: print_Hide,
         ast.Python: print_Python,
         ast.Return: print_Return,
+        ast.UserStatement: print_UserStatement,
     }
 
 def print_Unknown(f, stmt, indent_level):
