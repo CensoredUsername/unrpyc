@@ -172,6 +172,12 @@ def print_Return(f, stmt, indent_level):
 def print_UserStatement(f, stmt, indent_level):
     f.write(u"%s\n" % (stmt.line, ))
 
+def print_Init(f, stmt, indent_level):
+    # TODO what does stmt.priority do?
+    f.write(u"init:\n")
+    for s in stmt.block:
+        print_statement(f, s, indent_level + 1)
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -183,6 +189,7 @@ statement_printer_dict = {
         ast.Python: print_Python,
         ast.Return: print_Return,
         ast.UserStatement: print_UserStatement,
+        ast.Init: print_Init,
     }
 
 def print_Unknown(f, stmt, indent_level):
