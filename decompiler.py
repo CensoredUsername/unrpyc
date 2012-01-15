@@ -239,6 +239,9 @@ def print_Menu(f, stmt, indent_level):
         else:
             f.write(u'\n')
 
+def print_Pass(f, stmt, indent_level):
+    f.write(u"pass\n")
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -254,6 +257,7 @@ statement_printer_dict = {
         ast.Image: print_Image,
         ast.Transform: print_Transform,
         ast.Menu: print_Menu,
+        ast.Pass: print_Pass,
     }
 
 def print_Unknown(f, stmt, indent_level):
