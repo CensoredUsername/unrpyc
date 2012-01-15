@@ -32,7 +32,7 @@ def indent(f, level):
 def print_statement(f, statement, indent_level=0):
     indent(f, indent_level)
 
-    func = statement_printer_dict.get(statement.__class__, print_Unknown)
+    func = statement_printer_dict.get(type(statement), print_Unknown)
     func(f, statement, indent_level)
 
 def escape_string(s):
@@ -346,5 +346,5 @@ statement_printer_dict = {
     }
 
 def print_Unknown(f, stmt, indent_level):
-    print "Unknown AST node: %s" % (stmt.__class__.__name__, )
-    f.write(u"<<<UNKNOWN NODE %s>>>\n" % (stmt.__class__.__name__, ))
+    print "Unknown AST node: %s" % (type(stmt).__name__, )
+    f.write(u"<<<UNKNOWN NODE %s>>>\n" % (type(stmt).__name__, ))
