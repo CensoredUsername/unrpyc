@@ -242,6 +242,21 @@ def print_Menu(f, stmt, indent_level):
 def print_Pass(f, stmt, indent_level):
     f.write(u"pass\n")
 
+def print_Call(f, stmt, indent_level):
+    f.write(u"call ")
+    if stmt.expression:
+        f.write(u"expression %s" % (stmt.label, ))
+    else:
+        f.write(stmt.label)
+
+    if stmt.arguments is not None:
+        if stmt.expression:
+            f.write(u"pass ")
+        # TODO parameters
+        f.write(u"(TODO parameters)")
+
+    f.write(u'\n')
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -258,6 +273,7 @@ statement_printer_dict = {
         ast.Transform: print_Transform,
         ast.Menu: print_Menu,
         ast.Pass: print_Pass,
+        ast.Call: print_Call,
     }
 
 def print_Unknown(f, stmt, indent_level):
