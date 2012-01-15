@@ -158,8 +158,9 @@ def print_Python(f, stmt, indent_level):
             f.write(u" hide")
         f.write(u":\n")
 
-        # TODO do I need to fixup the indentation here?
-        f.write(code_src)
+        for line in code_src.splitlines(True):
+            indent(f, indent_level + 1)
+            f.write(line)
 
 def print_Return(f, stmt, indent_level):
     f.write(u"return")
