@@ -72,5 +72,5 @@ if __name__ == "__main__":
         parser.error("No script files given.")
 
     for filename in args:
-        decompiler = decompile_rpyc(filename, options.clobber)
+        decompile_rpyc(filename, options.clobber)
 
