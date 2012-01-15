@@ -257,6 +257,32 @@ def print_Call(f, stmt, indent_level):
 
     f.write(u'\n')
 
+def print_If(f, stmt, indent_level):
+    f.write(u"if %s:\n" % (stmt.entries[0][0], ))
+    for inner_stmt in stmt.entries[0][1]:
+        print_statement(f, inner_stmt, indent_level + 1)
+
+    if len(stmt.entries) >= 2:
+        if stmt.entries[-1][0].strip() == 'True':
+            else_entry = stmt.entries[-1]
+            elif_entries = stmt.entries[:-1]
+        else:
+            else_entry = None
+            elif_entries = stmt.entries
+
+        for case in elif_entries:
+            indent(f, indent_level)
+            f.write(u"elif %s:\n" % (case[0], ))
+            for inner_stmt in case[1]:
+                print_statement(f, inner_stmt, indent_level + 1)
+
+        if else_entry is not None:
+            indent(f, indent_level)
+            f.write(u"else:\n")
+            for inner_stmt in else_entry[1]:
+                print_statement(f, inner_stmt, indent_level + 1)
+
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -274,6 +300,7 @@ statement_printer_dict = {
         ast.Menu: print_Menu,
         ast.Pass: print_Pass,
         ast.Call: print_Call,
+        ast.If: print_If,
     }
 
 def print_Unknown(f, stmt, indent_level):
