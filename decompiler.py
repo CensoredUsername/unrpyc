@@ -189,26 +189,26 @@ def print_Image(f, stmt, indent_level):
 
 def print_Transform(f, stmt, indent_level):
     f.write(u"transform %s" % (stmt.varname, ))
-    
+
     paraminfo = stmt.parameters
     if paraminfo is not None:
         # not sure what the other fields of `paraminfo` do
         f.write(u"(")
-        
+
         first = True
         for param in paraminfo.parameters:
             if first:
                 first = False
             else:
                 f.write(u", ")
-            
+
             f.write(param[0])
-            
+
             if param[1] is not None:
                 f.write(u" = %s" % param[1])
-        
+
         f.write(u")")
-    
+
     f.write(":\n")
     print_atl(f, stmt.atl, indent_level + 1)
 
