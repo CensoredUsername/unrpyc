@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 import renpy.ast as ast
+import renpy.atl as atl
 
 def pretty_print_ast(out_file, ast):
     for stmt in ast:
@@ -41,10 +42,46 @@ def escape_string(s):
     return s
 
 def print_atl(f, atl_block, indent_level):
-    indent(f, indent_level)
-
-    # TODO print ATL
-    f.write(u"TODO atl\n")
+    for stmt in atl_block.statements:
+        indent(f, indent_level)
+        if type(stmt) is atl.RawMultipurpose:
+            # warper
+            if stmt.warp_function:
+                f.write(u"warp %s" % (stmt.warp_function.strip(), ))
+            else:
+                f.write(stmt.warper or "pause")
+            
+            # duration
+            f.write(u" %s" % (stmt.duration.strip(), ))
+            
+            # revolution
+            if stmt.revolution:
+                f.write(u" %s" % (stmt.revolution, ))
+            
+            # circles
+            if stmt.circles != "0":
+                f.write(u" circles %s" % (stmt.circles.strip(), ))
+            
+            # splines
+            for (name, exprs) in stmt.splines:
+                f.write(u" %s" % (name, ))
+                for expr in exprs:
+                    f.write(u" knot %s" % (expr.strip(), ))
+            
+            # properties
+            for (k, v) in stmt.properties:
+                f.write(u" %s %s" % (k, v.strip()))
+            
+            # with
+            for (expr, with_expr) in stmt.expressions:
+                f.write(u" %s" % (expr, ))
+                if with_expr:
+                    f.write(u" with %s" % (with_expr, ))
+            
+            f.write(u"\n")
+        
+        else:
+            f.write(u"TODO ast.%s\n" % type(stmt).__name__)
 
 def print_imspec(f, imspec):
     if imspec[1] is not None: # Expression
