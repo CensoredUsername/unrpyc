@@ -110,9 +110,16 @@ def print_Scene(f, stmt, indent_level):
         if stmt.layer != 'master':
             f.write(u" onlayer %s" % (stmt.layer, ))
     else:
-        # TODO imspec
-        f.write(u" TODO imspec")
-    f.write(u'\n')
+        f.write(u' ')
+        print_imspec(f, stmt.imspec)
+
+    # with isn't handled here, but split in several statements
+
+    if stmt.atl is not None:
+        f.write(u':\n')
+        print_atl(f, stmt.atl, indent_level+1)
+    else:
+        f.write('\n')
 
 def print_With(f, stmt, indent_level):
     f.write(u"with %s\n" % (stmt.expr, ))
