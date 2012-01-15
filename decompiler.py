@@ -41,10 +41,11 @@ def escape_string(s):
     s = s.replace('\t', '\\t')
     return s
 
+# TODO fix "pause 0" at the beginning of lines with no warp
 # TODO "choice" and "parallel" blocks are greedily combined
-# TODO so we need a "pass" statement to separate them if
-# TODO multiple of the same block are immediately after
-# TODO each other.
+#      so we need a "pass" statement to separate them if
+#      multiple of the same block are immediately after
+#      each other.
 def print_atl(f, atl_block, indent_level):
     for stmt in atl_block.statements:
         indent(f, indent_level)
@@ -79,7 +80,7 @@ def print_atl(f, atl_block, indent_level):
             
             # with
             for (expr, with_expr) in stmt.expressions:
-                f.write(u" %s" % (expr, ))
+                f.write(u" %s" % (expr.strip(), ))
                 if with_expr:
                     f.write(u" with %s" % (with_expr, ))
             
