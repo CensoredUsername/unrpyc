@@ -161,6 +161,14 @@ def print_Python(f, stmt, indent_level):
         # TODO do I need to fixup the indentation here?
         f.write(code_src)
 
+def print_Return(f, stmt, indent_level):
+    f.write(u"return")
+
+    if stmt.expression is not None:
+        f.write(u" %s" % (stmt.expression, ))
+
+    f.write(u'\n')
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -170,6 +178,7 @@ statement_printer_dict = {
         ast.Show: print_Show,
         ast.Hide: print_Hide,
         ast.Python: print_Python,
+        ast.Return: print_Return,
     }
 
 def print_Unknown(f, stmt, indent_level):
