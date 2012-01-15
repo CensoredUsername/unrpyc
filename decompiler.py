@@ -88,8 +88,7 @@ def print_Say(f, stmt, indent_level):
         f.write(u"%s " % (stmt.who, ))
     f.write(u"\"%s\"" % (escape_string(stmt.what), ))
     if stmt.with_ is not None:
-        f.write(u" with TODO")
-        # TODO with_
+        f.write(u" with %s" % (stmt.with_, ))
     f.write(u'\n')
 
 def print_Jump(f, stmt, indent_level):
