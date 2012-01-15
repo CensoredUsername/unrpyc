@@ -44,6 +44,7 @@ def escape_string(s):
 def print_atl(f, atl_block, indent_level):
     for stmt in atl_block.statements:
         indent(f, indent_level)
+        
         if type(stmt) is atl.RawMultipurpose:
             # warper
             if stmt.warp_function:
@@ -80,8 +81,47 @@ def print_atl(f, atl_block, indent_level):
             
             f.write(u"\n")
         
+        elif type(stmt) is atl.RawBlock:
+            # what does stmt.animation do?
+            f.write(u"block:\n")
+            print_atl(f, stmt, indent_level + 1)
+        
+        elif type(stmt) is atl.RawChoice:
+            first = True
+            for (chance, block) in stmt.choices:
+                if first:
+                    first = False
+                else:
+                    indent(f, indent_level)
+                
+                f.write(u"choice")
+                if chance != "1.0":
+                    f.write(u" %s" % (chance, ))
+                f.write(u":\n")
+                print_atl(f, block, indent_level + 1)
+        
+        elif type(stmt) is atl.RawFunction:
+            f.write(u"function %s\n" % (stmt.expr, ))
+        
+        elif type(stmt) is atl.RawParallel:
+            first = True
+            for block in stmt.blocks:
+                if first:
+                    first = False
+                else:
+                    indent(f, indent_level)
+                
+                f.write(u"parallel:\n")
+                print_atl(f, block, indent_level + 1)
+        
+        elif type(stmt) is atl.RawRepeat:
+            f.write(u"repeat")
+            if stmt.repeats:
+                f.write(u" %s" % (stmt.repeats, )) # not sure if this is even a string
+            f.write(u"\n")
+        
         else:
-            f.write(u"TODO ast.%s\n" % type(stmt).__name__)
+            f.write(u"TODO atl.%s\n" % type(stmt).__name__)
 
 def print_imspec(f, imspec):
     if imspec[1] is not None: # Expression
