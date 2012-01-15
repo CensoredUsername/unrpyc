@@ -48,15 +48,13 @@ def print_atl(f, atl_block, indent_level):
 
 def print_imspec(f, imspec):
     if imspec[1] is not None: # Expression
-        # TODO expression
-        f.write(u"TODO expression")
+        f.write(imspec[1])
     else: # Image name
         f.write(' '.join(imspec[0]))
 
     # at
     if len(imspec[3]) > 0:
-        # TODO at_list
-        f.write(u" at TODO")
+        f.write(u" at %s" % (', '.join(imspec[3])))
 
     # as
     if imspec[2] is not None:
@@ -64,8 +62,7 @@ def print_imspec(f, imspec):
 
     # behind
     if len(imspec[6]) > 0:
-        # TODO behind
-        f.write(u" behind TODO")
+        f.write(u" behind %s" % (', '.join(imspec[6])))
 
     # onlayer
     if imspec[4] != 'master':
