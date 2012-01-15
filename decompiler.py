@@ -46,6 +46,36 @@ def print_atl(f, atl_block, indent_level):
     # TODO print ATL
     f.write(u"TODO atl\n")
 
+def print_imspec(f, imspec):
+    if imspec[1] is not None: # Expression
+        # TODO expression
+        f.write(u"TODO expression")
+    else: # Image name
+        f.write(' '.join(imspec[0]))
+
+    # at
+    if imspec[3] is not None:
+        # TODO at_list
+        f.write(u" at TODO")
+
+    # as
+    if imspec[2] is not None:
+        f.write(u" as %s" % (imspec[2], ))
+
+    # behind
+    if imspec[6] is not None:
+        # TODO behind
+        f.write(u" behind TODO")
+
+    # onlayer
+    if imspec[4] != 'master':
+        f.write(u" onlayer %s" % (imspec[4], ))
+
+    # zorder
+    # This isn't in the docs, but it's in the parser
+    if imspec[5] is not None:
+        f.write(u" zorder %s" % (imspec[5], ))
+
 def print_Label(f, stmt, indent_level):
     f.write(u"label %s" % (stmt.name, ))
     if stmt.parameters is not None:
@@ -89,34 +119,7 @@ def print_With(f, stmt, indent_level):
 
 def print_Show(f, stmt, indent_level):
     f.write(u"show ")
-    if stmt.imspec[1] is not None: # Expression
-        # TODO expression
-        f.write(u"TODO expression")
-    else: # Image name
-        f.write(' '.join(stmt.imspec[0]))
-
-    # at
-    if stmt.imspec[3] is not None:
-        # TODO at_list
-        f.write(u" at TODO")
-
-    # as
-    if stmt.imspec[2] is not None:
-        f.write(u" as %s" % (stmt.imspec[2], ))
-
-    # behind
-    if stmt.imspec[6] is not None:
-        # TODO behind
-        f.write(u" behind TODO")
-
-    # onlayer
-    if stmt.imspec[4] != 'master':
-        f.write(u" onlayer %s" % (stmt.imspec[4], ))
-
-    # zorder
-    # This isn't in the docs, but it's in the parser
-    if stmt.imspec[5] is not None:
-        f.write(u" zorder %s" % (stmt.imspec[5], ))
+    print_imspec(f, stmt.imspec)
 
     # with isn't handled here, but split in several statements
 
@@ -126,6 +129,13 @@ def print_Show(f, stmt, indent_level):
     else:
         f.write('\n')
 
+def print_Hide(f, stmt, indent_level):
+    f.write(u"hide ")
+    print_imspec(f, stmt.imspec)
+
+    # with isn't handled here, but split in several statements
+
+    f.write('\n')
 
 statement_printer_dict = {
         ast.Label: print_Label,
@@ -134,6 +144,7 @@ statement_printer_dict = {
         ast.Scene: print_Scene,
         ast.With: print_With,
         ast.Show: print_Show,
+        ast.Hide: print_Hide,
     }
 
 def print_Unknown(f, stmt, indent_level):
