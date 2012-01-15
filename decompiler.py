@@ -54,7 +54,7 @@ def print_imspec(f, imspec):
         f.write(' '.join(imspec[0]))
 
     # at
-    if imspec[3] is not None:
+    if len(imspec[3]) > 0:
         # TODO at_list
         f.write(u" at TODO")
 
@@ -63,7 +63,7 @@ def print_imspec(f, imspec):
         f.write(u" as %s" % (imspec[2], ))
 
     # behind
-    if imspec[6] is not None:
+    if len(imspec[6]) > 0:
         # TODO behind
         f.write(u" behind TODO")
 
