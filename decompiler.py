@@ -41,6 +41,10 @@ def escape_string(s):
     s = s.replace('\t', '\\t')
     return s
 
+# TODO "choice" and "parallel" blocks are greedily combined
+# TODO so we need a "pass" statement to separate them if
+# TODO multiple of the same block are immediately after
+# TODO each other.
 def print_atl(f, atl_block, indent_level):
     for stmt in atl_block.statements:
         indent(f, indent_level)
@@ -100,8 +104,25 @@ def print_atl(f, atl_block, indent_level):
                 f.write(u":\n")
                 print_atl(f, block, indent_level + 1)
         
+        elif type(stmt) is atl.RawContainsExpr:
+            f.write(u"contains %s\n" % (stmt.expression, ))
+        
+        elif type(stmt) is atl.RawEvent:
+            f.write(u"event %s\n" % (stmt.name, ))
+        
         elif type(stmt) is atl.RawFunction:
             f.write(u"function %s\n" % (stmt.expr, ))
+        
+        elif type(stmt) is atl.RawOn:
+            first = False
+            for name, block in stmt.handlers.iteritems():
+                if first:
+                    first = True
+                else:
+                    indent(f, indent_level)
+                
+                f.write(u"on %s:\n" % (name, ))
+                print_atl(f, block, indent_level + 1)
         
         elif type(stmt) is atl.RawParallel:
             first = True
@@ -119,6 +140,9 @@ def print_atl(f, atl_block, indent_level):
             if stmt.repeats:
                 f.write(u" %s" % (stmt.repeats, )) # not sure if this is even a string
             f.write(u"\n")
+        
+        elif type(stmt) is atl.RawTime:
+            f.write(u"time %s\n" % (stmt.time, ))
         
         else:
             f.write(u"TODO atl.%s\n" % type(stmt).__name__)
