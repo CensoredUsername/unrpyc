@@ -179,6 +179,14 @@ def print_Init(f, stmt, indent_level):
     for s in stmt.block:
         print_statement(f, s, indent_level + 1)
 
+def print_Image(f, stmt, indent_level):
+    f.write(u"image %s" % (' '.join(stmt. imgname), ))
+    if stmt.code is not None:
+        f.write(u" = %s\n" % (stmt.code.source, ))
+    else:
+        f.write(u":\n")
+        print_atl(f, stmt.atl, indent_level + 1)
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -191,6 +199,7 @@ statement_printer_dict = {
         ast.Return: print_Return,
         ast.UserStatement: print_UserStatement,
         ast.Init: print_Init,
+        ast.Image: print_Image,
     }
 
 def print_Unknown(f, stmt, indent_level):
