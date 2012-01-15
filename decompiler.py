@@ -140,7 +140,7 @@ def print_Hide(f, stmt, indent_level):
 
     f.write('\n')
 
-def print_Python(f, stmt, indent_level):
+def print_Python(f, stmt, indent_level, early=False):
     # TODO figure out what to do with 'early'
     code_src = stmt.code.source
 
@@ -150,6 +150,8 @@ def print_Python(f, stmt, indent_level):
         f.write(u"$ %s\n" % (stripped_code, ))
     else:
         f.write(u"python")
+        if early:
+            f.write(u" early")
         if stmt.hide:
             f.write(u" hide")
         f.write(u":\n")
@@ -282,6 +284,8 @@ def print_If(f, stmt, indent_level):
             for inner_stmt in else_entry[1]:
                 print_statement(f, inner_stmt, indent_level + 1)
 
+def print_EarlyPython(f, stmt, indent_level):
+    print_Python(f, stmt, indent_level, early=True)
 
 statement_printer_dict = {
         ast.Label: print_Label,
@@ -301,6 +305,7 @@ statement_printer_dict = {
         ast.Pass: print_Pass,
         ast.Call: print_Call,
         ast.If: print_If,
+        ast.EarlyPython: print_EarlyPython,
     }
 
 def print_Unknown(f, stmt, indent_level):
