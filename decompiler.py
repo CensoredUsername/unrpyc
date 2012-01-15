@@ -178,8 +178,7 @@ def print_imspec(f, imspec):
 def print_Label(f, stmt, indent_level):
     f.write(u"label %s" % (stmt.name, ))
     if stmt.parameters is not None:
-        # TODO parameters
-        f.write(u"(parameters TODO)")
+        print_params(f, stmt.parameters)
     f.write(u':\n')
 
     for sub_stmt in stmt.block:
@@ -292,24 +291,8 @@ def print_Image(f, stmt, indent_level):
 def print_Transform(f, stmt, indent_level):
     f.write(u"transform %s" % (stmt.varname, ))
 
-    paraminfo = stmt.parameters
-    if paraminfo is not None:
-        # not sure what the other fields of `paraminfo` do
-        f.write(u"(")
-
-        first = True
-        for param in paraminfo.parameters:
-            if first:
-                first = False
-            else:
-                f.write(u", ")
-
-            f.write(param[0])
-
-            if param[1] is not None:
-                f.write(u" = %s" % param[1])
-
-        f.write(u")")
+    if stmt.parameters is not None:
+        print_params(f, stmt.parameters)
 
     f.write(":\n")
     print_atl(f, stmt.atl, indent_level + 1)
@@ -356,8 +339,7 @@ def print_Call(f, stmt, indent_level):
     if stmt.arguments is not None:
         if stmt.expression:
             f.write(u"pass ")
-        # TODO parameters
-        f.write(u"(TODO parameters)")
+        print_args(f, stmt.arguments)
 
     f.write(u'\n')
 
@@ -388,6 +370,44 @@ def print_If(f, stmt, indent_level):
 
 def print_EarlyPython(f, stmt, indent_level):
     print_Python(f, stmt, indent_level, early=True)
+
+# TODO extrapos, extrakw?
+def print_args(f, arginfo):
+    if arginfo is None:
+        return
+
+    f.write(u"(")
+
+    first = True
+    for (name, val) in arginfo.arguments:
+        if first:
+            first = False
+        else:
+            f.write(u", ")
+
+        if name is not None:
+            f.write(u"%s = " % (name, ))
+        f.write(val)
+
+    f.write(u")")
+
+# TODO positional, extrapos, extrakw?
+def print_params(f, paraminfo):
+    f.write(u"(")
+
+    first = True
+    for param in paraminfo.parameters:
+        if first:
+            first = False
+        else:
+            f.write(u", ")
+
+        f.write(param[0])
+
+        if param[1] is not None:
+            f.write(u" = %s" % param[1])
+
+    f.write(u")")
 
 statement_printer_dict = {
         ast.Label: print_Label,
