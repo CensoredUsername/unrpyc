@@ -242,7 +242,6 @@ def print_Hide(f, stmt, indent_level):
     f.write('\n')
 
 def print_Python(f, stmt, indent_level, early=False):
-    # TODO figure out what to do with 'early'
     code_src = stmt.code.source
 
     stripped_code = code_src.strip()
