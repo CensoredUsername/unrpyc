@@ -408,6 +408,16 @@ def print_params(f, paraminfo):
 
     f.write(u")")
 
+# Print while command, from http://forum.cheatengine.org/viewtopic.php?p=5377683
+def print_While(f, stmt, indent_level): 
+    f.write(u"while %s:\n" % (stmt.condition, )) 
+    for inner_stmt in stmt.block: 
+        print_statement(f, inner_stmt, indent_level + 1)
+
+# Print define command, by iAmGhost
+def print_Define(f, stmt, indent_level): 
+    f.write(u"define %s = %s\n" % (stmt.varname, stmt.code.source,))
+    
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -426,6 +436,8 @@ statement_printer_dict = {
         ast.Pass: print_Pass,
         ast.Call: print_Call,
         ast.If: print_If,
+        ast.While: print_While,
+        ast.Define: print_Define,
         ast.EarlyPython: print_EarlyPython,
     }
 
