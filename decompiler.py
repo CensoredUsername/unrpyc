@@ -259,6 +259,10 @@ def print_Python(f, stmt, indent_level, early=False):
         for line in code_src.splitlines(True):
             indent(f, indent_level + 1)
             f.write(line)
+            
+        for line in code_src.splitlines(True):
+            indent(f, indent_level + 2)
+            f.write(line)
 
 def print_Return(f, stmt, indent_level):
     f.write(u"return")
