@@ -1,3 +1,5 @@
+#!/usr/bin/env python2
+
 # Copyright (c) 2012 Yuri K. Schlesner
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
