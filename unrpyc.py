@@ -28,8 +28,19 @@ import itertools
 
 # Needed for pickle to read the AST
 import renpy.object
+import renpy.game
+import renpy.easy
+import renpy.style
+
 
 import decompiler
+
+class Dummy:
+    def record_pycode(self,*args,**kwargs):
+        return
+    all_pycode = []
+
+renpy.game.script = Dummy()
 
 def read_ast_from_file(in_file):
     raw_contents = in_file.read().decode('zlib')

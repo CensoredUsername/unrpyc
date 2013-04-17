@@ -20,6 +20,7 @@
 
 import renpy.ast as ast
 import renpy.atl as atl
+import codegen
 
 def pretty_print_ast(out_file, ast):
     for stmt in ast:
@@ -259,6 +260,10 @@ def print_Python(f, stmt, indent_level, early=False):
         for line in code_src.splitlines(True):
             indent(f, indent_level + 1)
             f.write(line)
+            
+        for line in code_src.splitlines(True):
+            indent(f, indent_level + 2)
+            f.write(line)
 
 def print_Return(f, stmt, indent_level):
     f.write(u"return")
@@ -390,7 +395,7 @@ def print_args(f, arginfo):
 
     f.write(u")")
 
-# TODO positional, extrapos, extrakw?
+# TODO positional?
 def print_params(f, paraminfo):
     f.write(u"(")
 
@@ -405,6 +410,12 @@ def print_params(f, paraminfo):
 
         if param[1] is not None:
             f.write(u" = %s" % param[1])
+    if paraminfo.extrapos:
+        f.write(u", ")
+        f.write(u"*%s" % paraminfo.extrapos)
+    if paraminfo.extrakw:
+        f.write(u", ")
+        f.write(u"**%s" % paraminfo.extrakw)
 
     f.write(u")")
 
@@ -417,6 +428,35 @@ def print_While(f, stmt, indent_level):
 # Print define command, by iAmGhost
 def print_Define(f, stmt, indent_level): 
     f.write(u"define %s = %s\n" % (stmt.varname, stmt.code.source,))
+    
+# Print Screen code (or at least code which does exactly the same. can't be picky, don't have source)  
+def print_screen(f, stmt, indent_level):
+    screen = stmt.screen
+    sourcecode = unicode(codegen.to_source(screen.code.source, u" "*4)).splitlines()
+    if sourcecode[0] == u'_1 = (_name, 0)':
+        sourcecode.remove(u'_1 = (_name, 0)')
+    sourcecode = u"\n".join([u" "*4*(indent_level+2)+i for i in sourcecode])
+    #why suddenly ast in the source code field
+    f.write(u"screen %s" % screen.name)
+    if screen.parameters:
+        print_params(f, screen.parameters)
+    f.write(u":\n")
+    if screen.tag:
+        indent(f, indent_level+1)
+        f.write(u"tag %s\n" % screen.tag)
+    if screen.zorder:
+        indent(f, indent_level+1)
+        f.write(u"zorder %s\n" % screen.zorder)
+    if screen.modal:
+        indent(f, indent_level+1)
+        f.write(u"modal %s\n" % screen.modal)
+    if screen.variant != "None":
+        indent(f, indent_level+1)
+        f.write(u"variant %s\n" % screen.variant)
+    indent(f, indent_level+1)
+    f.write(u"python:\n")
+    f.write(sourcecode)
+    f.write(u"\n")
     
 statement_printer_dict = {
         ast.Label: print_Label,
@@ -439,6 +479,7 @@ statement_printer_dict = {
         ast.While: print_While,
         ast.Define: print_Define,
         ast.EarlyPython: print_EarlyPython,
+        ast.Screen: print_screen
     }
 
 def print_Unknown(f, stmt, indent_level):
