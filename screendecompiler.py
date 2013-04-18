@@ -143,7 +143,7 @@ def print_arguments(f, functionstring, indent_level, multiline=True):
     for key in kwargs:
         if ' ' in kwargs[key]:
             kwargs[key] = '(%s)' % kwargs[key]
-    if multiline or FORCE_MULTILINE_KWARGS:
+    if multiline or (FORCE_MULTILINE_KWARGS and kwargs):
         f.write(u':\n')
         for arg in kwargs:
             indent(f, indent_level+1)

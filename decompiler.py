@@ -353,7 +353,7 @@ def print_If(f, stmt, indent_level):
     if len(stmt.entries) >= 2:
         if stmt.entries[-1][0].strip() == 'True':
             else_entry = stmt.entries[-1]
-            elif_entries = stmt.entries[:-1]
+            elif_entries = stmt.entries[1:-1]
         else:
             else_entry = None
             elif_entries = stmt.entries
