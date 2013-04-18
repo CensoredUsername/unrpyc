@@ -111,19 +111,19 @@ def parse_arguments(functionstring, extra=False):
     exargs = None
     for argument in arguments:
         argument = argument.strip()
-        if re.search('[a-zA-Z_0-9]+ *=[^=]', argument):
+        if re.match('^[a-zA-Z_0-9]+ *=[^=]', argument):
             name, value = argument.split('=',1)
             kwargs[name.strip()] = value.strip()
-        elif re.search('\*\*', argument):
+        elif re.match('^\*\*', argument):
             exkwargs = argument[2:]
-        elif re.search('\*', argument):
+        elif re.match('^\*', argument):
             exargs = argument[1:]
         else:
             args.append(argument)
     if not extra:
-        return args, kwargs
         if exkwargs or exargs: 
             print('ignored *args/**kwargs')
+        return args, kwargs
     else:
         return args, kwargs, exargs, exkwargs
     
@@ -162,7 +162,7 @@ def print_condition(f, string, statement, indent_level):
         tuples, value = condition.split(' in ',1)
         if tuples.strip().startswith('(') and tuples.strip().endswith(')'):
             tuples = tuples.strip()[1:-1]
-        condition = '%sin%s' % (tuples, value)
+        condition = '%s in %s' % (tuples, value)
     f.write(u'%s %s:\n' % (statement, condition))
     
 def print_python(f, header, code, indent_level):
@@ -216,6 +216,7 @@ def print_if(f, header, code, indent_level):
                 indent(f, indent_level+1)
                 f.write(u'pass\n')
             if line[if_indent:].startswith('elif'):
+                indent(f, indent_level)
                 print_condition(f, line, 'elif', indent_level)
             elif line[if_indent:].startswith('else'):
                 indent(f, indent_level)

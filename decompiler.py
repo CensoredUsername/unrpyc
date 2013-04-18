@@ -23,6 +23,8 @@ import renpy.atl as atl
 import codegen
 import screendecompiler
 
+DECOMPILE_SCREENS = True
+
 def pretty_print_ast(out_file, ast):
     for stmt in ast:
         print_statement(out_file, stmt, 0)
@@ -48,6 +50,9 @@ def escape_string(s):
 #      multiple of the same block are immediately after
 #      each other.
 def print_atl(f, atl_block, indent_level):
+    if not atl_block.statements:
+        indent(f, indent_level)
+        f.write(u'pass\n')
     for stmt in atl_block.statements:
         indent(f, indent_level)
         
@@ -55,37 +60,37 @@ def print_atl(f, atl_block, indent_level):
             # warper
             if stmt.warp_function:
                 f.write(u"warp %s" % (stmt.warp_function.strip(), ))
-                f.write(u" %s" % (stmt.duration.strip(), ))
+                f.write(u" %s " % (stmt.duration.strip(), ))
             elif stmt.warper:
                 f.write(stmt.warper)
-                f.write(u" %s" % (stmt.duration.strip(), ))
-            elif stmt.duration.strip != '0':
-                f.write(u'pause ')
+                f.write(u" %s " % (stmt.duration.strip(), ))
+            elif stmt.duration.strip() != '0':
+                f.write(u'pause')
                 f.write(u" %s" % (stmt.duration.strip(), ))
             
             # revolution
             if stmt.revolution:
-                f.write(u" %s" % (stmt.revolution, ))
+                f.write(u"%s " % (stmt.revolution, ))
             
             # circles
             if stmt.circles != "0":
-                f.write(u" circles %s" % (stmt.circles.strip(), ))
+                f.write(u"circles %s " % (stmt.circles.strip(), ))
             
             # splines
             for (name, exprs) in stmt.splines:
-                f.write(u" %s" % (name, ))
+                f.write(u"%s " % (name, ))
                 for expr in exprs:
-                    f.write(u" knot %s" % (expr.strip(), ))
+                    f.write(u"knot %s " % (expr.strip(), ))
             
             # properties
             for (k, v) in stmt.properties:
-                f.write(u" %s %s" % (k, v.strip()))
+                f.write(u"%s %s " % (k, v.strip()))
             
             # with
             for (expr, with_expr) in stmt.expressions:
-                f.write(u" %s" % (expr.strip(), ))
+                f.write(u"%s " % (expr.strip(), ))
                 if with_expr:
-                    f.write(u" with %s" % (with_expr, ))
+                    f.write(u"with %s " % (with_expr, ))
             
             f.write(u"\n")
         
@@ -118,10 +123,10 @@ def print_atl(f, atl_block, indent_level):
             f.write(u"function %s\n" % (stmt.expr, ))
         
         elif type(stmt) is atl.RawOn:
-            first = False
+            first = True
             for name, block in stmt.handlers.iteritems():
                 if first:
-                    first = True
+                    first = False
                 else:
                     indent(f, indent_level)
                 
@@ -153,6 +158,7 @@ def print_atl(f, atl_block, indent_level):
 
 def print_imspec(f, imspec):
     if imspec[1] is not None: # Expression
+        f.write(u'expression ')
         f.write(imspec[1])
     else: # Image name
         f.write(' '.join(imspec[0]))
@@ -292,7 +298,6 @@ def print_Image(f, stmt, indent_level):
 
 def print_Transform(f, stmt, indent_level):
     f.write(u"transform %s" % (stmt.varname, ))
-
     if stmt.parameters is not None:
         print_params(f, stmt.parameters)
 
@@ -406,7 +411,7 @@ def print_params(f, paraminfo):
 
         f.write(param[0])
 
-        if param[1] is not None:
+        if (param[1] is not None) and ('None' not in param[1]):
             f.write(u" = %s" % param[1])
     if paraminfo.extrapos:
         f.write(u", ")
@@ -452,7 +457,11 @@ def print_screen(f, stmt, indent_level):
         indent(f, indent_level+1)
         f.write(u"variant %s\n" % screen.variant)
     # actual screen decompilation is HARD
-    screendecompiler.print_screen(f, sourcecode, indent_level+1)
+    if DECOMPILE_SCREENS:
+        screendecompiler.print_screen(f, sourcecode, indent_level+1)
+    else:
+        f.write('python:\n')
+        f.write(sourcecode)
     f.write(u"\n")
     
 statement_printer_dict = {

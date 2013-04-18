@@ -40,7 +40,6 @@ import renpy.execution
 import renpy.loadsave
 import renpy.parser
 import renpy.python
-import renpy.remote
 import renpy.script
 import renpy.statements
 import renpy.style
