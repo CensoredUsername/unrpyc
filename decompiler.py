@@ -12,6 +12,7 @@
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
@@ -21,6 +22,7 @@
 import renpy.ast as ast
 import renpy.atl as atl
 import codegen
+import screendecompiler
 
 def pretty_print_ast(out_file, ast):
     for stmt in ast:
@@ -260,10 +262,6 @@ def print_Python(f, stmt, indent_level, early=False):
         for line in code_src.splitlines(True):
             indent(f, indent_level + 1)
             f.write(line)
-            
-        for line in code_src.splitlines(True):
-            indent(f, indent_level + 2)
-            f.write(line)
 
 def print_Return(f, stmt, indent_level):
     f.write(u"return")
@@ -432,10 +430,7 @@ def print_Define(f, stmt, indent_level):
 # Print Screen code (or at least code which does exactly the same. can't be picky, don't have source)  
 def print_screen(f, stmt, indent_level):
     screen = stmt.screen
-    sourcecode = unicode(codegen.to_source(screen.code.source, u" "*4)).splitlines()
-    if sourcecode[0] == u'_1 = (_name, 0)':
-        sourcecode.remove(u'_1 = (_name, 0)')
-    sourcecode = u"\n".join([u" "*4*(indent_level+2)+i for i in sourcecode])
+    sourcecode = codegen.to_source(screen.code.source, u" "*4)
     #why suddenly ast in the source code field
     f.write(u"screen %s" % screen.name)
     if screen.parameters:
@@ -453,9 +448,7 @@ def print_screen(f, stmt, indent_level):
     if screen.variant != "None":
         indent(f, indent_level+1)
         f.write(u"variant %s\n" % screen.variant)
-    indent(f, indent_level+1)
-    f.write(u"python:\n")
-    f.write(sourcecode)
+    screendecompiler.print_screen(f, sourcecode, indent_level+1)
     f.write(u"\n")
     
 statement_printer_dict = {
