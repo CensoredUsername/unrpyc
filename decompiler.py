@@ -436,7 +436,7 @@ def print_screen(f, stmt, indent_level):
     sourcecode = codegen.to_source(screen.code.source, u" "*4)
     # why suddenly ast in the source code field
     f.write(u"screen %s" % screen.name)
-    if screen.parameters:
+    if hasattr(screen, 'parameters') and screen.parameters:
         print_params(f, screen.parameters)
     f.write(u":\n")
     if screen.tag:

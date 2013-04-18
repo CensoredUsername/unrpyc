@@ -157,12 +157,12 @@ def print_condition(f, string, statement, indent_level):
     # This handles parsing of for and if statement conditionals.
     # It also strips the brackets the parser adds around for statement assignments
     # to prevent ren'py from getting a heart attack.
-    condition = string.split(':',1)[0].rsplit(statement,1)[1].strip()
+    condition = string.rsplit(':',1)[0].split(statement,1)[1].strip()
     if statement == 'for' and '(' in condition:
-        tuples, value = condition.split('in')
+        tuples, value = condition.split(' in ',1)
         if tuples.strip().startswith('(') and tuples.strip().endswith(')'):
             tuples = tuples.strip()[1:-1]
-        condition = '%s in%s' % (tuples, value)
+        condition = '%sin%s' % (tuples, value)
     f.write(u'%s %s:\n' % (statement, condition))
     
 def print_python(f, header, code, indent_level):
