@@ -43,7 +43,6 @@ def escape_string(s):
     s = s.replace('\t', '\\t')
     return s
 
-# TODO fix "pause 0" at the beginning of lines with no warp
 # TODO "choice" and "parallel" blocks are greedily combined
 #      so we need a "pass" statement to separate them if
 #      multiple of the same block are immediately after
@@ -56,11 +55,13 @@ def print_atl(f, atl_block, indent_level):
             # warper
             if stmt.warp_function:
                 f.write(u"warp %s" % (stmt.warp_function.strip(), ))
-            else:
-                f.write(stmt.warper or "pause")
-            
-            # duration
-            f.write(u" %s" % (stmt.duration.strip(), ))
+                f.write(u" %s" % (stmt.duration.strip(), ))
+            elif stmt.warper:
+                f.write(stmt.warper)
+                f.write(u" %s" % (stmt.duration.strip(), ))
+            elif stmt.duration.strip != '0':
+                f.write(u'pause ')
+                f.write(u" %s" % (stmt.duration.strip(), ))
             
             # revolution
             if stmt.revolution:
@@ -427,10 +428,13 @@ def print_Define(f, stmt, indent_level):
     f.write(u"define %s = %s\n" % (stmt.varname, stmt.code.source,))
     
 # Print Screen code (or at least code which does exactly the same. can't be picky, don't have source)  
+# We'll read the ast out here, but leave the decompilation of the resulting python code to screendecompiler.py
+# It'd just bloat up this file
 def print_screen(f, stmt, indent_level):
     screen = stmt.screen
+    # The creator of the python ast module also created a script to revert it.
     sourcecode = codegen.to_source(screen.code.source, u" "*4)
-    #why suddenly ast in the source code field
+    # why suddenly ast in the source code field
     f.write(u"screen %s" % screen.name)
     if screen.parameters:
         print_params(f, screen.parameters)
@@ -438,7 +442,7 @@ def print_screen(f, stmt, indent_level):
     if screen.tag:
         indent(f, indent_level+1)
         f.write(u"tag %s\n" % screen.tag)
-    if screen.zorder:
+    if screen.zorder and screen.zorder != '0':
         indent(f, indent_level+1)
         f.write(u"zorder %s\n" % screen.zorder)
     if screen.modal:
@@ -447,6 +451,7 @@ def print_screen(f, stmt, indent_level):
     if screen.variant != "None":
         indent(f, indent_level+1)
         f.write(u"variant %s\n" % screen.variant)
+    # actual screen decompilation is HARD
     screendecompiler.print_screen(f, sourcecode, indent_level+1)
     f.write(u"\n")
     
