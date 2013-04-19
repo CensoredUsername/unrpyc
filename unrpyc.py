@@ -29,9 +29,21 @@ import glob
 import itertools
 
 # Needed for pickle to read the AST
+import renpy.log
+import renpy.display
 import renpy.object
 import renpy.game
+import renpy.loader
+import renpy.ast
+import renpy.atl
+import renpy.curry
 import renpy.easy
+import renpy.execution
+import renpy.loadsave
+import renpy.parser
+import renpy.python
+import renpy.script
+import renpy.statements
 import renpy.style
 
 
