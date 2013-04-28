@@ -1,3 +1,23 @@
+# Copyright (c) 2012 CensoredUsername
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 import re
 
 FORCE_MULTILINE_KWARGS = True
@@ -10,7 +30,7 @@ def print_screen(f, code, indent_level=0):
     # This function should be called from the outside. It does some general cleanup in advance.
     lines = []
     for line in code.splitlines():
-        if not 'ui.close()' in line:
+        if not 'ui.close()' == line.strip():
             lines.append(line)
     print_block(f, '\n'.join(lines), indent_level)
 
@@ -48,14 +68,15 @@ def print_statement(f, header='', code='', indent_level=0):
     
 def parse_header(header):
     # This function reads the appropriate id/parent/index strings. Note that lowest-level blocks have "_name" as parent
-    # instead of a number. after this numbering starts at _1, indexes start at _0
+    # instead of a number. after this numbering starts at _1, indexes start at 0
     match = re.search(r' *_([0-9]+) = \(_([0-9]+|name), _?([0-9]+)\) *\n?', header)
     if match:
         return (match.group(1), match.group(2), match.group(3))
     
 def splitargs(string):
     # This function is a quick&dirty way of separating comma separated values of python syntax cleanly.
-    # It will only split on comma's not enclosed by [], (), {}, "" and ''.     
+    # It will only split on comma's not enclosed by [], (), {}, "" and ''. 
+    # This probably works ok on docstrings too, unless they contain an uneven amount of unescaped "'s
     string = re.search('^.*?\\((.*)\\)', string).group(1)
     inside = [None]
     splits = []
@@ -71,17 +92,9 @@ def splitargs(string):
             else:
                 inside.pop()
         elif inside[-1] not in ['"',"'"]:
-            if character == '[':
-                inside.append('[')
-            elif character == ']':
-                inside.pop()
-            elif character == '(':
-                inside.append('(')
-            elif character == ')':
-                inside.pop()
-            elif character == '{':
-                inside.append('{')
-            elif character == '}':
+            if character in '[{(':
+                inside.append(character)
+            elif character in ']})':
                 inside.pop()
         if inside == [None] and character == ',':
             splits.append(split.strip())
