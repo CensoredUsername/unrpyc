@@ -28,33 +28,65 @@ import codecs
 import glob
 import itertools
 
-# Needed for pickle to read the AST
-import renpy.log
-import renpy.display
-import renpy.object
-import renpy.game
-import renpy.loader
-import renpy.ast
-import renpy.atl
-import renpy.curry
-import renpy.easy
-import renpy.execution
-import renpy.loadsave
-import renpy.parser
-import renpy.python
-import renpy.script
-import renpy.statements
-import renpy.style
-
-
-import decompiler
-
 class Dummy:
     def record_pycode(self,*args,**kwargs):
         return
     all_pycode = []
 
-renpy.game.script = Dummy()
+def import_renpy(basedir=None):
+    #import renpy from another location.
+    if basedir:
+        sys.path.append(basedir)
+    global renpy
+    global decompiler
+    
+    # Needed for pickle to read the AST
+    try:
+        import renpy
+    except ImportError:
+        print "\nFailed at importing renpy. Are you sure that the renpy directory can be found in sys.path or the current working directory?\n"
+        raise
+    # try to import as much renpy modules as possible, but some modules might not exist
+    # in older ren'py versions. 
+    try: import renpy.log
+    except: pass
+    try: import renpy.display
+    except: pass
+    try: import renpy.object
+    except: pass
+    try: 
+        import renpy.game
+        renpy.game.script = Dummy()
+    except: pass
+    try: import renpy.loader
+    except: pass
+    try: import renpy.ast
+    except: pass
+    try: import renpy.atl
+    except: pass
+    try: import renpy.curry
+    except: pass
+    try: import renpy.easy
+    except: pass
+    try: import renpy.execution
+    except: pass
+    try: import renpy.loadsave
+    except: pass
+    try: import renpy.parser
+    except: pass
+    try: import renpy.python
+    except: pass
+    try: import renpy.script
+    except: pass
+    try: import renpy.statements
+    except: pass
+    try: import renpy.style
+    except: pass
+
+    import decompiler
+    if basedir:
+        sys.path.remove(basedir)
+
 
 def read_ast_from_file(in_file):
     raw_contents = in_file.read().decode('zlib')
@@ -84,8 +116,17 @@ if __name__ == "__main__":
 
     parser.add_option('-c', '--clobber', action='store_true', dest='clobber',
             default=False, help="overwrites existing output files")
+            
+    parser.add_option('-b', '--basedir', action='store', dest='basedir', 
+            help="specify the game base directory in which the 'renpy' directory is located") 
 
     options, args = parser.parse_args()
+    
+
+    if options.basedir:
+        import_renpy(options.basedir)
+    else:
+        import_renpy()
 
     # Expand wildcards
     args = map(glob.glob, args)
@@ -98,4 +139,6 @@ if __name__ == "__main__":
 
     for filename in args:
         decompile_rpyc(filename, options.clobber)
+else:
+    import_renpy()
 

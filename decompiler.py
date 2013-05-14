@@ -281,12 +281,15 @@ def print_UserStatement(f, stmt, indent_level):
     f.write(u"%s\n" % (stmt.line, ))
 
 def print_Init(f, stmt, indent_level):
-    f.write(u"init")
-    if stmt.priority != 0:
-        f.write(u" %d" % (stmt.priority, ))
-    f.write(u":\n")
-    for s in stmt.block:
-        print_statement(f, s, indent_level + 1)
+    if len(stmt.block) == 1 and isinstance(stmt.block[0], ast.Screen) and stmt.priority == -500:
+        print_screen(f, stmt.block[0], indent_level)
+    else:
+        f.write(u"init")
+        if stmt.priority != 0:
+            f.write(u" %d" % (stmt.priority, ))
+        f.write(u":\n")
+        for s in stmt.block:
+            print_statement(f, s, indent_level + 1)
 
 def print_Image(f, stmt, indent_level):
     f.write(u"image %s" % (' '.join(stmt. imgname), ))
@@ -460,8 +463,9 @@ def print_screen(f, stmt, indent_level):
     if DECOMPILE_SCREENS:
         screendecompiler.print_screen(f, sourcecode, indent_level+1)
     else:
+        indent(f, indent_level+1)
         f.write('python:\n')
-        f.write(sourcecode)
+        f.write('\n'.join(["    "*(indent_level+2)+line for line in sourcecode.splitlines()]))
     f.write(u"\n")
     
 statement_printer_dict = {
