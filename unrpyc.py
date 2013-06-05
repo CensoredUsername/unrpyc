@@ -104,7 +104,8 @@ def decompile_rpyc(input_filename, overwrite=False):
         ast = read_ast_from_file(in_file)
 
     if not overwrite and os.path.exists(out_filename):
-        sys.exit("Output file already exists. Pass --clobber to overwrite.")
+        print "Output file already exists. Pass --clobber to overwrite."
+        return # Don't stop decompiling if one file already exists
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         decompiler.pretty_print_ast(out_file, ast)
