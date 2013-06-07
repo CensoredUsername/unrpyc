@@ -99,16 +99,17 @@ def decompile_rpyc(input_filename, overwrite=False):
     out_filename = path + '.rpy'
 
     print "Decompiling %s to %s..." % (input_filename, out_filename)
+    
+    if not overwrite and os.path.exists(out_filename):
+        print "Output file already exists. Pass --clobber to overwrite."
+        return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
         ast = read_ast_from_file(in_file)
 
-    if not overwrite and os.path.exists(out_filename):
-        print "Output file already exists. Pass --clobber to overwrite."
-        return # Don't stop decompiling if one file already exists
-
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         decompiler.pretty_print_ast(out_file, ast)
+    return True
 
 if __name__ == "__main__":
     parser = optparse.OptionParser(
@@ -138,8 +139,24 @@ if __name__ == "__main__":
         parser.print_help();
         parser.error("No script files given.")
 
+    good = bad = 0
     for filename in args:
-        decompile_rpyc(filename, options.clobber)
+        try:
+            a = decompile_rpyc(filename, options.clobber)
+        except Exception as e:
+            print e
+            bad += 1
+        else:
+            if a:
+                good += 1
+            else:
+                bad += 1
+    if bad == 0:
+        print "Decompilation of %d script file%s successful" % (good, 's' if good>1 else '')
+    elif good == 0:
+        print "Decompilation of %d file%s failed" % (bad, 's' if bad>1 else '')
+    else:
+        print "Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else '')
 else:
     import_renpy()
 
