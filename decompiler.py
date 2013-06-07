@@ -281,7 +281,7 @@ def print_UserStatement(f, stmt, indent_level):
     f.write(u"%s\n" % (stmt.line, ))
 
 def print_Init(f, stmt, indent_level):
-    if len(stmt.block) == 1 and isinstance(stmt.block[0], ast.Screen) and stmt.priority == -500:
+    if len(stmt.block) == 1 and (hasattr(ast, 'Screen') and isinstance(stmt.block[0], ast.Screen)) and stmt.priority == -500:
         print_screen(f, stmt.block[0], indent_level)
     else:
         f.write(u"init")
@@ -489,8 +489,9 @@ statement_printer_dict = {
         ast.While: print_While,
         ast.Define: print_Define,
         ast.EarlyPython: print_EarlyPython,
-        ast.Screen: print_screen
     }
+if hasattr(ast, 'Screen'): #backwards compatability
+    statement_printer_dict.update({ast.Screen: print_screen})
 
 def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (type(stmt).__name__, )
