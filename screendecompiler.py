@@ -77,7 +77,9 @@ def splitargs(string):
     # This function is a quick&dirty way of separating comma separated values of python syntax cleanly.
     # It will only split on comma's not enclosed by [], (), {}, "" and ''. 
     # This probably works ok on docstrings too, unless they contain an uneven amount of unescaped "'s
-    string = re.search('^.*?\\((.*)\\)', string).group(1)
+    match = re.search('^.*?\\((.*)\\)', string)
+    if match:
+      string = match.group(1)   
     inside = [None]
     splits = []
     split = ''
@@ -109,10 +111,11 @@ def check_uneven_slashes(string):
     # This is done to prevent escaped quotes from ending a string in the comma separation parsing.
     if not string.endswith('\\'):
         return False
-    elif len(re.search('(\\+)$',string).group(1)) % 2 == 1:
+    match = re.search('(\\+)$',string)
+    if match:
+      if len(match.group(1)) % 2 == 1:
         return True
-    else:
-        return False
+    return False
     
 def parse_arguments(functionstring, extra=False):
     # This function parses a functionstring, splits it on comma's using splitargs, and then 
