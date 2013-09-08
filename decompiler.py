@@ -98,6 +98,18 @@ def print_atl(f, atl_block, indent_level):
             # what does stmt.animation do?
             f.write(u"block:\n")
             print_atl(f, stmt, indent_level + 1)
+            
+        elif type(stmt) is atl.RawChild:
+            # one or multiple contains statement followed by a new block
+            first = True
+            for child in stmt.children:
+                if first:
+                    first = False
+                else:
+                    indent(f, indent_level)
+                
+                f.write(u"contains:\n")
+                print_atl(f, block, indent_level + 1)
         
         elif type(stmt) is atl.RawChoice:
             first = True
