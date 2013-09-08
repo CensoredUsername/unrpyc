@@ -109,7 +109,7 @@ def print_atl(f, atl_block, indent_level):
                     indent(f, indent_level)
                 
                 f.write(u"contains:\n")
-                print_atl(f, block, indent_level + 1)
+                print_atl(f, child, indent_level + 1)
         
         elif type(stmt) is atl.RawChoice:
             first = True
