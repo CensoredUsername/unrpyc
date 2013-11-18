@@ -44,6 +44,20 @@ def escape_string(s):
     s = s.replace('\n', '\\n')
     s = s.replace('\t', '\\t')
     return s
+    
+class Sep:
+    # for argument parsing, the first time it's called returns emptystring, 
+    # any further calls will return separator
+    def __init__(self, separator = u", "):
+        self.first = True
+        self.sep = separator
+        
+    def __call__(self):
+        if self.first:
+            self.first = False
+            return u""
+        else:
+            return self.sep
 
 # TODO "choice" and "parallel" blocks are greedily combined
 #      so we need a "pass" statement to separate them if
@@ -216,7 +230,6 @@ def print_Say(f, stmt, indent_level):
 def print_Jump(f, stmt, indent_level):
     f.write(u"jump ")
     if stmt.expression:
-        # TODO expression
         f.write(u"expression %s" % (stmt.target, ))
     else:
         f.write(stmt.target)
@@ -393,46 +406,59 @@ def print_If(f, stmt, indent_level):
 def print_EarlyPython(f, stmt, indent_level):
     print_Python(f, stmt, indent_level, early=True)
 
-# TODO extrapos, extrakw?
 def print_args(f, arginfo):
+    # this function regenerates how the arguments of this call were arranged in the following order:
+    # positional, keyword, extrapositional, extrakeyword
     if arginfo is None:
         return
 
     f.write(u"(")
 
-    first = True
+    sep = Sep()
     for (name, val) in arginfo.arguments:
-        if first:
-            first = False
-        else:
-            f.write(u", ")
+        f.write(sep())
 
         if name is not None:
             f.write(u"%s = " % (name, ))
         f.write(val)
+    if arginfo.extrapos:
+        f.write(sep())
+        f.write(u"*%s" % (arginfo.extrapos,))
+    if arginfo.extrakw:
+        f.write(sep())
+        f.write(u"**%s" % (arginfo.extrakw,))
 
     f.write(u")")
 
-# TODO positional?
 def print_params(f, paraminfo):
+    # This function regenerates how the arguments of this function/label were arranged in the following order:
+    # positional, keyword, extrapositional/*, keyword only, extrakeyword
+    if paraminfo is None:
+        return
+    
     f.write(u"(")
-
-    first = True
-    for param in paraminfo.parameters:
-        if first:
-            first = False
-        else:
-            f.write(u", ")
-
+    sep = Sep()
+    positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
+    nameonly = [i for i in paraminfo.parameters if i not in positional]
+    for param in positional:
+        f.write(sep())
         f.write(param[0])
-
-        if (param[1] is not None) and ('None' not in param[1]):
+        if (param[1] is not None):
             f.write(u" = %s" % param[1])
     if paraminfo.extrapos:
-        f.write(u", ")
+        f.write(sep())
         f.write(u"*%s" % paraminfo.extrapos)
+    if nameonly:
+        if not paraminfo.extrapos:
+            f.write(sep())
+            f.write(u"*")
+        for param in nameonly:
+            f.write(sep())
+            f.write(param[0])
+            if (param[1] is not None):
+                f.write(u" = %s" % (param[1],))            
     if paraminfo.extrakw:
-        f.write(u", ")
+        f.write(sep())
         f.write(u"**%s" % paraminfo.extrakw)
 
     f.write(u")")
