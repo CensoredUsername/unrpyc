@@ -217,7 +217,7 @@ def print_Jump(f, stmt, indent_level):
     f.write(u"jump ")
     if stmt.expression:
         # TODO expression
-        f.write(u"expression TODO")
+        f.write(u"expression %s" % (stmt.target, ))
     else:
         f.write(stmt.target)
     f.write(u'\n')
