@@ -8,6 +8,7 @@ class AstDumper(object):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.map_open = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
+        self.map_close= {list: ']', tuple: ')', set: '}', frozenset: '}'}
 
     def dump(self, ast):
         self.indent = 0
@@ -34,20 +35,21 @@ class AstDumper(object):
         self.passed.pop()
 
     def print_list(self, ast):
-        self.p('[')
-        self.ind(1)
+        self.p(self.map_open[ast.__class__])
+        
+        self.ind(1, ast)
         for i, obj in enumerate(ast):
             self.print_ast(obj)
             if i+1 != len(ast):
                 self.p(',')
                 self.ind()
-            else:
-                self.ind(-1)
-        self.p(']')
+        self.ind(-1, ast)
+        self.p(self.map_close[ast.__class__])
 
     def print_dict(self, ast):
         self.p('{')
-        self.ind(1)
+
+        self.ind(1, ast)
         for i, key in enumerate(ast):
             self.print_ast(key)
             p(': ')
@@ -55,16 +57,15 @@ class AstDumper(object):
             if i+1 != len(ast):
                 self.p(',')
                 self.ind()
-            else:
-                self.ind(-1)
+        self.ind(-1, ast)
         self.p('}')
 
     def print_object(self, ast):
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
         self.p('><')
-        self.ind(1)
         keys = list(i for i in dir(ast) if not i.startswith('_') and hasattr(ast, i) and not callable(getattr(ast, i)))
+        self.ind(1, keys)
         for i, key in enumerate(keys):
             self.p('.')
             self.p(str(key))
@@ -73,8 +74,7 @@ class AstDumper(object):
             if i+1 != len(keys):
                 self.p(',')
                 self.ind()
-            else:
-                self.ind(-1)
+        self.ind(-1, keys)
         self.p('>')
 
     def print_string(self, ast):
@@ -104,9 +104,10 @@ class AstDumper(object):
     def print_other(self, ast):
         self.p(repr(ast))
 
-    def ind(self, diff_indent=0):
-        self.indent += diff_indent
-        self.p('\n' + self.indentation * self.indent)
+    def ind(self, diff_indent=0, ast=None):
+        if ast is None or len(ast) > 1:
+            self.indent += diff_indent
+            self.p('\n' + self.indentation * self.indent)
 
     def p(self, string):
         self.out_file.write(unicode(string))
