@@ -1,4 +1,10 @@
 import sys
+import inspect
+import codegen
+import ast as py_ast
+
+EXTRACT_PYTHON_AST  =False
+DECOMPILE_PYTHON_AST=True
 
 def pprint(out_file, ast):
     AstDumper(out_file).dump(ast)
@@ -63,8 +69,18 @@ class AstDumper(object):
     def print_object(self, ast):
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
-        self.p('><')
-        keys = list(i for i in dir(ast) if not i.startswith('_') and hasattr(ast, i) and not callable(getattr(ast, i)))
+        self.p('>< ')
+
+        if not EXTRACT_PYTHON_AST and isinstance(ast, py_ast.Module):
+            self.p('.code = ')
+            if DECOMPILE_PYTHON_AST:
+                self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
+            else:
+                self.print_ast('PYTHON SCREEN CODE')
+            self.p('>')
+            return
+
+        keys = list(i for i in dir(ast) if not i.startswith('__') and hasattr(ast, i) and not inspect.isroutine(getattr(ast, i)))
         self.ind(1, keys)
         for i, key in enumerate(keys):
             self.p('.')
@@ -87,8 +103,8 @@ class AstDumper(object):
             for i, item in enumerate(astlist):
                 self.p('\n')
                 self.p(self.escape_string(item))
-            self.ind()
             self.p('"""')
+            self.ind()
 
         else:
             self.p(repr(ast))
