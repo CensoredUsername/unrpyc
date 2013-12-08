@@ -12,6 +12,8 @@ Options:
   --version      show program's version number and exit
   -h, --help     show this help message and exit
   -c, --clobber  overwrites existing output files
+  -d, --dump     Instead of decompiling, pretty print the contents
+                 of the AST in a human readable format.
   -b, --basedir  specify the directory in which the renpy folder 
                  resides. using this it is not necessary for the renpy 
                  directory to be in python's search path, or in the 

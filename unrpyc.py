@@ -27,6 +27,7 @@ import cPickle as pickle
 import codecs
 import glob
 import itertools
+import astdump
 
 class Dummy:
     def record_pycode(self,*args,**kwargs):
@@ -93,10 +94,10 @@ def read_ast_from_file(in_file):
     data, stmts = pickle.loads(raw_contents)
     return stmts
 
-def decompile_rpyc(input_filename, overwrite=False):
+def decompile_rpyc(input_filename, overwrite=False, dump=False):
     # Output filename is input filename but with .rpy extension
     path, ext = os.path.splitext(input_filename)
-    out_filename = path + '.rpy'
+    out_filename = path + ('.txt' if dump else '.rpy')
 
     print "Decompiling %s to %s..." % (input_filename, out_filename)
     
@@ -108,7 +109,11 @@ def decompile_rpyc(input_filename, overwrite=False):
         ast = read_ast_from_file(in_file)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
-        decompiler.pretty_print_ast(out_file, ast)
+        if dump:
+            astdump.pprint(out_file, ast)
+        else:
+            decompiler.pretty_print_ast(out_file, ast)
+            
     return True
 
 if __name__ == "__main__":
@@ -122,8 +127,10 @@ if __name__ == "__main__":
     parser.add_option('-b', '--basedir', action='store', dest='basedir', 
             help="specify the game base directory in which the 'renpy' directory is located") 
 
+    parser.add_option('-d', '--dump', action='store_true', dest='dump',
+            default=False, help="instead of decompiling, pretty print the ast to a file")
+
     options, args = parser.parse_args()
-    
 
     if options.basedir:
         import_renpy(options.basedir)
@@ -142,7 +149,7 @@ if __name__ == "__main__":
     good = bad = 0
     for filename in args:
         try:
-            a = decompile_rpyc(filename, options.clobber)
+            a = decompile_rpyc(filename, options.clobber, options.dump)
         except Exception as e:
             print e
             bad += 1
