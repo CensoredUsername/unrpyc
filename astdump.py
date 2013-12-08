@@ -61,7 +61,7 @@ class AstDumper(object):
 
     def print_object(self, ast):
         self.p('<')
-        self.p(ast.__class__[8:-2] if hasattr(ast, '__class__')  else str(ast))
+        self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
         self.p('><')
         self.ind(1)
         keys = list(i for i in dir(ast) if not i.startswith('_') and hasattr(ast, i) and not callable(getattr(ast, i)))
