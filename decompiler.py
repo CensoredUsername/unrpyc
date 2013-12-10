@@ -23,9 +23,17 @@ import renpy.atl as atl
 import codegen
 import screendecompiler
 
-DECOMPILE_SCREENS = True
+# default config
+class config:
+    EXTRACT_PYTHON_AST     = True
+    DECOMPILE_PYTHON_AST   = True
+    FORCE_MULTILINE_KWARGS = True
+    DECOMPILE_SCREENCODE   = True
 
-def pretty_print_ast(out_file, ast):
+def pretty_print_ast(out_file, ast, configoverride):
+    if configoverride:
+        global config
+        config = configoverride
     for stmt in ast:
         print_statement(out_file, stmt, 0)
 
@@ -498,12 +506,15 @@ def print_screen(f, stmt, indent_level):
         indent(f, indent_level+1)
         f.write(u"variant %s\n" % screen.variant)
     # actual screen decompilation is HARD
-    if DECOMPILE_SCREENS:
-        screendecompiler.print_screen(f, sourcecode, indent_level+1)
+    if config.DECOMPILE_SCREENCODE and config.EXTRACT_PYTHON_AST:
+        screendecompiler.print_screen(f, sourcecode, indent_level+1, config)
+    elif config.EXTRACT_PYTHON_AST and config.DECOMPILE_PYTHON_AST:
+        indent(f, indent_level+1)
+        f.write(u'python:\n')
+        f.write(u'\n'.join([u"    "*(indent_level+2)+line for line in sourcecode.splitlines()]))
     else:
         indent(f, indent_level+1)
-        f.write('python:\n')
-        f.write('\n'.join(["    "*(indent_level+2)+line for line in sourcecode.splitlines()]))
+        f.write(u'pass # Screen code not extracted')
     f.write(u"\n")
     
 statement_printer_dict = {

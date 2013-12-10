@@ -1,15 +1,50 @@
+# Copyright (c) 2013 CensoredUsername
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 import sys
 import inspect
 import codegen
 import ast as py_ast
 
-EXTRACT_PYTHON_AST  =False
-DECOMPILE_PYTHON_AST=True
+# default config
+class config:
+    EXTRACT_PYTHON_AST     = True
+    DECOMPILE_PYTHON_AST   = True
+    FORCE_MULTILINE_KWARGS = True
+    DECOMPILE_SCREENCODE   = True
 
-def pprint(out_file, ast):
+def pprint(out_file, ast, configoverride=None):
+    # The main function of this module, a wrapper which sets
+    # the config and creates the AstDumper instance
+    if configoverride:
+        global config
+        config = configoverride
     AstDumper(out_file).dump(ast)
 
 class AstDumper(object):
+    """
+    An object which handles the walking of a tree of python objects
+    it will create a human-readable representation of all interesting
+    attributes and write this to a given stream
+    """
     def __init__(self, out_file=None, indentation='    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
@@ -18,10 +53,11 @@ class AstDumper(object):
 
     def dump(self, ast):
         self.indent = 0
-        self.passed = [] #recursiveness checks
+        self.passed = [] # We'll keep a stack of objects which we've traversed here so we don't recurse endlessly on circular references
         self.print_ast(ast)
 
     def print_ast(self, ast):
+        # Decides which function should be used to print the given ast object.
         if ast in self.passed:
             self.print_other(ast)
             return
@@ -41,6 +77,7 @@ class AstDumper(object):
         self.passed.pop()
 
     def print_list(self, ast):
+        # handles the printing of simple containers of N elements. 
         self.p(self.map_open[ast.__class__])
         
         self.ind(1, ast)
@@ -53,6 +90,7 @@ class AstDumper(object):
         self.p(self.map_close[ast.__class__])
 
     def print_dict(self, ast):
+        # handles the printing of dictionaries
         self.p('{')
 
         self.ind(1, ast)
@@ -67,20 +105,26 @@ class AstDumper(object):
         self.p('}')
 
     def print_object(self, ast):
+        # handles the printing of anything unknown which inherts from object.
+        # prints the values of relevant attributes in a dictionary-like way
+        # it will not print anything which is a bound method or starts with a _
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
-        self.p(' ')
 
-        if not EXTRACT_PYTHON_AST and isinstance(ast, py_ast.Module):
+        if isinstance(ast, py_ast.Module):
             self.p('.code = ')
-            if DECOMPILE_PYTHON_AST:
+            if config.DECOMPILE_PYTHON_AST and config.EXTRACT_PYTHON_AST:
                 self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
-            else:
+                self.p('>')
+                return
+            elif not config.EXTRACT_PYTHON_AST:
                 self.print_ast('PYTHON SCREEN CODE')
-            self.p('>')
-            return
+                self.p('>')
+                return
 
-        keys = list(i for i in dir(ast) if not i.startswith('__') and hasattr(ast, i) and not inspect.isroutine(getattr(ast, i)))
+        keys = list(i for i in dir(ast) if not i.startswith('_') and hasattr(ast, i) and not inspect.isroutine(getattr(ast, i)))
+        if keys:
+            self.p(' ')
         self.ind(1, keys)
         for i, key in enumerate(keys):
             self.p('.')
@@ -94,6 +138,8 @@ class AstDumper(object):
         self.p('>')
 
     def print_string(self, ast):
+        # prints the representation of a string. If there are newlines in this string,
+        # it will print it as a docstring.
         if '\n' in ast:
             astlist = ast.split('\n')
             if isinstance(ast, unicode):
@@ -110,6 +156,7 @@ class AstDumper(object):
             self.p(repr(ast))
 
     def escape_string(self, string):
+        # essentially the representation of a string without the surrounding quotes
         if isinstance(string, unicode):
             return repr(string)[2:-1]
         elif isinstance(string, str):
@@ -118,12 +165,17 @@ class AstDumper(object):
             return string
 
     def print_other(self, ast):
+        # used as a last fallback and to print things when a recursive lookup is detected
         self.p(repr(ast))
 
     def ind(self, diff_indent=0, ast=None):
+        # print a newline and indent. diff_indent represents the difference in indentation
+        # compared to the last line. it will chech the length of ast to determine if it
+        # shouldn't indent in case there's only one or zero objects in this object to print
         if ast is None or len(ast) > 1:
             self.indent += diff_indent
             self.p('\n' + self.indentation * self.indent)
 
     def p(self, string):
+        # write the string to the stream
         self.out_file.write(unicode(string))

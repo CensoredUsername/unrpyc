@@ -20,14 +20,22 @@
 
 import re
 
-FORCE_MULTILINE_KWARGS = True
+# default config
+class config:
+    EXTRACT_PYTHON_AST     = True
+    DECOMPILE_PYTHON_AST   = True
+    FORCE_MULTILINE_KWARGS = True
+    DECOMPILE_SCREENCODE   = True
 
 def indent(f, level):
     # Print indentation
     f.write(u'    ' * level)
     
-def print_screen(f, code, indent_level=0):
+def print_screen(f, code, indent_level=0, configoverride=None):
     # This function should be called from the outside. It does some general cleanup in advance.
+    if configoverride:
+        global config
+        config = configoverride
     lines = []
     for line in code.splitlines():
         if not 'ui.close()' == line.strip():
@@ -159,7 +167,7 @@ def print_arguments(f, functionstring, indent_level, multiline=True):
     for key in kwargs:
         if ' ' in kwargs[key]:
             kwargs[key] = '(%s)' % kwargs[key]
-    if multiline or (FORCE_MULTILINE_KWARGS and kwargs):
+    if multiline or (config.FORCE_MULTILINE_KWARGS and kwargs):
         f.write(u':\n')
         for arg in kwargs:
             indent(f, indent_level+1)
@@ -369,6 +377,3 @@ ui_function_dict = {
 '_scope.setdefault': print_default,
 'renpy.use_screen': print_use,
 }
-
-# TODO 
-# test

@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import optparse
+import argparse
 import os.path
 import sys
 import cPickle as pickle
@@ -29,7 +29,16 @@ import glob
 import itertools
 import astdump
 
+# we store some configuration in here so we can easily pass it around.
+class config:
+    EXTRACT_PYTHON_AST     = True
+    DECOMPILE_PYTHON_AST   = True
+    FORCE_MULTILINE_KWARGS = True
+    DECOMPILE_SCREENCODE   = True
+
 class Dummy:
+    # This is necessary for unpickling the AST's, they expect an instance of this class to be
+    # in renpy.game.script, however this is only added at runtime by renpy normally
     def record_pycode(self,*args,**kwargs):
         return
     all_pycode = []
@@ -40,6 +49,7 @@ def import_renpy(basedir=None):
         sys.path.append(basedir)
     global renpy
     global decompiler
+    global astdump
     
     # Needed for pickle to read the AST
     try:
@@ -84,12 +94,14 @@ def import_renpy(basedir=None):
     try: import renpy.style
     except: pass
 
+    # We can only import the decompiler when we've imported renpy's insides
     import decompiler
     if basedir:
         sys.path.remove(basedir)
 
 
 def read_ast_from_file(in_file):
+    # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read().decode('zlib')
     data, stmts = pickle.loads(raw_contents)
     return stmts
@@ -110,46 +122,75 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False):
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
-            astdump.pprint(out_file, ast)
+            astdump.pprint(out_file, ast, config)
         else:
-            decompiler.pretty_print_ast(out_file, ast)
+            decompiler.pretty_print_ast(out_file, ast, config)
             
     return True
 
-if __name__ == "__main__":
-    parser = optparse.OptionParser(
-            usage="usage: %prog [options] script1 script2 ...",
-            version="%prog 0.1")
+def main():
+    # python27 unrpyc.py [-c] [-b BASEDIR] [-d] [--python-screens|--ast-screens|--no-screens|--single-line-screen-kwargs] file [file ...]
+    parser = argparse.ArgumentParser(description="Decompile .rpyc files")
 
-    parser.add_option('-c', '--clobber', action='store_true', dest='clobber',
-            default=False, help="overwrites existing output files")
-            
-    parser.add_option('-b', '--basedir', action='store', dest='basedir', 
-            help="specify the game base directory in which the 'renpy' directory is located") 
+    parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
+                        help="overwrites existing output files")
 
-    parser.add_option('-d', '--dump', action='store_true', dest='dump',
-            default=False, help="instead of decompiling, pretty print the ast to a file")
+    parser.add_argument('-b', '--basedir', dest='basedir', action='store',
+                        help="specify the game base directory in which the 'renpy' directory is located") 
 
-    options, args = parser.parse_args()
+    parser.add_argument('-d', '--dump', dest='dump', action='store_true',
+                        help="instead of decompiling, pretty print the ast to a file")
 
-    if options.basedir:
-        import_renpy(options.basedir)
+    configscreen = parser.add_mutually_exclusive_group()
+
+    configscreen.add_argument('--python-screens', dest='pythonscreens', action='store_true',
+                        help="only for decompiling, don't decompile screens back to screen language")
+
+    configscreen.add_argument('--ast-screens', dest='astscreens', action='store_true',
+                        help="only for dumping, prints the entire screen ast instead of decompiling")
+
+    configscreen.add_argument('--no-screens', dest='noscreens', action='store_true',
+                        help="don't extract screens at all")
+
+    configscreen.add_argument('--single-line-screen-kwargs', dest='screenkwargs', action='store_true',
+                        help="don't force all keyword arguments from screencode to different lines")
+
+    parser.add_argument('file', type=str, nargs='+', 
+                        help="The filenames to decompile")
+
+    args = parser.parse_args()
+
+    # set config according to the passed options
+    if args.pythonscreens:
+        config.DECOMPILE_SCREENCODE=False
+    elif args.noscreens:
+        config.EXTRACT_PYTHON_AST=False
+    elif args.astscreens:
+        config.DECOMPILE_PYTHON_AST=False
+    elif args.screenkwargs:
+        config.FORCE_MULTILINE_KWARGS=False
+
+    # try to import renpy
+    if args.basedir:
+        import_renpy(args.basedir)
     else:
         import_renpy()
 
     # Expand wildcards
-    args = map(glob.glob, args)
+    files = map(glob.glob, args.file)
     # Concatenate lists
-    args = list(itertools.chain(*args))
+    files = list(itertools.chain(*files))
 
-    if len(args) == 0:
+    # Check if we actually have files
+    if len(files) == 0:
         parser.print_help();
         parser.error("No script files given.")
 
+    # Check per file if everything went well and report back
     good = bad = 0
-    for filename in args:
+    for filename in files:
         try:
-            a = decompile_rpyc(filename, options.clobber, options.dump)
+            a = decompile_rpyc(filename, args.clobber, args.dump)
         except Exception as e:
             print e
             bad += 1
@@ -164,6 +205,10 @@ if __name__ == "__main__":
         print "Decompilation of %d file%s failed" % (bad, 's' if bad>1 else '')
     else:
         print "Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else '')
+
+if __name__ == "__main__":
+    main()
 else:
+    # We're just being imported, assume sys.path already makes renpy accessible
     import_renpy()
 
