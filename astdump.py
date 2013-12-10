@@ -69,7 +69,7 @@ class AstDumper(object):
     def print_object(self, ast):
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
-        self.p('>< ')
+        self.p(' ')
 
         if not EXTRACT_PYTHON_AST and isinstance(ast, py_ast.Module):
             self.p('.code = ')
