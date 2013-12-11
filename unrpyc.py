@@ -27,7 +27,7 @@ import cPickle as pickle
 import codecs
 import glob
 import itertools
-import astdump
+from modules import astdump
 
 # we store some configuration in here so we can easily pass it around.
 class Config:
@@ -95,7 +95,7 @@ def import_renpy(basedir=None):
     except: pass
 
     # We can only import the decompiler when we've imported renpy's insides
-    import decompiler
+    from modules import decompiler
     if basedir:
         sys.path.remove(basedir)
 
@@ -206,3 +206,6 @@ def main():
         print "Decompilation of %d file%s failed" % (bad, 's' if bad>1 else '')
     else:
         print "Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else '')
+
+if __name__ == '__main__':
+    main()
