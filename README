@@ -4,7 +4,8 @@ script files. It will not extract files from .rpa archives. For that, use rpatoo
 
 Unrpyc needs some internal Ren'Py structures to work. You can either use the -b 
 argument to specify the directory in which renpy lies, place the renpy module
-in your Python module search path, or copy the renpy folder to the unrpyc directory.
+in your Python module search path, or copy the renpy folder to the directory where
+the unrpyc script resides.
 
 Usage options:
 
@@ -18,7 +19,17 @@ Options:
                  resides. using this it is not necessary for the renpy 
                  directory to be in python's search path, or in the 
                  unrpyc directory.
-Usage: unrpyc.py [options] script1 script2 ...
+  --no-screens   
+                 Don't decompile screen language
+  --python-screens
+                 Don't decompile from python back to screen language
+  --ast-screens
+                 Only for dumping: Don't decompile the python ast of screens back
+                 to python
+  --single-line-screen-kwargs
+                 Only for decompiling. Leave all arguments to a screen language
+                 statement in the same line.
+Usage: [python2] unrpyc [options] script1 script2 ...
 
 You can give several .rpyc files on the command line. Each script will be
 decompiled to a corresponding .rpy on the same directory. By default, the

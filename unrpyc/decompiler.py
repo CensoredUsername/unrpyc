@@ -24,16 +24,15 @@ import codegen
 import screendecompiler
 
 # default config
-class config:
+class Config:
     EXTRACT_PYTHON_AST     = True
     DECOMPILE_PYTHON_AST   = True
     FORCE_MULTILINE_KWARGS = True
     DECOMPILE_SCREENCODE   = True
 
-def pretty_print_ast(out_file, ast, configoverride):
-    if configoverride:
-        global config
-        config = configoverride
+def pretty_print_ast(out_file, ast, configoverride=Config()):
+    global config
+    config = configoverride
     for stmt in ast:
         print_statement(out_file, stmt, 0)
 

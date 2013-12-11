@@ -25,18 +25,17 @@ import codegen
 import ast as py_ast
 
 # default config
-class config:
+class Config:
     EXTRACT_PYTHON_AST     = True
     DECOMPILE_PYTHON_AST   = True
     FORCE_MULTILINE_KWARGS = True
     DECOMPILE_SCREENCODE   = True
 
-def pprint(out_file, ast, configoverride=None):
+def pprint(out_file, ast, configoverride=Config()):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    if configoverride:
-        global config
-        config = configoverride
+    global config
+    config = configoverride
     AstDumper(out_file).dump(ast)
 
 class AstDumper(object):

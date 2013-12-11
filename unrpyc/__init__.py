@@ -30,7 +30,7 @@ import itertools
 import astdump
 
 # we store some configuration in here so we can easily pass it around.
-class config:
+class Config:
     EXTRACT_PYTHON_AST     = True
     DECOMPILE_PYTHON_AST   = True
     FORCE_MULTILINE_KWARGS = True
@@ -106,7 +106,7 @@ def read_ast_from_file(in_file):
     data, stmts = pickle.loads(raw_contents)
     return stmts
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False):
+def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config()):
     # Output filename is input filename but with .rpy extension
     path, ext = os.path.splitext(input_filename)
     out_filename = path + ('.txt' if dump else '.rpy')
@@ -161,6 +161,7 @@ def main():
     args = parser.parse_args()
 
     # set config according to the passed options
+    config = Config()
     if args.pythonscreens:
         config.DECOMPILE_SCREENCODE=False
     elif args.noscreens:
@@ -190,7 +191,7 @@ def main():
     good = bad = 0
     for filename in files:
         try:
-            a = decompile_rpyc(filename, args.clobber, args.dump)
+            a = decompile_rpyc(filename, args.clobber, args.dump, config=config)
         except Exception as e:
             print e
             bad += 1
@@ -205,10 +206,3 @@ def main():
         print "Decompilation of %d file%s failed" % (bad, 's' if bad>1 else '')
     else:
         print "Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else '')
-
-if __name__ == "__main__":
-    main()
-else:
-    # We're just being imported, assume sys.path already makes renpy accessible
-    import_renpy()
-

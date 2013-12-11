@@ -21,7 +21,7 @@
 import re
 
 # default config
-class config:
+class Config:
     EXTRACT_PYTHON_AST     = True
     DECOMPILE_PYTHON_AST   = True
     FORCE_MULTILINE_KWARGS = True
@@ -31,11 +31,10 @@ def indent(f, level):
     # Print indentation
     f.write(u'    ' * level)
     
-def print_screen(f, code, indent_level=0, configoverride=None):
+def print_screen(f, code, indent_level=0, configoverride=Config()):
     # This function should be called from the outside. It does some general cleanup in advance.
-    if configoverride:
-        global config
-        config = configoverride
+    global config
+    config = configoverride
     lines = []
     for line in code.splitlines():
         if not 'ui.close()' == line.strip():
