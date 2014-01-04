@@ -1,14 +1,29 @@
 # License
-# Copyright (c) 2008, Armin Ronacher All rights reserved.
+# Copyright (c) 2008, Armin Ronacher
+# All rights reserved.
 
-# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
 
-# Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-# Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-# Neither the name of the nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# - Redistributions of source code must retain the above copyright notice, this list of
+#   conditions and the following disclaimer.
+# - Redistributions in binary form must reproduce the above copyright notice, this list of
+#   conditions and the following disclaimer in the documentation and/or other materials
+#   provided with the distribution.
+# - Neither the name of the <ORGANIZATION> nor the names of its contributors may be used to
+#   endorse or promote products derived  from this software without specific prior written
+#   permission.
 
-# Taken from https://github.com/andreif/codegen
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+# FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+# THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# Taken from http://github.com/jonathaneunice/codegen
 
 """
     codegen
@@ -19,43 +34,51 @@
     :copyright: Copyright 2008 by Armin Ronacher.
     :license: BSD.
 """
+
+# Updated ton contain latest pull requests from Doboy, jbremer,
+# gemoe100, and cwa-, even though those have not been pulled into
+# andreif's repo
+
 from ast import *
 
-BINOP_SYMBOLS = {}
-BINOP_SYMBOLS[Add] = '+'
-BINOP_SYMBOLS[Sub] = '-'
-BINOP_SYMBOLS[Mult] = '*'
-BINOP_SYMBOLS[Div] = '/'
-BINOP_SYMBOLS[Mod] = '%'
-BINOP_SYMBOLS[Pow] = '**'
-BINOP_SYMBOLS[LShift] = '<<'
-BINOP_SYMBOLS[RShift] = '>>'
-BINOP_SYMBOLS[BitOr] = '|'
-BINOP_SYMBOLS[BitXor] = '^'
-BINOP_SYMBOLS[BitAnd] = '&'
-BINOP_SYMBOLS[FloorDiv] = '//'
+BOOLOP_SYMBOLS = {
+    And:        'and',
+    Or:         'or'
+}
 
-BOOLOP_SYMBOLS = {}
-BOOLOP_SYMBOLS[And] = 'and'
-BOOLOP_SYMBOLS[Or] = 'or'
+BINOP_SYMBOLS = {
+    Add:        '+',
+    Sub:        '-',
+    Mult:       '*',
+    Div:        '/',
+    FloorDiv:   '//',
+    Mod:        '%',
+    LShift:     '<<',
+    RShift:     '>>',
+    BitOr:      '|',
+    BitAnd:     '&',
+    BitXor:     '^'
+}
 
-CMPOP_SYMBOLS = {}
-CMPOP_SYMBOLS[Eq] = '=='
-CMPOP_SYMBOLS[NotEq] = '!='
-CMPOP_SYMBOLS[Lt] = '<'
-CMPOP_SYMBOLS[LtE] = '<='
-CMPOP_SYMBOLS[Gt] = '>'
-CMPOP_SYMBOLS[GtE] = '>='
-CMPOP_SYMBOLS[Is] = 'is'
-CMPOP_SYMBOLS[IsNot] = 'is not'
-CMPOP_SYMBOLS[In] = 'in'
-CMPOP_SYMBOLS[NotIn] = 'not in'
+CMPOP_SYMBOLS = {
+    Eq:         '==',
+    Gt:         '>',
+    GtE:        '>=',
+    In:         'in',
+    Is:         'is',
+    IsNot:      'is not',
+    Lt:         '<',
+    LtE:        '<=',
+    NotEq:      '!=',
+    NotIn:      'not in'
+}
 
-UNARYOP_SYMBOLS = {}
-UNARYOP_SYMBOLS[Invert] = '~'
-UNARYOP_SYMBOLS[Not] = 'not'
-UNARYOP_SYMBOLS[UAdd] = '+'
-UNARYOP_SYMBOLS[USub] = '-'
+UNARYOP_SYMBOLS = {
+    Invert:     '~',
+    Not:        'not',
+    UAdd:       '+',
+    USub:       '-'
+}
 
 
 def to_source(node, indent_with=' ' * 4, add_line_information=False):
@@ -80,6 +103,7 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False):
     generator.visit(node)
 
     return ''.join(generator.result)
+
 
 class SourceGenerator(NodeVisitor):
     """This visitor is able to transform a well formed syntax tree into python
@@ -150,29 +174,32 @@ class SourceGenerator(NodeVisitor):
             self.write('@')
             self.visit(decorator)
 
+    # Module
+    def visit_Module(self, node):
+        NodeVisitor.generic_visit(self, node)
+        self.write('\n')
+
     # Statements
 
     def visit_Assert(self, node):
         self.newline(node)
         self.write('assert ')
         self.visit(node.test)
-        if node.msg is not None:
-           self.write(', ')
-           self.visit(node.msg)
+        if node.msg:
+            self.write(', ')
+            self.visit(node.msg)
 
     def visit_Assign(self, node):
         self.newline(node)
         for idx, target in enumerate(node.targets):
-            if idx:
-                self.write(', ')
             self.visit(target)
-        self.write(' = ')
+            self.write(' = ')
         self.visit(node.value)
 
     def visit_AugAssign(self, node):
         self.newline(node)
         self.visit(node.target)
-        self.write(' ' + BINOP_SYMBOLS[type(node.op)] + '= ')
+        self.write(BINOP_SYMBOLS[type(node.op)] + '=')
         self.visit(node.value)
 
     def visit_ImportFrom(self, node):
@@ -181,13 +208,17 @@ class SourceGenerator(NodeVisitor):
         for idx, item in enumerate(node.names):
             if idx:
                 self.write(', ')
-            self.write(item)
+            self.write(item.name)
+            if item.asname is not None:
+                self.write(' as ')
+                self.write(item.asname)
 
     def visit_Import(self, node):
         self.newline(node)
         for item in node.names:
             self.write('import ')
             self.visit(item)
+            self.newline(node)
 
     def visit_Expr(self, node):
         self.newline(node)
@@ -198,7 +229,7 @@ class SourceGenerator(NodeVisitor):
         self.decorators(node)
         self.newline(node)
         self.write('def %s(' % node.name)
-        self.visit(node.args)
+        self.signature(node.args)
         self.write('):')
         self.body(node.body)
 
@@ -244,9 +275,7 @@ class SourceGenerator(NodeVisitor):
         self.body(node.body)
         while True:
             else_ = node.orelse
-            if len(else_) == 0:
-                break
-            elif len(else_) == 1 and isinstance(else_[0], If):
+            if len(else_) == 1 and isinstance(else_[0], If):
                 node = else_[0]
                 self.newline()
                 self.write('elif ')
@@ -254,9 +283,10 @@ class SourceGenerator(NodeVisitor):
                 self.write(':')
                 self.body(node.body)
             else:
-                self.newline()
-                self.write('else:')
-                self.body(else_)
+                if else_:
+                    self.newline()
+                    self.write('else:')
+                    self.body(else_)
                 break
 
     def visit_For(self, node):
@@ -309,7 +339,7 @@ class SourceGenerator(NodeVisitor):
     def visit_Delete(self, node):
         self.newline(node)
         self.write('del ')
-        for idx, target in enumerate(node):
+        for idx, target in enumerate(node.targets):
             if idx:
                 self.write(', ')
             self.visit(target)
@@ -320,6 +350,32 @@ class SourceGenerator(NodeVisitor):
         self.body(node.body)
         for handler in node.handlers:
             self.visit(handler)
+        if node.orelse:
+            self.newline(node)
+            self.write('else:')
+            self.body(node.orelse)
+
+    def visit_ExceptHandler(self, node):
+        self.newline(node)
+        self.write('except')
+        if node.type:
+            self.write(' ')
+            self.visit(node.type)
+        if node.name:
+            self.write(' as ')
+            self.visit(node.name)
+        self.write(':')
+        self.body(node.body)
+
+    def visit_ExceptHandler(self, node):
+        self.newline(node)
+        self.write('except ')
+        self.visit(node.type)
+        if node.name is not None:
+            self.write(', ')
+            self.visit(node.name)
+        self.write(':')
+        self.body(node.body)
 
     def visit_TryFinally(self, node):
         self.newline(node)
@@ -339,11 +395,8 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Return(self, node):
         self.newline(node)
-        if node.value is None:
-            self.write('return')
-        else:
-            self.write('return ')
-            self.visit(node.value)
+        self.write('return ')
+        self.visit(node.value)
 
     def visit_Break(self, node):
         self.newline(node)
@@ -426,7 +479,7 @@ class SourceGenerator(NodeVisitor):
             self.visit(item)
         self.write(idx and ')' or ',)')
 
-    def sequence_visit(left, right):
+    def _sequence_visit(left, right): # pylint: disable=E0213
         def visit(self, node):
             self.write(left)
             for idx, item in enumerate(node.elts):
@@ -436,9 +489,8 @@ class SourceGenerator(NodeVisitor):
             self.write(right)
         return visit
 
-    visit_List = sequence_visit('[', ']')
-    visit_Set = sequence_visit('{', '}')
-    del sequence_visit
+    visit_List = _sequence_visit('[', ']')
+    visit_Set = _sequence_visit('{', '}')
 
     def visit_Dict(self, node):
         self.write('{')
@@ -451,9 +503,11 @@ class SourceGenerator(NodeVisitor):
         self.write('}')
 
     def visit_BinOp(self, node):
+        self.write('(')
         self.visit(node.left)
         self.write(' %s ' % BINOP_SYMBOLS[type(node.op)])
         self.visit(node.right)
+        self.write(')')
 
     def visit_BoolOp(self, node):
         self.write('(')
@@ -498,7 +552,7 @@ class SourceGenerator(NodeVisitor):
                 self.visit(node.step)
 
     def visit_ExtSlice(self, node):
-        for idx, item in node.dims:
+        for idx, item in enumerate(node.dims):
             if idx:
                 self.write(', ')
             self.visit(item)
@@ -509,14 +563,14 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Lambda(self, node):
         self.write('lambda ')
-        self.visit(node.args)
+        self.signature(node.args)
         self.write(': ')
         self.visit(node.body)
 
     def visit_Ellipsis(self, node):
         self.write('Ellipsis')
 
-    def generator_visit(left, right):
+    def _generator_visit(left, right): # pylint: disable=E0213
         def visit(self, node):
             self.write(left)
             self.visit(node.elt)
@@ -525,10 +579,9 @@ class SourceGenerator(NodeVisitor):
             self.write(right)
         return visit
 
-    visit_ListComp = generator_visit('[', ']')
-    visit_GeneratorExp = generator_visit('(', ')')
-    visit_SetComp = generator_visit('{', '}')
-    del generator_visit
+    visit_ListComp = _generator_visit('[', ']')
+    visit_GeneratorExp = _generator_visit('(', ')')
+    visit_SetComp = _generator_visit('{', '}')
 
     def visit_DictComp(self, node):
         self.write('{')
@@ -572,18 +625,3 @@ class SourceGenerator(NodeVisitor):
             for if_ in node.ifs:
                 self.write(' if ')
                 self.visit(if_)
-
-    def visit_excepthandler(self, node):
-        self.newline(node)
-        self.write('except')
-        if node.type is not None:
-            self.write(' ')
-            self.visit(node.type)
-            if node.name is not None:
-                self.write(' as ')
-                self.visit(node.name)
-        self.write(':')
-        self.body(node.body)
-
-    def visit_arguments(self, node):
-        self.signature(node)
