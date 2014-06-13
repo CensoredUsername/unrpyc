@@ -253,7 +253,7 @@ def print_Scene(f, stmt, indent_level):
 
     # with isn't handled here, but split in several statements
 
-    if stmt.atl is not None:
+    if hasattr(stmt, "atl") and stmt.atl is not None:
         f.write(u':\n')
         print_atl(f, stmt.atl, indent_level+1)
     else:
@@ -268,7 +268,7 @@ def print_Show(f, stmt, indent_level):
 
     # with isn't handled here, but split in several statements
 
-    if stmt.atl is not None:
+    if hasattr(stmt, "atl") and stmt.atl is not None:
         f.write(u':\n')
         print_atl(f, stmt.atl, indent_level+1)
     else:
@@ -328,16 +328,22 @@ def print_Image(f, stmt, indent_level):
     if stmt.code is not None:
         f.write(u" = %s\n" % (stmt.code.source, ))
     else:
-        f.write(u":\n")
-        print_atl(f, stmt.atl, indent_level + 1)
+        if hasattr(stmt, "atl") and stmt.atl is not None:
+            f.write(u':\n')
+            print_atl(f, stmt.atl, indent_level+1)
+        else:
+            f.write('\n')
 
 def print_Transform(f, stmt, indent_level):
     f.write(u"transform %s" % (stmt.varname, ))
     if stmt.parameters is not None:
         print_params(f, stmt.parameters)
 
-    f.write(":\n")
-    print_atl(f, stmt.atl, indent_level + 1)
+    if hasattr(stmt, "atl") and stmt.atl is not None:
+        f.write(u':\n')
+        print_atl(f, stmt.atl, indent_level+1)
+    else:
+        f.write('\n')
 
 def print_Menu(f, stmt, indent_level):
     f.write(u"menu:\n")
