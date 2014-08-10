@@ -95,7 +95,7 @@ class AstDumper(object):
         self.ind(1, ast)
         for i, key in enumerate(ast):
             self.print_ast(key)
-            p(': ')
+            self.p(': ')
             self.print_ast(ast[key])
             if i+1 != len(ast):
                 self.p(',')
