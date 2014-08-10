@@ -521,7 +521,31 @@ def print_screen(f, stmt, indent_level):
         indent(f, indent_level+1)
         f.write(u'pass # Screen code not extracted')
     f.write(u"\n")
-    
+
+# Print tyle statements
+def print_style(f, stmt, indent_level):
+    f.write(u"style %s:\n" % stmt.style_name)
+    if stmt.parent is not None:
+        indent(f, indent_level+1)
+        f.write("is %s\n" % stmt.parent)
+    if stmt.clear:
+        indent(f, indent_level+1)
+        f.write("clear\n")
+    if stmt.take is not None:
+        indent(f, indent_level+1)
+        f.write("take %s\n" % stmt.take)
+    for delname in stmt.delattr:
+        indent(f, indent_level+1)
+        f.write("del %s\n" % delname)
+    if stmt.variant is not None:
+        indent(f, indent_level+1)
+        f.write("variant %s\n" % stmt.variant)
+
+    for key, value in stmt.properties.iteritems():
+        indent(f, indent_level+1)
+        f.write("%s %s\n" % (key, value))
+
+
 statement_printer_dict = {
         ast.Label: print_Label,
         ast.Say: print_Say,
@@ -546,6 +570,8 @@ statement_printer_dict = {
     }
 if hasattr(ast, 'Screen'): #backwards compatability
     statement_printer_dict.update({ast.Screen: print_screen})
+if hasattr(ast, 'Style'):
+    statement_printer_dict.update({ast.Style: print_style})
 
 def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (type(stmt).__name__, )
