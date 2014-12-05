@@ -595,15 +595,18 @@ statement_printer_dict = {
         ast.While: print_While,
         ast.Define: print_Define,
         ast.EarlyPython: print_EarlyPython,
-        ast.Translate: print_Translate,
-        ast.EndTranslate: print_EndTranslate,
-        ast.TranslateString: print_TranslateString,
-        ast.TranslateBlock: print_TranslateBlock,
     }
 if hasattr(ast, 'Screen'): #backwards compatability
     statement_printer_dict.update({ast.Screen: print_screen})
 if hasattr(ast, 'Style'):
     statement_printer_dict.update({ast.Style: print_style})
+if hasattr(ast, 'Translate'):
+    statement_printer_dict.update({
+        ast.Translate: print_Translate,
+        ast.EndTranslate: print_EndTranslate,
+        ast.TranslateString: print_TranslateString,
+        ast.TranslateBlock: print_TranslateBlock,
+    })
 
 def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (type(stmt).__name__, )
