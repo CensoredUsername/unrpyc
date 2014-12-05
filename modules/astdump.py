@@ -69,6 +69,8 @@ class AstDumper(object):
             self.print_string(ast)
         elif isinstance(ast, (int, bool)) or ast is None:
             self.print_other(ast)
+        elif inspect.isclass(ast):
+            self.print_class(ast)
         elif isinstance(ast, object):
             self.print_object(ast)
         else:
@@ -134,6 +136,12 @@ class AstDumper(object):
                 self.p(',')
                 self.ind()
         self.ind(-1, keys)
+        self.p('>')
+
+    def print_class(self, ast):
+        # handles the printing of classes
+        self.p('<class ')
+        self.p(str(ast)[8:-2])
         self.p('>')
 
     def print_string(self, ast):
