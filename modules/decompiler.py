@@ -47,6 +47,7 @@ def print_statement(f, statement, indent_level=0):
     func(f, statement, indent_level)
 
 def escape_string(s):
+    s = s.replace('\\', '\\\\')
     s = s.replace('"', '\\"')
     s = s.replace('\n', '\\n')
     s = s.replace('\t', '\\t')
@@ -282,12 +283,12 @@ def print_Hide(f, stmt, indent_level):
 
     f.write('\n')
 
-def print_Python(f, stmt, indent_level, early=False):
+def print_Python(f, stmt, indent_level, early=False, force_block=False):
     code_src = stmt.code.source
 
     stripped_code = code_src.strip()
 
-    if stripped_code.count('\n') == 0:
+    if stripped_code.count('\n') == 0 and not force_block:
         f.write(u"$ %s\n" % (stripped_code, ))
     else:
         f.write(u"python")
@@ -418,6 +419,33 @@ def print_If(f, stmt, indent_level):
 
 def print_EarlyPython(f, stmt, indent_level):
     print_Python(f, stmt, indent_level, early=True)
+
+def print_Translate(f, stmt, indent_level):
+    f.write(u"translate %s %s:\n"%(stmt.language, stmt.identifier))
+    for s in stmt.block:
+        print_statement(f, s, indent_level + 1)
+
+def print_EndTranslate(f, stmt, indent_level):
+    f.write(u"\n")
+
+def print_TranslateString(f, stmt, indent_level):
+    f.write(u"translate %s strings:\n"%(stmt.language,))
+    indent(f, indent_level+1)
+    f.write(u"old \"%s\"\n"%(escape_string(stmt.old),))
+    indent(f, indent_level+1)
+    f.write(u"new \"%s\"\n"%(escape_string(stmt.new),))
+    indent(f, indent_level)
+    f.write(u"\n")
+
+def print_TranslateBlock(f, stmt, indent_level):
+    f.write(u"translate %s "%(stmt.language,))
+    s = stmt.block[0]
+    if type(s) == ast.Python:
+        print_Python(f, stmt.block[0], indent_level, force_block=True)
+    else:
+        func = statement_printer_dict.get(type(s), print_Unknown)
+        func(f, s, indent_level)
+    f.write(u"\n")
 
 def print_args(f, arginfo):
     # this function regenerates how the arguments of this call were arranged in the following order:
@@ -572,6 +600,13 @@ if hasattr(ast, 'Screen'): #backwards compatability
     statement_printer_dict.update({ast.Screen: print_screen})
 if hasattr(ast, 'Style'):
     statement_printer_dict.update({ast.Style: print_style})
+if hasattr(ast, 'Translate'):
+    statement_printer_dict.update({
+        ast.Translate: print_Translate,
+        ast.EndTranslate: print_EndTranslate,
+        ast.TranslateString: print_TranslateString,
+        ast.TranslateBlock: print_TranslateBlock,
+    })
 
 def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (type(stmt).__name__, )
