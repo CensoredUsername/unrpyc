@@ -48,4 +48,14 @@ You can also import the module from python. in this case you can first simply im
 unrpyc module, and after that you can use unrpyc.import_renpy() to import the necessary
 renpy modules.
 
+note that the script should be ran with the same python version as renpy, which is python 2.7
+
+As of renpy version 6.18 the way renpy handles screen language changed significantly. 
+Due to this significant changes had to be made, and the script might be less stable for older
+renpy versions. If you encounter any problems due to this, please report them.
+
+Supported:
+renpy version 6 up to 6.18.3
+Windows, OSX and Linux
+
 https://github.com/yuriks/unrpyc

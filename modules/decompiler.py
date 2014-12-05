@@ -18,10 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import renpy
 import renpy.ast as ast
 import renpy.atl as atl
 import codegen
-import screendecompiler
 
 # default config
 class Config:
@@ -315,7 +315,7 @@ def print_UserStatement(f, stmt, indent_level):
 
 def print_Init(f, stmt, indent_level):
     if len(stmt.block) == 1 and (hasattr(ast, 'Screen') and isinstance(stmt.block[0], ast.Screen)) and stmt.priority == -500:
-        print_screen(f, stmt.block[0], indent_level)
+        statement_printer_dict[ast.Screen](f, stmt.block[0], indent_level)
     else:
         f.write(u"init")
         if stmt.priority != 0:
@@ -550,7 +550,45 @@ def print_screen(f, stmt, indent_level):
         f.write(u'pass # Screen code not extracted')
     f.write(u"\n")
 
-# Print tyle statements
+# Decompile screen language 2 code
+# contrary to screen language 1, this is a proper ast describing the screen, so we need to
+# branch to a different decompiler
+def print_sl2(f, stmt, indent_level):
+    screen = stmt.screen
+    # This is an renpy.sl2.slast.SLScreen object
+
+    f.write(u"screen %s" % screen.name)
+    if hasattr(screen, 'parameters') and screen.parameters:
+        print_params(f, screen.parameters)
+    f.write(u":\n")
+    if screen.tag:
+        indent(f, indent_level+1)
+        f.write(u"tag %s\n" % screen.tag)
+    if screen.zorder and screen.zorder != '0':
+        indent(f, indent_level+1)
+        f.write(u"zorder %s\n" % screen.zorder)
+    if screen.modal:
+        indent(f, indent_level+1)
+        f.write(u"modal %s\n" % screen.modal)
+    if screen.variant != "None":
+        indent(f, indent_level+1)
+        f.write(u"variant %s\n" % screen.variant)
+    # Undocumented, but exists in the parser
+    if screen.predict != "None":
+        indent(f, indent_level+1)
+        f.write(u"predict %s\n" % screen.variant)
+
+    if config.DECOMPILE_SCREENCODE and config.EXTRACT_PYTHON_AST:
+        sl2decompiler.print_screen(f, screen.children, indent_level, config)
+    else:
+        indent(f, indent_level+1)
+        f.write(u"pass # Screen code not decompiled")
+    f.write(u"\n")
+
+
+
+
+# Print style statements
 def print_style(f, stmt, indent_level):
     f.write(u"style %s:\n" % stmt.style_name)
     if stmt.parent is not None:
@@ -597,7 +635,12 @@ statement_printer_dict = {
         ast.EarlyPython: print_EarlyPython,
     }
 if hasattr(ast, 'Screen'): #backwards compatability
-    statement_printer_dict.update({ast.Screen: print_screen})
+    if hasattr(renpy, 'sl2'):
+        import sl2decompiler
+        statement_printer_dict.update({ast.Screen: print_sl2})
+    else:
+        import screendecompiler
+        statement_printer_dict.update({ast.Screen: print_screen})
 if hasattr(ast, 'Style'):
     statement_printer_dict.update({ast.Style: print_style})
 if hasattr(ast, 'Translate'):
