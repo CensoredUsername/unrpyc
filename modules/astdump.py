@@ -48,7 +48,7 @@ class AstDumper(object):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.map_open = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
-        self.map_close= {list: ']', tuple: ')', set: '}', frozenset: '}'}
+        self.map_close= {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def dump(self, ast):
         self.indent = 0
