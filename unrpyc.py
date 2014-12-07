@@ -57,7 +57,8 @@ def import_renpy(basedir=None):
     if not basedir:
         basedir = current_path
     basedir = path.abspath(basedir)
-    sys.path.append(basedir)
+    if basedir not in sys.path:
+        sys.path.insert(0, basedir)
 
     if sys.platform.startswith("win32"):
         librarypath = "windows-i686"
@@ -77,7 +78,8 @@ def import_renpy(basedir=None):
 
     # add the directory containing the compiled modules to path
     pyddir = path.join(basedir, "lib", librarypath, pydpath)
-    sys.path.append(pyddir)
+    if pyddir not in sys.path:
+        sys.path.append(pyddir)
     
     # Needed for pickle to read the AST
     try:
@@ -86,7 +88,7 @@ def import_renpy(basedir=None):
         # leave the importing to renpy
         renpy.import_all()
     except ImportError:
-        print "\nFailed at importing renpy. Are you sure that the renpy directory can be found in sys.path or the current working directory?\n"
+        print "\nFailed at importing renpy. Are you sure that the renpy and lib directory can be found in sys.path or the current working directory?\n"
         raise
     
     # Fool renpy into thinking that bytecode recording is active
