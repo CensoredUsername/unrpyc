@@ -28,7 +28,12 @@ import codecs
 import glob
 import itertools
 import traceback
-from modules import astdump
+
+# summon renpy
+from modules import magic
+renpy = magic.fake_package("renpy")
+
+from modules import astdump, decompiler
 
 # we store some configuration in here so we can easily pass it around.
 class Config:
@@ -37,73 +42,10 @@ class Config:
     FORCE_MULTILINE_KWARGS = True
     DECOMPILE_SCREENCODE   = True
 
-class Dummy:
-    # This is necessary for unpickling the AST's, they expect an instance of this class to be
-    # in renpy.game.script, however this is only added at runtime by renpy normally
-    def record_pycode(self,*args,**kwargs):
-        return
-    all_pycode = []
-
-def import_renpy(basedir=None):
-
-    # the modules to be imported
-    global renpy
-    global decompiler
-
-    # import renpy from another location.
-    current_path = os.getcwd()
-
-    # Add basedir to sys.path so renpy can be imported
-    if not basedir:
-        basedir = current_path
-    basedir = path.abspath(basedir)
-    if basedir not in sys.path:
-        sys.path.insert(0, basedir)
-
-    if sys.platform.startswith("win32"):
-        librarypath = "windows-i686"
-        pydpath = "Lib"
-    elif sys.platform == "darwin":
-        librarypath = "darwin-x86_64"
-        pydpath = "lib/python2.7"
-    else: #linux, other osses
-        if sys.maxsize > 2**32: # if 64 bit python
-            librarypath = "linux86_64"
-        else:
-            librarypath = "linux-686"
-        pydpath = "lib/python2.7"
-
-    # move to the correct execution directory and add the lib path
-    os.chdir(path.join(basedir, "lib", librarypath))
-
-    # add the directory containing the compiled modules to path
-    pyddir = path.join(basedir, "lib", librarypath, pydpath)
-    if pyddir not in sys.path:
-        sys.path.append(pyddir)
-    
-    # Needed for pickle to read the AST
-    try:
-        import renpy
-
-        # leave the importing to renpy
-        renpy.import_all()
-    except ImportError:
-        print "\nFailed at importing renpy. Are you sure that the renpy and lib directory can be found in sys.path or the current working directory?\n"
-        raise
-    
-    # Fool renpy into thinking that bytecode recording is active
-    import renpy.game
-    renpy.game.script = Dummy()
-
-    # We can only import the decompiler when we've imported renpy's insides
-    from modules import decompiler
-    os.chdir(current_path)
-
-
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read().decode('zlib')
-    data, stmts = pickle.loads(raw_contents)
+    data, stmts = magic.loads(raw_contents)
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config()):
@@ -129,14 +71,11 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config())
     return True
 
 def main():
-    # python27 unrpyc.py [-c] [-b BASEDIR] [-d] [--python-screens|--ast-screens|--no-screens|--single-line-screen-kwargs] file [file ...]
+    # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens|--single-line-screen-kwargs] file [file ...]
     parser = argparse.ArgumentParser(description="Decompile .rpyc files")
 
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
                         help="overwrites existing output files")
-
-    parser.add_argument('-b', '--basedir', dest='basedir', action='store',
-                        help="specify the game base directory in which the 'renpy' directory is located") 
 
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
@@ -170,12 +109,6 @@ def main():
         config.DECOMPILE_PYTHON_AST=False
     elif args.screenkwargs:
         config.FORCE_MULTILINE_KWARGS=False
-
-    # try to import renpy
-    if args.basedir:
-        import_renpy(args.basedir)
-    else:
-        import_renpy()
 
     # Expand wildcards
     files = map(glob.glob, args.file)
