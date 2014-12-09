@@ -37,7 +37,7 @@ to alert us of the problem.
 For the script to run correctly it is required for the unrpyc.py file to be in the same
 directory as the modules directory.
 
-You can also import the module from python and call unrpyc.decompile_unrpyc(...) directly
+You can also import the module from python and call unrpyc.decompile_rpyc(filename, ...) directly
 
 As of renpy version 6.18 the way renpy handles screen language changed significantly. 
 Due to this significant changes had to be made, and the script might be less stable for older
