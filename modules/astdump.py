@@ -44,11 +44,12 @@ class AstDumper(object):
     it will create a human-readable representation of all interesting
     attributes and write this to a given stream
     """
-    def __init__(self, out_file=None, indentation='    '):
+    MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
+    MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
+
+    def __init__(self, out_file=None, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
-        self.map_open = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
-        self.map_close= {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def dump(self, ast):
         self.indent = 0
@@ -79,7 +80,7 @@ class AstDumper(object):
 
     def print_list(self, ast):
         # handles the printing of simple containers of N elements. 
-        self.p(self.map_open[ast.__class__])
+        self.p(self.MAP_OPEN[ast.__class__])
         
         self.ind(1, ast)
         for i, obj in enumerate(ast):
@@ -88,7 +89,7 @@ class AstDumper(object):
                 self.p(',')
                 self.ind()
         self.ind(-1, ast)
-        self.p(self.map_close[ast.__class__])
+        self.p(self.MAP_CLOSE[ast.__class__])
 
     def print_dict(self, ast):
         # handles the printing of dictionaries
@@ -181,7 +182,7 @@ class AstDumper(object):
         # shouldn't indent in case there's only one or zero objects in this object to print
         if ast is None or len(ast) > 1:
             self.indent += diff_indent
-            self.p('\n' + self.indentation * self.indent)
+            self.p(u'\n' + self.indentation * self.indent)
 
     def p(self, string):
         # write the string to the stream
