@@ -169,10 +169,9 @@ statement_printer_dict = {
     sl2.slast.SLPass: print_pass,
     sl2.slast.SLUse: print_use,
     sl2.slast.SLDefault: print_default,
-    sl2.slast.SLDisplayable: print_displayable
+    sl2.slast.SLDisplayable: print_displayable,
+    sl2.slast.SLShowIf: print_showif
 }
-if hasattr(sl2.slast, "SLShowIf"):
-    statement_printer_dict.update({sl2.slast.SLShowIf: print_showif})
 
 from renpy.display import layout, behavior, im, motion, dragdrop
 from renpy.text import text

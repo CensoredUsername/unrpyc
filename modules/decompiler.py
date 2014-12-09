@@ -22,6 +22,8 @@ import renpy
 import renpy.ast as ast
 import renpy.atl as atl
 import codegen
+import screendecompiler
+import sl2decompiler
 
 # default config
 class Config:
@@ -519,6 +521,11 @@ def print_Define(f, stmt, indent_level):
 # It'd just bloat up this file
 def print_screen(f, stmt, indent_level):
     screen = stmt.screen
+
+    # Check if this is a screen language 2 screen
+    if isinstance(screen, renpy.sl2.slast.SLScreen):
+        return print_sl2(f, stmt, indent_level)
+
     # The creator of the python ast module also created a script to revert it.
     sourcecode = codegen.to_source(screen.code.source, u" "*4)
     # why suddenly ast in the source code field
@@ -633,23 +640,13 @@ statement_printer_dict = {
         ast.While: print_While,
         ast.Define: print_Define,
         ast.EarlyPython: print_EarlyPython,
-    }
-if hasattr(ast, 'Screen'): #backwards compatability
-    if hasattr(renpy, 'sl2'):
-        import sl2decompiler
-        statement_printer_dict.update({ast.Screen: print_sl2})
-    else:
-        import screendecompiler
-        statement_printer_dict.update({ast.Screen: print_screen})
-if hasattr(ast, 'Style'):
-    statement_printer_dict.update({ast.Style: print_style})
-if hasattr(ast, 'Translate'):
-    statement_printer_dict.update({
+        ast.Screen: print_screen,
+        ast.Style: print_style,
         ast.Translate: print_Translate,
         ast.EndTranslate: print_EndTranslate,
         ast.TranslateString: print_TranslateString,
         ast.TranslateBlock: print_TranslateBlock,
-    })
+    }
 
 def print_Unknown(f, stmt, indent_level):
     print "Unknown AST node: %s" % (type(stmt).__name__, )
