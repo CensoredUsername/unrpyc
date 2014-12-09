@@ -2,8 +2,7 @@ Unrpyc is a script to decompile Ren'Py (http://www.renpy.org/) compiled .rpyc
 script files. It will not extract files from .rpa archives. For that, use rpatool
 (https://github.com/Shizmob/rpatool), or UnRPA (https://github.com/Lattyware/unrpa).
 
-Unrpyc needs some internal Ren'Py structures to work. You can either use the -b 
-argument to specify the directory in which renpy lies or place the folders named "renpy" and "lib" from the game in the current working directory.
+Thanks to recent changes, unrpyc no longer needs internal renpy structures to work.
 
 Usage options:
 
@@ -13,10 +12,6 @@ Options:
   -c, --clobber  overwrites existing output files
   -d, --dump     Instead of decompiling, pretty print the contents
                  of the AST in a human readable format.
-  -b, --basedir  specify the directory in which the renpy folder 
-                 resides. using this it is not necessary for the renpy 
-                 directory to be in python's search path, or in the 
-                 unrpyc directory.
   --no-screens   
                  Don't decompile screen language
   --python-screens
@@ -29,12 +24,6 @@ Options:
                  statement in the same line.
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
-note that the script should be ran with the same python version as renpy, which is python 2.7.3
-
-In case you have a different version of python 2.7 or you're using OSX, you may have to use the unrpyc_bootstrap.py script which forces execution by the python executable packed in renpy. 
-
-Usage: [python2] unrpyc_bootstrap.py [options] script1 script2 ...
-
 You can give several .rpyc files on the command line. Each script will be
 decompiled to a corresponding .rpy on the same directory. By default, the
 program will not overwrite existing files, use -c to do that.
@@ -45,12 +34,10 @@ warning will be printed and a placeholder inserted in the script when it finds a
 node it doesn't know how to handle. If you encounter this, please open an issue 
 to alert us of the problem.  
 
-For the script to run correctly it is required for the unrpyc.py and unrpyc_bootstrap.py files to be in the same
+For the script to run correctly it is required for the unrpyc.py file to be in the same
 directory as the modules directory.
 
-You can also import the module from python. in this case you can first simply import the
-unrpyc module, and after that you can use unrpyc.import_renpy() to import the necessary
-renpy modules.
+You can also import the module from python and call unrpyc.decompile_unrpyc(...) directly
 
 As of renpy version 6.18 the way renpy handles screen language changed significantly. 
 Due to this significant changes had to be made, and the script might be less stable for older
