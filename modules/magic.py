@@ -92,7 +92,7 @@ def _setstate(self, state):
     if state:
         # Don't have to check for slotstate here since it's either None or a dict
         if not isinstance(state, dict):
-            print "{} instance got __setstate___() arguments {} but does not know how to handle them".format(str(self.__class__), str(state))
+            print "{} instance got __setstate__() arguments {} but does not know how to handle them".format(str(self.__class__), str(state))
             self._setstate_args = state 
         else:
             self.__dict__.update(state)
