@@ -45,7 +45,7 @@ class Config:
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read().decode('zlib')
-    data, stmts = magic.loads(raw_contents)
+    data, stmts = magic.safe_loads(raw_contents, {"_ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config()):
