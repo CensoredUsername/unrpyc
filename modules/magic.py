@@ -30,10 +30,16 @@ from cStringIO import StringIO
 # the main API
 
 def load(file):
-    return FakeUnPickler(file).load()
+    return FakeUnpickler(file).load()
 
 def loads(string):
     return load(StringIO(string))
+
+def safe_load(file, safe_modules=()):
+    return SafeUnpickler(file, safe_modules).load()
+
+def safe_loads(string, safe_modules=()):
+    return safe_load(StringIO(string), safe_modules)
 
 def fake_package(name):
     # Mount a fake package tree. This means that any request to import
@@ -55,11 +61,14 @@ def isinstance(obj, classinfo):
     A version of isinstance which doesn't error when classinfo is a FakeModule,
     And instead returns False
     """
-    if builtin_isinstance(classinfo, FakeModule):
-        # Check of the class of obj equals classinfo via classinfo's __eq__ method
-        return classinfo.__eq__(obj.__class__)
-    else:
-        return builtin_isinstance(obj, classinfo)
+    try:
+        return any(isinstance(obj, i) for i in classinfo)
+    except TypeError:
+        if builtin_isinstance(classinfo, FakeModule):
+            # Check of the class of obj equals classinfo via classinfo's __eq__ method
+            return classinfo.__eq__(obj.__class__)
+        else:
+            return builtin_isinstance(obj, classinfo)
 __builtin__.isinstance = isinstance
 
 # Fake class implementation
@@ -188,8 +197,8 @@ class FakePackage(FakeModule):
                 mod = sys.modules[modname]
         return mod
 
-class FakeUnPickler(Unpickler):
-    # A picler which, instead of failing after trying to import
+class FakeUnpickler(Unpickler):
+    # An unpicler which, instead of failing after trying to import
     # A module, creates a fake module which serves fake objects
     def find_class(self, module, name):
         mod = sys.modules.get(module, None)
@@ -209,6 +218,39 @@ class FakeUnPickler(Unpickler):
 
         return klass
 
+class SafeUnpickler(Unpickler):
+    # An unpickler which doesn't even attempt to import modules,
+    # therefore not allowing the code execution vulnerabilities
+    # which exist in the normal unpickle routines
+    # e.g. a pickle which pretends that os.system is a class
+    # and therefore must be instantiated with the argument "rm -rf"
+
+    # In this class attribute we'll keep track of any created objects.
+    # This cache is shared between SafeUnPickler instances
+    created_classes = {}
+
+    def __init__(self, file, safe_modules=()):
+        Unpickler.__init__(self, file)
+        # A set of modules which are safe to load
+        self.safe_modules = set(safe_modules)
+
+
+    def find_class(self, module, name):
+        if module in self.safe_modules:
+            __import__(module)
+            mod = sys.modules[module]
+            klass = getattr(mod, name)
+            return klass
+        else:
+            fullpath = module + "." + name
+
+            klass = self.created_classes.get(fullpath, None)
+            if klass is None:
+                klass = FakeClass(name, module)
+                self.created_classes[fullpath] = klass
+
+            return klass
+
 # special new and setstate methods for special classes
 
 def PyExprNew(cls, s, filename, linenumber):
@@ -226,4 +268,3 @@ def PyCodeSetstate(self, state):
 # renpy.PyCode, because it uses setstate
 specials["renpy.ast.PyExpr"] = ((unicode,), {"__new__": PyExprNew})
 specials["renpy.ast.PyCode"] = ((object,), {"__setstate__": PyCodeSetstate})
-
