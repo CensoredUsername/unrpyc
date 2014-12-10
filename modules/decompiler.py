@@ -24,6 +24,7 @@ from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_argin
 import renpy
 import screendecompiler
 import sl2decompiler
+import codegen
 
 # Main API
 
@@ -539,7 +540,7 @@ class Decompiler(DecompilerBase):
                 self.write("variant %s" % screen.variant)
 
             if self.decompile_screencode and self.extract_python_ast:
-                indent()
+                self.indent()
                 screendecompiler.print_screen(self.out_file, sourcecode, self.indent_level)
             elif self.extract_python_ast and self.decompile_python_ast:
                 self.indent()
