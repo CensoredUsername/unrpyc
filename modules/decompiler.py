@@ -365,11 +365,11 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % ast.with_)
 
         if ast.set is not None:
-            indent()
+            self.indent()
             self.write("set %s" % ast.set)
 
         for label, condition, block in ast.items:
-            indent()
+            self.indent()
             self.write('"%s"' % string_escape(item[label]))
 
             if block is not None:
