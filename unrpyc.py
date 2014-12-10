@@ -66,7 +66,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config())
         if dump:
             astdump.pprint(out_file, ast, config)
         else:
-            decompiler.pretty_print_ast(out_file, ast, config)
+            decompiler.pprint(out_file, ast, 0, config.FORCE_MULTILINE_KWARGS, config.DECOMPILE_SCREENCODE, 
+           config.DECOMPILE_PYTHON_AST, config.EXTRACT_PYTHON_AST)
             
     return True
 

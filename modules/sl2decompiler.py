@@ -18,194 +18,246 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import re
-from screendecompiler import indent
-import decompiler
+from __future__ import unicode_literals
+import sys
 
-# default config
-class Config:
-    EXTRACT_PYTHON_AST     = True
-    DECOMPILE_PYTHON_AST   = True
-    FORCE_MULTILINE_KWARGS = True
-    DECOMPILE_SCREENCODE   = True
-    
-def print_screen(f, children, indent_level=0, configoverride=Config()):
-    # This function should be called from the outside. It does some general cleanup in advance.
-    global config
-    config = configoverride
-    for child in children:
-        print_node(f, child, indent_level+1)
+from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo
 
-def print_node(f, node, indent_level):
-    statement_printer_dict.get(type(node), print_unknown)(f, node, indent_level)
-
-def print_unknown(f, node, indent_level):
-    print "Unknown AST node: %s" % (type(node).__name__, )
-    indent(f, indent_level)
-    f.write(u"<<<UNKNOWN NODE %s>>>\n" % (type(stmt).__name__, ))
-
-def print_if(f, node, indent_level):
-    _print_if(f, node, indent_level, "if ")
-
-def print_showif(f, node, indent_level):
-    _print_if(f, node, indent_level, "showif ")
-
-def _print_if(f, node, indent_level, first):
-    text = first
-    for condition, block in node.entries:
-        if condition is None:
-            text = "else"
-        indent(f, indent_level)
-        f.write(u"%s%s:\n" % (text, condition or ""))
-        print_block(f, block, indent_level)
-        text = "elif "
-
-def print_block(f, node, indent_level):
-    for child in node.children:
-        print_node(f, child, indent_level+1)
-
-def print_for(f, node, indent_level):
-    if node.variable == "_sl2_i":
-        # Tuple unpacking is hard apparently
-        variable = node.children[0].code.source[:-9].strip()
-        children = node.children[1:]
-    else:
-        variable = node.variable.strip()
-        children = node.children
-
-    indent(f, indent_level)
-    f.write(u"for %s in %s:\n" % (variable, node.expression))
-
-    for child in children:
-        print_node(f, child, indent_level+1)
-
-def print_python(f, node, indent_level):
-    code = node.code.source
-    if "\n" in code:
-        indent(f, indent_level)
-        f.write(u"python:")
-        lines = code.splitlines()
-        for line in lines:
-            indent(f, indent_level+1)
-            f.write(line + u"\n")
-    else:
-        indent(f, indent_level)
-        f.write(u"$ %s\n" % code)
-
-def print_pass(f, node, indent_level):
-    indent(f, indent_level)
-    f.write(u"pass\n")
-
-def print_use(f, node, indent_level):
-    indent(f, indent_level)
-    f.write(u"use %s" % node.target)
-    decompiler.print_args(f, node.args)
-    f.write(u"\n")
-
-def print_default(f, node, indent_level):
-    indent(f,indent_level)
-    f.write(u"default %s = %s\n" % (node.variable, node.expression))
-
-def print_displayable(f, node, indent_level):
-    # This is responsible for printing any screen language statement which is a displayable
-    # aka:
-    # Add, Bar, Button, Fixed, Frame, Grid, Hbox, Imagebutton, 
-    # Input, Label, Null, Mousearea, Side, Text, Textbutton, 
-    # Transform, Vbar, Vbox, Viewport and Window
-    indent(f, indent_level)
-
-    func, name = displayable_printer_dict.get((node.displayable, node.style), (None, None))
-    if func is None:
-        print_unknown(f, node, indent_level)
-
-    func(f, node, name, indent_level)
-
-def print_arguments(f, args, kwargs, indent_level, multiline=True):
-    if args: 
-        f.write(u' ')
-        f.write(u' '.join(['(%s)' % i if ' ' in i else i for i in args]) )
-    kwargs = dict(kwargs)
-    for key in kwargs:
-        if ' ' in kwargs[key]:
-            kwargs[key] = '(%s)' % kwargs[key]
-    if multiline or (config.FORCE_MULTILINE_KWARGS and kwargs):
-        f.write(u':\n')
-        for arg in kwargs:
-            indent(f, indent_level+1)
-            f.write(u'%s %s\n' % (arg, kwargs[arg]))
-    else:
-        for arg in kwargs:
-            f.write(u' %s %s' % (arg, kwargs[arg]))
-        f.write(u'\n')
-
-def print_oneline(f, node, name, indent_level):
-    f.write(name)
-    print_arguments(f, node.positional, node.keyword, indent_level, False)
-    
-def print_onechild(f, node, name, indent_level):
-    f.write(name)
-    print_arguments(f, node.positional, node.keyword, indent_level)
-    for child in node.children:
-        print_node(f, child, indent_level+1)
-    # if 'ui.child_or_fixed()' in code.splitlines()[1]:
-    #     print_block(f, '\n'.join(code.splitlines()[2:]), indent_level+1)
-    # else:
-    #     print_block(f, '\n'.join(code.splitlines()[1:]), indent_level+1)
-    
-def print_manychildren(f, node, name, indent_level):
-    f.write(name)
-    print_arguments(f, node.positional, node.keyword, indent_level)
-    for child in node.children:
-        print_node(f, child, indent_level+1)
-    #print_block(f, '\n'.join(code.splitlines()[1:]), indent_level+1)
-
-
-from renpy import sl2
-statement_printer_dict = {
-    sl2.slast.SLIf: print_if,
-    sl2.slast.SLBlock: print_block,
-    sl2.slast.SLFor: print_for,
-    sl2.slast.SLPython: print_python,
-    sl2.slast.SLPass: print_pass,
-    sl2.slast.SLUse: print_use,
-    sl2.slast.SLDefault: print_default,
-    sl2.slast.SLDisplayable: print_displayable,
-    sl2.slast.SLShowIf: print_showif
-}
-
-from renpy.display import layout, behavior, im, motion, dragdrop
+from renpy import ui, sl2
 from renpy.text import text
-from renpy import ui
 from renpy.sl2 import sldisplayables as sld
-# this dict maps (displayable, style) to print_func and name
-displayable_printer_dict = {
-    (layout.Null, "default"):           (print_oneline, "null"),
-    (text.Text, "text"):                (print_oneline, "text"),
-    (layout.MultiBox, "hbox"):          (print_manychildren, "hbox"),
-    (layout.MultiBox, "vbox"):          (print_manychildren, "vbox"),
-    (layout.MultiBox, "fixed"):         (print_manychildren, "fixed"),
-    (layout.Grid, "grid"):              (print_manychildren, "grid"),
-    (layout.Side, "side"):              (print_manychildren, "side"),
-    (layout.Window, "window"):          (print_onechild, "window"),
-    (layout.Window, "frame"):           (print_onechild, "frame"),
-    (ui._key, None):                    (print_oneline, "key"),
-    (behavior.Timer, "default"):        (print_oneline, "timer"),
-    (behavior.Input, "input"):          (print_oneline, "input"),
-    (im.image, "default"):              (print_oneline, "image"),
-    (behavior.Button, "button"):        (print_onechild, "button"),
-    (ui._imagebutton, "image_button"):  (print_oneline, "imagebutton"),
-    (ui._textbutton, 0):                (print_oneline, "textbutton"),
-    (ui._label, "label"):               (print_oneline, "label"),
-    (sld.sl2bar, None):                 (print_oneline, "bar"),
-    (sld.sl2vbar, None):                (print_oneline, "vbar"),
-    (sld.sl2viewport, "viewport"):      (print_onechild, "viewport"),
-    (ui._imagemap, "imagemap"):         (print_manychildren, "imagemap"),
-    (ui._hotspot, "hotspot"):           (print_onechild, "hotspot"),
-    (ui._hotbar, "hotbar"):             (print_oneline, "hotbar"),
-    (motion.Transform, "transform"):    (print_onechild, "transform"),
-    (sld.sl2add, None):                 (print_oneline, "add"),
-    (dragdrop.Drag, None):              (print_onechild, "drag"),
-    (dragdrop.DragGroup, None):         (print_manychildren, "draggroup"),
-    (behavior.MouseArea, 0):            (print_oneline, "mousearea"),
-    (behavior.OnEvent, None):           (print_oneline, "on")
-}
+from renpy.display import layout, behavior, im, motion, dragdrop
+
+# Main API
+
+def pprint(out_file, ast, indent_level=0,
+           force_multiline_kwargs=True, decompile_screencode=True):
+    SL2Decompiler(out_file,
+                  force_multiline_kwargs=force_multiline_kwargs,
+                  decompile_screencode=decompile_screencode).dump(ast, indent_level)
+
+# Implementation
+
+class SL2Decompiler(DecompilerBase):
+    """
+    An object which handles the decompilation of renpy screen language 2 screens to a given stream
+    """
+
+    # This dictionary is a mapping of Class: unbound_method, which is used to determine
+    # what method to call for which slast class
+    dispatch = {}
+
+    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    '):
+        super(SL2Decompiler, self).__init__(out_file, indentation)
+        self.force_multiline_kwargs = force_multiline_kwargs
+        self.decompile_screencode = decompile_screencode
+
+    def print_node(self, ast):
+        # Find the function which can decompile this node
+        func = self.dispatch.get(type(ast), None)
+        if func:
+            func(self, ast)
+        else:
+            # This node type is unknown
+            self.print_unknown(ast)
+
+    def print_screen(self, ast):
+
+        # Print the screen statement and create the block
+        self.indent()
+        self.write("screen %s" % ast.name)
+        # If we have parameters, print them.
+        if ast.parameters:
+            self.write(reconstruct_paraminfo(ast.parameters))
+        self.write(":")
+        self.indent_level += 1
+
+        # Print any keywords
+        if ast.tag:
+            self.indent()
+            self.write("tag %s" % ast.tag)
+        if ast.zorder and ast.zorder != '0':
+            self.indent()
+            self.write("zorder %s" % ast.zorder)
+        if ast.modal:
+            self.indent()
+            self.write("modal %s" % ast.modal)
+        if ast.variant and ast.variant != "None":
+            self.indent()
+            self.write("variant %s" % ast.variant)
+        if ast.predict and ast.predict != "None":
+            self.indent()
+            self.write("predict %s" % ast.predict)
+
+        # If we're decompiling screencode, print it. Else, insert a pass statement
+        if self.decompile_screencode:
+            self.print_nodes(ast.children)
+        else:
+            self.indent()
+            self.write("pass # Screen code not decompiled")
+
+        self.indent_level -= 1
+    dispatch[sl2.slast.SLScreen] = print_screen
+
+    def print_if(self, ast):
+        # if and showif share a lot of the same infrastructure
+        self._print_if(ast, "if")
+    dispatch[sl2.slast.SLIf] = print_if
+
+    def print_showif(self, ast):
+        # so for if and showif we just call an underlying function with an extra argument
+        self._print_if(ast, "showif")
+    dispatch[sl2.slast.SLShowIf] = print_showif
+
+    def _print_if(self, ast, keyword):
+        # the first condition is named if or showif, the rest elif
+        keyword = First(keyword, "elif")
+        for condition, block in ast.entries:
+            self.indent()
+            # if condition is None, this is the else clause
+            if condition is None:
+                self.write("else:")
+            else:
+                self.write("%s %s:" % (keyword(), condition))
+
+            # Every condition has a block of type slast.SLBlock
+            self.print_block(block, 1)
+
+    def print_block(self, ast, extra_indent=0):
+        # A block just contains a list of children
+        self.print_nodes(ast.children, extra_indent)
+    dispatch[sl2.slast.SLBlock] = print_block
+
+    def print_for(self, ast):
+        # Since tuple unpickling is hard, renpy just gives up and inserts a
+        # $ a,b,c = _sl2_i after the for statement if any tuple unpacking was
+        # attempted in the for statement. Detect this and ignore this slast.SLPython entry
+        if ast.variable == "_sl2_i":
+            variable = ast.children[0].code.source[:-9].strip()
+            children = ast.children[1:]
+        else:
+            variable = ast.variable.strip()
+            children = ast.children
+
+        self.indent()
+        self.write("for %s in %s:" % (variable, ast.expression))
+
+        # Interestingly, for doesn't contain a block, but just a list of child nodes
+        self.print_nodes(children, 1)
+    dispatch[sl2.slast.SLFor] = print_for
+
+    def print_python(self, ast):
+        self.indent()
+
+        # Extract the source code from the slast.SLPython object. If it's one line
+        # print it as a $ statement, else, print it as a python block
+        code = ast.code.source
+        if "\n" in code:
+            self.write("python:")
+            self.indent_level += 1
+            for line in code.splitlines():
+                self.indent()
+                self.write(line)
+            self.indent_level -= 1
+        else:
+            self.write("$ %s" % code)
+    dispatch[sl2.slast.SLPython] = print_python
+
+    def print_pass(self, ast):
+        # A pass statement
+        self.indent()
+        self.write("pass")
+    dispatch[sl2.slast.SLPass] = print_pass
+
+    def print_use(self, ast):
+        # A use statement requires reconstructing the arguments it wants to pass
+        self.indent()
+        self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
+    dispatch[sl2.slast.SLUse] = print_use
+
+    def print_default(self, ast):
+        # A default statement
+        self.indent()
+        self.write("default %s = %s" % (ast.variable, ast.expression))
+    dispatch[sl2.slast.SLDefault] = print_default
+
+    def print_displayable(self, ast):
+        # slast.SLDisplayable represents a variety of statements. We can figure out
+        # what statement it represents by analyzing the called displayable and style 
+        # attributes.
+        func, name = self.dispatch.get((ast.displayable, ast.style), (None, None))
+        if func is None:
+            self.print_unknown(ast)
+        else:
+            func(self, ast, name)
+    dispatch[sl2.slast.SLDisplayable] = print_displayable
+
+    def print_nochild(self, ast, name):
+        # Print a displayable which does not take any children
+        self.indent()
+        self.write(name)
+        self.print_arguments(ast.positional, ast.keyword, False)
+    dispatch[(behavior.OnEvent, None)]          = (print_nochild, "on")
+    dispatch[(behavior.MouseArea, 0)]           = (print_nochild, "mousearea")
+    dispatch[(sld.sl2add, None)]                = (print_nochild, "add")
+    dispatch[(ui._hotbar, "hotbar")]            = (print_nochild, "hotbar")
+    dispatch[(sld.sl2vbar, None)]               = (print_nochild, "vbar")
+    dispatch[(sld.sl2bar, None)]                = (print_nochild, "bar")
+    dispatch[(ui._label, "label")]              = (print_nochild, "label")
+    dispatch[(ui._textbutton, 0)]               = (print_nochild, "textbutton")
+    dispatch[(ui._imagebutton, "image_button")] = (print_nochild, "imagebutton")
+    dispatch[(im.image, "default")]             = (print_nochild, "image")
+    dispatch[(behavior.Input, "input")]         = (print_nochild, "input")
+    dispatch[(behavior.Timer, "default")]       = (print_nochild, "timer")
+    dispatch[(ui._key, None)]                   = (print_nochild, "key")
+    dispatch[(text.Text, "text")]               = (print_nochild, "text")
+    dispatch[(layout.Null, "default")]          = (print_nochild, "null")
+
+    def print_onechild(self, ast, name):
+        # Print a displayable which takes one child
+        # For now this does not have any differences from many children
+        self.indent()
+        self.write(name)
+        self.print_arguments(ast.positional, ast.keyword)
+        self.print_nodes(ast.children, 1)
+    dispatch[(dragdrop.Drag, None)]             = (print_onechild, "drag")
+    dispatch[(motion.Transform, "transform")]   = (print_onechild, "transform")
+    dispatch[(ui._hotspot, "hotspot")]          = (print_onechild, "hotspot")
+    dispatch[(sld.sl2viewport, "viewport")]     = (print_onechild, "viewport")
+    dispatch[(behavior.Button, "button")]       = (print_onechild, "button")
+    dispatch[(layout.Window, "frame")]          = (print_onechild, "frame")
+    dispatch[(layout.Window, "window")]         = (print_onechild, "window")
+
+    def print_manychildren(self, ast, name):
+        # Print a displayable which takes many children
+        self.indent()
+        self.write(name)
+        self.print_arguments(ast.positional, ast.keyword)
+        self.print_nodes(ast.children, 1)
+    dispatch[(dragdrop.DragGroup, None)]        = (print_manychildren, "draggroup")
+    dispatch[(ui._imagemap, "imagemap")]        = (print_manychildren, "imagemap")
+    dispatch[(layout.Side, "side")]             = (print_manychildren, "side")
+    dispatch[(layout.Grid, "grid")]             = (print_manychildren, "grid")
+    dispatch[(layout.MultiBox, "fixed")]        = (print_manychildren, "fixed")
+    dispatch[(layout.MultiBox, "vbox")]         = (print_manychildren, "vbox")
+    dispatch[(layout.MultiBox, "hbox")]         = (print_manychildren, "hbox")
+
+    def print_arguments(self, args, kwargs, multiline=True):
+        # This function prints the arguments and keyword arguments
+        # Used in a displayable screen statement
+        if args:
+            self.write(" " + " ".join(['(%s)' % i if ' ' in i else i for i in args]))
+        kwargs = dict(kwargs)
+        for key, value in kwargs.iteritems():
+            if ' ' in value:
+                kwargs[key] = '(%s)' % value
+        if multiline or (self.force_multiline_kwargs and kwargs):
+            self.write(":")
+            self.indent_level += 1
+            for key, value in kwargs.iteritems():
+                self.indent()
+                self.write("%s %s" % (key, value))
+            self.indent_level -= 1
+        else:
+            for key, value in kwargs.iteritems():
+                self.write(" %s %s" % (key, value))
