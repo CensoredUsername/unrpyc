@@ -22,6 +22,7 @@
 # even though the necessary modules cannot be imported
 
 import sys
+
 from types import ModuleType
 from pickle import Unpickler
 from cStringIO import StringIO
@@ -42,9 +43,24 @@ def fake_package(name):
     mod = FakePackage(name)
     sys.meta_path.append(mod)
     return mod
-
 # A dict of name: __bases__, {methodname: function}
 specials = {}
+
+# isinstance override implementation
+
+import __builtin__
+from __builtin__ import isinstance as builtin_isinstance
+def isinstance(obj, classinfo):
+    """
+    A version of isinstance which doesn't error when classinfo is a FakeModule,
+    And instead returns False
+    """
+    if builtin_isinstance(classinfo, FakeModule):
+        # Check of the class of obj equals classinfo via classinfo's __eq__ method
+        return classinfo.__eq__(obj.__class__)
+    else:
+        return builtin_isinstance(obj, classinfo)
+__builtin__.isinstance = isinstance
 
 # Fake class implementation
 
