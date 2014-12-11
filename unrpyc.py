@@ -32,13 +32,6 @@ import traceback
 import decompiler
 from decompiler import magic, astdump
 
-# we store some configuration in here so we can easily pass it around.
-# class Config:
-#     EXTRACT_PYTHON_AST     = True
-#     DECOMPILE_PYTHON_AST   = True
-#     FORCE_MULTILINE_KWARGS = True
-#     DECOMPILE_SCREENCODE   = True
-
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read().decode('zlib')
@@ -67,7 +60,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
             decompiler.pprint(out_file, ast, force_multiline_kwargs=force_multiline_kwargs,
                                              decompile_screencode=decompile_screencode,
                                              decompile_python=decompile_python)
-            
+    
     return True
 
 def main():
@@ -110,17 +103,19 @@ def main():
     good = bad = 0
     for filename in files:
         try:
-            a = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
+            correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
                                                                   decompile_python=args.decompile_python,
                                                                   force_multiline_kwargs=args.force_multiline_kwargs)
         except Exception as e:
             print traceback.format_exc()
             bad += 1
+
         else:
-            if a:
+            if correct:
                 good += 1
             else:
                 bad += 1
+
     if bad == 0:
         print "Decompilation of %d script file%s successful" % (good, 's' if good>1 else '')
     elif good == 0:
