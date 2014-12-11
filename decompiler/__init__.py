@@ -21,10 +21,15 @@
 from __future__ import unicode_literals
 from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, string_escape
 
+import magic
+magic.fake_package(b"renpy")
 import renpy
+
 import screendecompiler
 import sl2decompiler
 import codegen
+
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "util", "pprint", "Decompiler"]
 
 # Main API
 

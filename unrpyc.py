@@ -29,11 +29,8 @@ import glob
 import itertools
 import traceback
 
-# summon renpy
-from modules import magic
-renpy = magic.fake_package("renpy")
-
-from modules import astdump, decompiler
+import decompiler
+from decompiler import magic, astdump
 
 # we store some configuration in here so we can easily pass it around.
 # class Config:
