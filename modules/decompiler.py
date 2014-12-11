@@ -514,48 +514,9 @@ class Decompiler(DecompilerBase):
     def print_screen(self, ast):
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
-            sourcecode = codegen.to_source(screen.code.source, "    ")
-
-            # Print the screen statement and create the block
-            self.indent()
-            self.write("screen %s" % screen.name)
-            # If we have parameters, print them.
-            if screen.parameters:
-                self.write(reconstruct_paraminfo(screen.parameters))
-            self.write(":")
-            self.indent_level += 1
-
-            # Print any keywords
-            if screen.tag:
-                self.indent()
-                self.write("tag %s" % screen.tag)
-            if screen.zorder and screen.zorder != '0':
-                self.indent()
-                self.write("zorder %s" % screen.zorder)
-            if screen.modal:
-                self.indent()
-                self.write("modal %s" % screen.modal)
-            if screen.variant and screen.variant != "None":
-                self.indent()
-                self.write("variant %s" % screen.variant)
-
-            if self.decompile_screencode and self.extract_python_ast:
-                self.indent()
-                screendecompiler.print_screen(self.out_file, sourcecode, self.indent_level)
-            elif self.extract_python_ast and self.decompile_python_ast:
-                self.indent()
-                self.write("python:")
-
-                self.indent_level += 1
-                for line in sourcecode.splitlines():
-                    self.indent()
-                    self.write(line)
-                self.indent_level -= 1
-            else:
-                self.indent()
-                self.write("pass # Screen code not extracted")
-
-            self.indent_level -= 1
+            screendecompiler.pprint(self.out_file, screen, self.indent_level,
+                                    self.force_multiline_kwargs, self.decompile_python_ast,
+                                    self.decompile_screencode)
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             sl2decompiler.pprint(self.out_file, screen, self.indent_level,
