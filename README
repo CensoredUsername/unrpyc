@@ -8,20 +8,24 @@ Usage options:
 
 Options:
   --version      show program's version number and exit
+
   -h, --help     show this help message and exit
+
   -c, --clobber  overwrites existing output files
+
   -d, --dump     Instead of decompiling, pretty print the contents
                  of the AST in a human readable format.
-  --no-screens   
-                 Don't decompile screen language
-  --python-screens
-                 Don't decompile from python back to screen language
-  --ast-screens
-                 Only for dumping: Don't decompile the python ast of screens back
-                 to python
+                 This is mainly useful for debugging.
+  --no-screenlang   
+                 Only for decompiling, don't decompile back to screen language
+
+  --no-codegen   Only dumping and for decompiling screen language 1 screens.
+                 Don't decompile the screen python ast back to python.
+                 This implies --no-screenlang
+
   --single-line-screen-kwargs
-                 Only for decompiling. Leave all arguments to a screen language
-                 statement in the same line.
+                 Only for decompiling, don't force all keyword arguments
+                 from screencode to different lines
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
 You can give several .rpyc files on the command line. Each script will be
@@ -46,5 +50,8 @@ renpy versions. If you encounter any problems due to this, please report them.
 Supported:
 renpy version 6 up to 6.18.3
 Windows, OSX and Linux
+
+Requirements:
+Python version 2.7
 
 https://github.com/CensoredUsername/unrpyc
