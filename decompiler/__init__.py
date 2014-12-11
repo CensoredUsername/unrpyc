@@ -133,7 +133,7 @@ class Decompiler(DecompilerBase):
         for child in ast.children:
             self.indent()
             self.write("contains:")
-            self.print_atl(ast)
+            self.print_atl(child)
     dispatch[renpy.atl.RawChild] = print_atl_rawchild
 
     def print_atl_rawchoice(self, ast):

@@ -7,4 +7,7 @@
 *.txt
 
 /renpy
-
+/build
+/dist
+/tests
+setup.py
