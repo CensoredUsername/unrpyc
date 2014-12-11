@@ -67,7 +67,7 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write("screen %s" % ast.name)
         # If we have parameters, print them.
-        if ast.parameters:
+        if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
         self.write(":")
         self.indent_level += 1

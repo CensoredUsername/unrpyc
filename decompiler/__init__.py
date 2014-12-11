@@ -253,7 +253,7 @@ class Decompiler(DecompilerBase):
                 self.write(" onlayer %s" % ast.layer)
         else:
             self.write(" ")
-            print_imspec(ast.imspec)
+            self.print_imspec(ast.imspec)
 
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
@@ -373,7 +373,7 @@ class Decompiler(DecompilerBase):
 
         for label, condition, block in ast.items:
             self.indent()
-            self.write('"%s"' % string_escape(item[label]))
+            self.write('"%s"' % string_escape(label))
 
             if block is not None:
                 if condition != 'True':
@@ -431,7 +431,7 @@ class Decompiler(DecompilerBase):
             self.write("%s " % ast.who)
         self.write('"%s"' % string_escape(ast.what))
         if ast.with_ is not None:
-            self.write(" with %s" % stmt.with_)
+            self.write(" with %s" % ast.with_)
     dispatch[renpy.ast.Say] = print_say
 
     def print_userstatement(self, ast):
