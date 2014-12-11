@@ -22,8 +22,6 @@
 
 import argparse
 import os.path as path
-import os, sys
-import cPickle as pickle
 import codecs
 import glob
 import itertools
@@ -60,7 +58,6 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
             decompiler.pprint(out_file, ast, force_multiline_kwargs=force_multiline_kwargs,
                                              decompile_screencode=decompile_screencode,
                                              decompile_python=decompile_python)
-    
     return True
 
 def main():
