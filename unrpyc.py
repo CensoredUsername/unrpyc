@@ -36,11 +36,11 @@ renpy = magic.fake_package("renpy")
 from modules import astdump, decompiler
 
 # we store some configuration in here so we can easily pass it around.
-class Config:
-    EXTRACT_PYTHON_AST     = True
-    DECOMPILE_PYTHON_AST   = True
-    FORCE_MULTILINE_KWARGS = True
-    DECOMPILE_SCREENCODE   = True
+# class Config:
+#     EXTRACT_PYTHON_AST     = True
+#     DECOMPILE_PYTHON_AST   = True
+#     FORCE_MULTILINE_KWARGS = True
+#     DECOMPILE_SCREENCODE   = True
 
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
@@ -48,7 +48,8 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, {"_ast"})
     return stmts
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config()):
+def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screencode=True,
+                   decompile_python=True, force_multiline_kwargs=True):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -64,10 +65,11 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, config=Config())
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
-            astdump.pprint(out_file, ast, config)
+            astdump.pprint(out_file, ast, decompile_python=decompile_python)
         else:
-            decompiler.pprint(out_file, ast, 0, config.FORCE_MULTILINE_KWARGS, config.DECOMPILE_SCREENCODE, 
-           config.DECOMPILE_PYTHON_AST, config.EXTRACT_PYTHON_AST)
+            decompiler.pprint(out_file, ast, force_multiline_kwargs=force_multiline_kwargs,
+                                             decompile_screencode=decompile_screencode,
+                                             decompile_python=decompile_python)
             
     return True
 
@@ -81,35 +83,21 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    configscreen = parser.add_mutually_exclusive_group()
+    parser.add_argument('--no-screenlang', dest='decompile_screencode', action='store_false',
+                        help="Only for decompiling, don't decompile back to screen language")
 
-    configscreen.add_argument('--python-screens', dest='pythonscreens', action='store_true',
-                        help="only for decompiling, don't decompile screens back to screen language")
+    parser.add_argument('--no-codegen', dest='decompile_python', action='store_false',
+                        help="Only dumping and for decompiling screen language 1 screens. "
+                        "Don't decompile the screen python ast back to python. "
+                        "This implies --no-screenlang")
 
-    configscreen.add_argument('--ast-screens', dest='astscreens', action='store_true',
-                        help="only for dumping, prints the entire screen ast instead of decompiling")
-
-    configscreen.add_argument('--no-screens', dest='noscreens', action='store_true',
-                        help="don't extract screens at all")
-
-    configscreen.add_argument('--single-line-screen-kwargs', dest='screenkwargs', action='store_true',
-                        help="don't force all keyword arguments from screencode to different lines")
+    parser.add_argument('--single-line-screen-kwargs', dest='force_multiline_kwargs', action='store_false',
+                        help="Only for decompiling, don't force all keyword arguments from screencode to different lines")
 
     parser.add_argument('file', type=str, nargs='+', 
                         help="The filenames to decompile")
 
     args = parser.parse_args()
-
-    # set config according to the passed options
-    config = Config()
-    if args.pythonscreens:
-        config.DECOMPILE_SCREENCODE=False
-    elif args.noscreens:
-        config.EXTRACT_PYTHON_AST=False
-    elif args.astscreens:
-        config.DECOMPILE_PYTHON_AST=False
-    elif args.screenkwargs:
-        config.FORCE_MULTILINE_KWARGS=False
 
     # Expand wildcards
     files = map(glob.glob, args.file)
@@ -125,7 +113,9 @@ def main():
     good = bad = 0
     for filename in files:
         try:
-            a = decompile_rpyc(filename, args.clobber, args.dump, config=config)
+            a = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
+                                                                  decompile_python=args.decompile_python,
+                                                                  force_multiline_kwargs=args.force_multiline_kwargs)
         except Exception as e:
             print traceback.format_exc()
             bad += 1

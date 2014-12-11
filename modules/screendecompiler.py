@@ -28,11 +28,11 @@ import codegen
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           force_multiline_kwargs=True, decompile_python_ast=True,
+           force_multiline_kwargs=True, decompile_python=True,
            decompile_screencode=True):
     SLDecompiler(out_file,
                  force_multiline_kwargs=force_multiline_kwargs, 
-                 decompile_python_ast=decompile_python_ast,
+                 decompile_python=decompile_python,
                  decompile_screencode=decompile_screencode).dump(ast, indent_level)
 
 # implementation
@@ -46,11 +46,11 @@ class SLDecompiler(DecompilerBase):
     # what method to call for which statement
     dispatch = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_python_ast=True,
+    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_python=True,
                  decompile_screencode=True, indentation="    "):
         super(SLDecompiler, self).__init__(out_file, indentation)
         self.force_multiline_kwargs = force_multiline_kwargs
-        self.decompile_python_ast = decompile_python_ast
+        self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
 
     def dump(self, ast, indent_level=0):
@@ -86,7 +86,7 @@ class SLDecompiler(DecompilerBase):
             self.indent()
             self.write("variant %s" % ast.variant)
 
-        if not self.decompile_python_ast:
+        if not self.decompile_python:
             self.indent()
             self.write("pass # Screen code not extracted")
             return

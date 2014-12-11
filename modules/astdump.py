@@ -18,25 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import unicode_literals
 
 import sys
 import inspect
 import codegen
 import ast as py_ast
 
-# default config
-class Config:
-    EXTRACT_PYTHON_AST     = True
-    DECOMPILE_PYTHON_AST   = True
-    FORCE_MULTILINE_KWARGS = True
-    DECOMPILE_SCREENCODE   = True
-
-def pprint(out_file, ast, configoverride=Config()):
+def pprint(out_file, ast, decompile_python=True):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    global config
-    config = configoverride
-    AstDumper(out_file).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python).dump(ast)
 
 class AstDumper(object):
     """
@@ -47,9 +39,11 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
-    def __init__(self, out_file=None, indentation=u'    '):
+    def __init__(self, out_file=None, decompile_python=True,  
+                 indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
+        self.decompile_python = decompile_python
 
     def dump(self, ast):
         self.indent = 0
@@ -115,12 +109,8 @@ class AstDumper(object):
 
         if isinstance(ast, py_ast.Module):
             self.p('.code = ')
-            if config.DECOMPILE_PYTHON_AST and config.EXTRACT_PYTHON_AST:
+            if self.decompile_python:
                 self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
-                self.p('>')
-                return
-            elif not config.EXTRACT_PYTHON_AST:
-                self.print_ast('PYTHON SCREEN CODE')
                 self.p('>')
                 return
 
