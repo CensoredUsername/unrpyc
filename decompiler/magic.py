@@ -52,25 +52,6 @@ def fake_package(name):
 # A dict of name: __bases__, {methodname: function}
 specials = {}
 
-# isinstance override implementation
-
-import __builtin__
-from __builtin__ import isinstance as builtin_isinstance
-def isinstance(obj, classinfo):
-    """
-    A version of isinstance which doesn't error when classinfo is a FakeModule,
-    And instead returns False
-    """
-    try:
-        return any(isinstance(obj, i) for i in classinfo)
-    except TypeError:
-        if builtin_isinstance(classinfo, FakeModule):
-            # Check of the class of obj equals classinfo via classinfo's __eq__ method
-            return classinfo.__eq__(obj.__class__)
-        else:
-            return builtin_isinstance(obj, classinfo)
-__builtin__.isinstance = isinstance
-
 # Fake class implementation
 
 class FakeClassType(type):
@@ -88,6 +69,14 @@ class FakeClassType(type):
 
     def __hash__(self):
         return hash(self.__module__ + "." + self.__name__)
+
+    def __instancecheck__(self, instance):
+        return self.__subclasscheck__(instance.__class__)
+
+    def __subclasscheck__(self, subclass):
+        return (self.__eq__(subclass) or
+                (bool(subclass.__bases__) and
+                 any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 
 def FakeClass(name, module):
     # A fake class with special __new__ and __setstate__ methods which try to
@@ -169,6 +158,14 @@ class FakeModule(ModuleType):
 
     def __hash__(self):
         return hash(self.__name__)
+
+    def __instancecheck__(self, instance):
+        return self.__subclasscheck__(instance.__class__)
+
+    def __subclasscheck__(self, subclass):
+        return (self.__eq__(subclass) or
+                (bool(subclass.__bases__) and
+                 any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 
 class FakePackage(FakeModule):
     # a dynamically created module which pretends it's a real one, and it will create any requested
