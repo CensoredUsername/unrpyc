@@ -28,6 +28,7 @@ import renpy
 import screendecompiler
 import sl2decompiler
 import codegen
+import astdump
 
 __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "util", "pprint", "Decompiler"]
 
