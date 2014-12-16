@@ -30,10 +30,29 @@ import traceback
 import decompiler
 from decompiler import magic, astdump
 
+# special new and setstate methods for special classes
+
+def PyExprNew(cls, s, filename, linenumber):
+    self = unicode.__new__(cls, s)
+    self.filename = filename
+    self.linenumber = linenumber
+    return self
+
+def PyCodeSetstate(self, state):
+    (_, self.source, self.location, self.mode) = state
+    self.bytecode = None
+
+class_factory = magic.FakeClassFactory({
+    "renpy.ast.PyExpr": ((unicode,), {"__new__": PyExprNew}),
+    "renpy.ast.PyCode": ((object,), {"__setstate__": PyCodeSetstate})
+})
+
+# API
+
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read().decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, {"_ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screencode=True,
