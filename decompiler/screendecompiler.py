@@ -423,19 +423,19 @@ class SLDecompiler(DecompilerBase):
         current_parse = []
         for character in string:
             # Quotes start or end strings
-            if character in {"'", '"'}:
+            if character in ("'", '"'):
                 # They start them when we're not in a string
-                if stack[-1] not in {"'", '"'}:
+                if stack[-1] not in ("'", '"'):
                     stack.append(character)
                 # And they end them when there's an even amount of backslashes in front of them
                 elif character == stack[-1] and not (self.count_trailing_slashes(current_parse) % 2):
                     stack.pop()
-            elif stack[-1] not in {"'", '"'}:
+            elif stack[-1] not in ("'", '"'):
                 # These characters start a container
-                if character in {'[', '(', '{'}:
+                if character in ('[', '(', '{'):
                     stack.append(character)
                 # And these close it
-                elif character in {']', ')', '}'}:
+                elif character in (']', ')', '}'):
                     # We don't check if they match the entering char since we assume it's valid python
                     stack.pop()
             # If the stack is empty and there's a comma, we have a split
