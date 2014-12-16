@@ -92,7 +92,7 @@ class FakeClassType(type):
         if not hasattr(other, "__name__"):
             return False
         if hasattr(other, "__module__"):
-            return self.__module__ == other.__module and self.__name == other.__name__
+            return self.__module__ == other.__module__ and self.__name == other.__name__
         else:
             return self.__module__ + "." + self.__name__ == other.__name__
 
