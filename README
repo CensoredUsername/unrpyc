@@ -41,16 +41,18 @@ to alert us of the problem.
 For the script to run correctly it is required for the unrpyc.py file to be in the same
 directory as the modules directory.
 
-You can also import the module from python and call unrpyc.decompile_rpyc(filename, ...) directly
+You can also import the module from python and call unrpyc.decompile_rpyc(filename, ...)
+directly
 
 As of renpy version 6.18 the way renpy handles screen language changed significantly. 
-Due to this significant changes had to be made, and the script might be less stable for older
-renpy versions. If you encounter any problems due to this, please report them.
+Due to this significant changes had to be made, and the script might be less stable
+for older renpy versions. If you encounter any problems due to this, please report them.
 
-Alternatively there is an experimental version of the decompiler packed into one file available
-at https://github.com/CensoredUsername/unrpyc/releases 
-This version will decompile a game from inside the renpy runtime. Simply copy the un.rpyc file into
-the "game" directory inside the game files and everything will be decompiled.
+Alternatively there is an experimental version of the decompiler packed into one file
+available at https://github.com/CensoredUsername/unrpyc/releases 
+This version will decompile a game from inside the renpy runtime. Simply copy the 
+un.rpyc file into the "game" directory inside the game files and everything will be
+decompiled.
 
 Supported:
 renpy version 6 up to 6.18.3
