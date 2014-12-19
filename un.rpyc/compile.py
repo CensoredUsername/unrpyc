@@ -1,0 +1,136 @@
+# Copyright (c) 2014 CensoredUsername
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+import zlib
+import argparse
+import os, sys
+from os import path
+
+parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can be ran from inside renpy")
+
+parser.add_argument("-d", "--debug", dest="debug", action="store_true", help="Create debug files")
+
+parser.add_argument("-m", "--magic-path", dest="magic", action="store",
+                    help="In case picklemagic isn't in the python search path you can specify its folder here")
+
+parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
+                    help="The pickle protocol used for packing the pickles. default is 1, options are 0, 1 and 2")
+
+args = parser.parse_args()
+
+if args.magic:
+    sys.path.append(path.abspath(args.magic))
+
+protocol = int(args.protocol)
+
+try:
+    import pickleast as p
+except ImportError:
+    exit("Could not import pickleast. Are you sure it's in pythons module search path?")
+
+def Module(name, filename):
+    with open(filename, "rb") as f:
+        code = f.read()
+        return p.Module(name, code)
+
+pack_folder = path.dirname(path.abspath(__file__))
+base_folder = path.dirname(pack_folder)
+
+decompiler = p.Sequence(
+                    p.Exec("""
+try:
+    import renpy
+except Exception:
+    raise _Stop(({"version": "broken", "key": "thrown away"}, []))
+"""),
+                    p.AssignGlobal("basepath", p.Imports("os.path", "join")(p.Imports("os", "getcwd")(), "game")),
+                    p.AssignGlobal("files", p.Imports("renpy.loader", "listdirfiles")()),
+                    p.Exec("""
+import os, sys, renpy
+sys.files = []
+for (dir, fn) in files:
+    if fn.endswith(".rpyc"):
+        if dir and dir.endswith("common"):
+            continue
+        elif fn == "un.rpyc":
+            continue
+        elif not (dir, fn[:-1]) in files:
+            abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
+            fobj = renpy.loader.load(fn)
+            sys.files.append((abspath, fn, dir, fobj))
+"""),
+                    Module("util", path.join(base_folder, "decompiler/util.py")),
+                    Module("magic", path.join(base_folder, "decompiler/magic.py")),
+                    Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
+                    p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
+                    p.Assign("renpy_loaders", p.Imports("sys", "meta_path")[:]),
+                    p.Exec("""
+import sys
+for i in sys.modules.copy():
+    if "renpy" in i and not "renpy.execution" in i:
+        sys.modules.pop(i)
+"""),
+                    p.Imports("sys", "meta_path").pop(),
+                    p.Assign("package", p.LoadGlobal("__package__")),
+                    p.AssignGlobal("__package__", ""),
+                    p.GetModule("traceback"),
+                    p.GetModule("codecs"),
+                    p.Imports("magic", "fake_package")("renpy"),
+                    Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
+                    Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+                    Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
+                    Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
+                    Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py")),
+                    p.Imports("unrpyc", "decompile_game")(),
+                    p.Imports("magic", "remove_fake_package")("renpy"),
+                    p.Imports("sys", "modules").update(p.Load("renpy_modules")),
+                    p.Imports("sys", "meta_path").extend(p.Load("renpy_loaders")),
+                    p.AssignGlobal("__package__", p.Load("package")),
+                    p.Imports("renpy", "script_version") # I wonder why I even bother with this since by the time this is checked, we've already done damage
+                    )
+
+rpyc = ({'version': decompiler, 'key': p.Imports("renpy.game", "script").key}, [])
+
+unrpyc = zlib.compress(
+             p.optimize(
+                 p.dumps(rpyc, protocol),
+             protocol),
+         9)
+
+with open(path.join(pack_folder, "un.rpyc"), "wb") as f:
+    f.write(unrpyc)
+
+if args.debug:
+    print len(unrpyc)
+
+    import pickletools
+    data = unrpyc.decode("zlib")
+    with open(path.join(pack_folder, "un.dis"), "wb") as f:
+        pickletools.dis(data, f)
+
+    with open(path.join(pack_folder, "un.dis2"), "wb") as f:
+        for com, arg, _ in pickletools.genops(data):
+            if arg and isinstance(arg, str) and len(arg) > 1000:
+                data = arg.decode("zlib")
+                break
+        pickletools.dis(data, f)
+
+    with open(path.join(pack_folder, "un.dis3"), "wb") as f:
+        f.write(repr(rpyc))
