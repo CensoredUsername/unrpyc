@@ -57,10 +57,10 @@ class First(object):
 
     def __call__(self):
         if self.first:
-            return self.yes_value
             self.first = False
+            return self.yes_value
         else:
-            return no_value
+            return self.no_value
 
 def reconstruct_paraminfo(paraminfo):
     if paraminfo is None:
