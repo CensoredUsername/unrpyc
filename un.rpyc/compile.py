@@ -46,9 +46,10 @@ except ImportError:
     exit("Could not import pickleast. Are you sure it's in pythons module search path?")
 
 def Module(name, filename):
-    with open(filename, "rb") as f:
+    with open(filename, "rb" if p.PY2 else "r") as f:
         code = f.read()
-        return p.Module(name, code)
+        return p.Module(name, code, False)
+
 
 pack_folder = path.dirname(path.abspath(__file__))
 base_folder = path.dirname(pack_folder)
@@ -60,8 +61,8 @@ try:
 except Exception:
     raise _Stop(({"version": "broken", "key": "thrown away"}, []))
 """),
-                    p.AssignGlobal("basepath", p.Imports("os.path", "join")(p.Imports("os", "getcwd")(), "game")),
-                    p.AssignGlobal("files", p.Imports("renpy.loader", "listdirfiles")()),
+                    p.AssignGlobal("basepath", p.Imports("os.path", "join")(p.Imports("os", "getcwd")(), "game"), False),
+                    p.AssignGlobal("files", p.Imports("renpy.loader", "listdirfiles")(), False),
                     p.Exec("""
 import os, sys, renpy
 sys.files = []
@@ -80,16 +81,16 @@ for (dir, fn) in files:
                     Module("magic", path.join(base_folder, "decompiler/magic.py")),
                     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
                     p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
-                    p.Assign("renpy_loaders", p.Imports("sys", "meta_path")[:]),
+                    #p.Assign("renpy_loaders", p.Imports("sys", "meta_path")[:]),
                     p.Exec("""
 import sys
 for i in sys.modules.copy():
     if "renpy" in i and not "renpy.execution" in i:
         sys.modules.pop(i)
 """),
-                    p.Imports("sys", "meta_path").pop(),
+                    p.Assign("renpy_loader", p.Imports("sys", "meta_path").pop()),
                     p.Assign("package", p.LoadGlobal("__package__")),
-                    p.AssignGlobal("__package__", ""),
+                    p.AssignGlobal("__package__", "", False),
                     p.GetModule("traceback"),
                     p.GetModule("codecs"),
                     p.Imports("magic", "fake_package")("renpy"),
@@ -101,8 +102,8 @@ for i in sys.modules.copy():
                     p.Imports("unrpyc", "decompile_game")(),
                     p.Imports("magic", "remove_fake_package")("renpy"),
                     p.Imports("sys", "modules").update(p.Load("renpy_modules")),
-                    p.Imports("sys", "meta_path").extend(p.Load("renpy_loaders")),
-                    p.AssignGlobal("__package__", p.Load("package")),
+                    p.Imports("sys", "meta_path").append(p.Load("renpy_loader")),
+                    p.AssignGlobal("__package__", p.Load("package"), False),
                     p.Imports("renpy", "script_version") # I wonder why I even bother with this since by the time this is checked, we've already done damage
                     )
 
@@ -118,19 +119,29 @@ with open(path.join(pack_folder, "un.rpyc"), "wb") as f:
     f.write(unrpyc)
 
 if args.debug:
-    print len(unrpyc)
+    print("File length = {0}".format(len(unrpyc)))
 
     import pickletools
-    data = unrpyc.decode("zlib")
-    with open(path.join(pack_folder, "un.dis"), "wb") as f:
+
+    data = zlib.decompress(unrpyc)
+
+    with open(path.join(pack_folder, "un.dis"), "wb" if p.PY2 else "w") as f:
         pickletools.dis(data, f)
 
-    with open(path.join(pack_folder, "un.dis2"), "wb") as f:
-        for com, arg, _ in pickletools.genops(data):
-            if arg and isinstance(arg, str) and len(arg) > 1000:
-                data = arg.decode("zlib")
-                break
+    for com, arg, _ in pickletools.genops(data):
+        if arg and (isinstance(arg, str) or 
+                    p.PY3 and isinstance(arg, bytes)) and len(arg) > 1000:
+
+            if p.PY3 and isinstance(arg, str):
+                arg = arg.encode("latin1")
+
+            data = zlib.decompress(arg)
+            break
+    else:
+        raise Exception("didn't find the gzipped blob inside")
+
+    with open(path.join(pack_folder, "un.dis2"), "wb" if p.PY2 else "w") as f:
         pickletools.dis(data, f)
 
-    with open(path.join(pack_folder, "un.dis3"), "wb") as f:
-        f.write(repr(rpyc))
+    with open(path.join(pack_folder, "un.dis3"), "wb" if p.PY2 else "w") as f:
+        p.pprint(rpyc, f)
