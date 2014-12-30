@@ -63,6 +63,8 @@ class Decompiler(DecompilerBase):
         self.paired_with = None
         self.with_consumed = True
 
+        self.after_call = False
+
     def dump(self, ast, indent_level=0):
         self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc") 
         super(Decompiler, self).dump(ast, indent_level)
@@ -313,9 +315,13 @@ class Decompiler(DecompilerBase):
     # Flow control
 
     def print_label(self, ast):
-        self.indent()
-        self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
-        self.print_nodes(ast.block, 1)
+        if self.after_call:
+            self.after_call = False
+            self.write(" from %s" % ast.name)
+        else:
+            self.indent()
+            self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
+            self.print_nodes(ast.block, 1)
     dispatch[renpy.ast.Label] = print_label
 
     def print_jump(self, ast):
@@ -339,6 +345,8 @@ class Decompiler(DecompilerBase):
             if ast.expression:
                 self.write(" pass ")
             self.write(reconstruct_arginfo(ast.arguments))
+
+        self.after_call = True
     dispatch[renpy.ast.Call] = print_call
 
     def print_return(self, ast):
@@ -370,8 +378,11 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.While] = print_while
 
     def print_pass(self, ast):
-        self.indent()
-        self.write("pass")
+        if self.after_call:
+            self.after_call = False
+        else:
+            self.indent()
+            self.write("pass")
     dispatch[renpy.ast.Pass] = print_pass
 
     def print_init(self, ast):
