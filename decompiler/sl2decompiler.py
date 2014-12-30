@@ -121,11 +121,22 @@ class SL2Decompiler(DecompilerBase):
                 self.write("%s %s:" % (keyword(), condition))
 
             # Every condition has a block of type slast.SLBlock
-            self.print_block(block, 1)
+            self.print_block(block)
 
-    def print_block(self, ast, extra_indent=0):
-        # A block just contains a list of children
-        self.print_nodes(ast.children, extra_indent)
+    def print_block(self, ast):
+        # A block contains possible keyword arguments and a list of child nodes
+        # this is the reason if doesn't keep a list of children but special Blocks
+        self.indent_level += 1
+
+        for key, value in ast.keyword:
+            if ' ' in value:
+                value = '(%s)' % value
+
+            self.indent()
+            self.write("%s %s" % (key, value))
+
+        self.print_nodes(ast.children)
+        self.indent_level -= 1
     dispatch[sl2.slast.SLBlock] = print_block
 
     def print_for(self, ast):
