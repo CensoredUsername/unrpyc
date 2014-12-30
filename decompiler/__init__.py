@@ -490,9 +490,9 @@ class Decompiler(DecompilerBase):
         self.indent_level += 1
 
         self.indent()
-        self.write('old "%s"' % escape_string(ast.old))
+        self.write('old "%s"' % string_escape(ast.old))
         self.indent()
-        self.write('new "%s"' % escape_string(ast.new))
+        self.write('new "%s"' % string_escape(ast.new))
         
         self.indent_level -= 1
     dispatch[renpy.ast.TranslateString] = print_translatestring
