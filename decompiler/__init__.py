@@ -60,6 +60,9 @@ class Decompiler(DecompilerBase):
         self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
 
+        self.paired_with = None
+        self.with_consumed = True
+
     def dump(self, ast, indent_level=0):
         self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc") 
         super(Decompiler, self).dump(ast, indent_level)
@@ -240,6 +243,13 @@ class Decompiler(DecompilerBase):
         self.write("show ")
         self.print_imspec(ast.imspec)
 
+        if self.paired_with:
+            if self.with_consumed:
+                raise Exception("Attempted to consume with {} twice".format(
+                                repr(self.paired_with)))
+            self.write(" with %s" % self.paired_with)
+            self.with_consumed = True
+
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
@@ -256,6 +266,13 @@ class Decompiler(DecompilerBase):
             self.write(" ")
             self.print_imspec(ast.imspec)
 
+        if self.paired_with:
+            if self.with_consumed:
+                raise Exception("Attempted to consume with {} twice".format(
+                                repr(self.paired_with)))
+            self.write(" with %s" % self.paired_with)
+            self.with_consumed = True
+
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
@@ -268,8 +285,29 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.Hide] = print_hide
 
     def print_with(self, ast):
-        self.indent()
-        self.write("with %s" % ast.expr)
+        # the 'paired' attribute indicates that this with
+        # and with node afterwards are part of a postfix
+        # with statement. detect this and process it properly
+        if hasattr(ast, "paired") and ast.paired is not None:
+            self.paired_with = ast.paired
+            self.with_consumed = False
+
+        elif self.paired_with:
+            # Sanity check. check if the previous paired with matches this with
+            if self.paired_with != ast.expr:
+                raise Exception("Unmatched paired with {0} != {1}".format(
+                                repr(self.paired_with), repr(ast.expr)))
+
+            if not self.with_consumed:
+                # No show/scene statement consumed the with yet.
+                self.write(" with %s" % self.paired_with)
+                self.with_consumed = True
+
+            self.paired_with = None
+
+        else:
+            self.indent()
+            self.write("with %s" % ast.expr)
     dispatch[renpy.ast.With] = print_with
 
     # Flow control
