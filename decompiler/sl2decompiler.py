@@ -258,17 +258,18 @@ class SL2Decompiler(DecompilerBase):
         # Used in a displayable screen statement
         if args:
             self.write(" " + " ".join(['(%s)' % i if ' ' in i else i for i in args]))
-        kwargs = dict(kwargs)
-        for key, value in kwargs.iteritems():
-            if ' ' in value:
-                kwargs[key] = '(%s)' % value
+
         if multiline or (self.force_multiline_kwargs and kwargs):
             self.write(":")
             self.indent_level += 1
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs:
+                if ' ' in value:
+                    value = '(%s)' % value
                 self.indent()
                 self.write("%s %s" % (key, value))
             self.indent_level -= 1
         else:
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs:
+                if ' ' in value:
+                    value = '(%s)' % value
                 self.write(" %s %s" % (key, value))
