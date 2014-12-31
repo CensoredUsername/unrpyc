@@ -24,7 +24,7 @@ import codecs
 import traceback
 
 import decompiler
-import magic, astdump
+import magic
 
 # special new and setstate methods for special classes
 
