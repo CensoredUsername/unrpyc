@@ -21,6 +21,7 @@
 import zlib
 import argparse
 import os, sys
+import minimize
 from os import path
 
 parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can be ran from inside renpy")
@@ -48,14 +49,18 @@ except ImportError:
 def Module(name, filename):
     with open(filename, "rb" if p.PY2 else "r") as f:
         code = f.read()
-        return p.Module(name, code, False)
+    code = minimize.minimize(code)
+    return p.Module(name, code, False)
+
+def Exec(code):
+    return p.Exec(minimize.minimize(code))
 
 
 pack_folder = path.dirname(path.abspath(__file__))
 base_folder = path.dirname(pack_folder)
 
 decompiler = p.Sequence(
-                    p.Exec("""
+                    Exec("""
 try:
     import renpy
 except Exception:
@@ -63,7 +68,7 @@ except Exception:
 """),
                     p.AssignGlobal("basepath", p.Imports("os.path", "join")(p.Imports("os", "getcwd")(), "game"), False),
                     p.AssignGlobal("files", p.Imports("renpy.loader", "listdirfiles")(), False),
-                    p.Exec("""
+                    Exec("""
 import os, sys, renpy
 sys.files = []
 for (dir, fn) in files:
@@ -82,7 +87,7 @@ for (dir, fn) in files:
                     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
                     p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
                     #p.Assign("renpy_loaders", p.Imports("sys", "meta_path")[:]),
-                    p.Exec("""
+                    Exec("""
 import sys
 for i in sys.modules.copy():
     if "renpy" in i and not "renpy.execution" in i:
