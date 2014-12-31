@@ -4,6 +4,7 @@
 
 *.rpy
 *.rpyc
+!un.rpyc
 *.txt
 
 /renpy
