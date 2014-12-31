@@ -552,14 +552,14 @@ class Decompiler(DecompilerBase):
         
         content = ast.block[0]
         if isinstance(content, renpy.ast.Python):
-            print_python(content, from_translate = True)
+            self.print_python(content, from_translate = True)
         elif isinstance(content, renpy.ast.Style):
-            print_style(content, from_translate = True)
+            self.print_style(content, from_translate = True)
         else:
-            print_node(content)
+            self.print_node(content)
 
         if len(ast.block) != 1:
-            print_nodes(ast.block[1:])
+            self.print_nodes(ast.block[1:])
     dispatch[renpy.ast.TranslateBlock] = print_translateblock
 
     # Screens
