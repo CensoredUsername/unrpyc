@@ -53,6 +53,7 @@ BINOP_SYMBOLS = {
     Div:        '/',
     FloorDiv:   '//',
     Mod:        '%',
+    Pow:        '**',
     LShift:     '<<',
     RShift:     '>>',
     BitOr:      '|',
@@ -362,16 +363,6 @@ class SourceGenerator(NodeVisitor):
             self.write(' ')
             self.visit(node.type)
         if node.name:
-            self.write(' as ')
-            self.visit(node.name)
-        self.write(':')
-        self.body(node.body)
-
-    def visit_ExceptHandler(self, node):
-        self.newline(node)
-        self.write('except ')
-        self.visit(node.type)
-        if node.name is not None:
             self.write(', ')
             self.visit(node.name)
         self.write(':')
@@ -395,8 +386,11 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Return(self, node):
         self.newline(node)
-        self.write('return ')
-        self.visit(node.value)
+        if node.value is not None:
+            self.write('return ')
+            self.visit(node.value)
+        else:
+            self.write('return')
 
     def visit_Break(self, node):
         self.newline(node)
@@ -417,6 +411,7 @@ class SourceGenerator(NodeVisitor):
                 self.write(' from ')
                 self.visit(node.cause)
         elif hasattr(node, 'type') and node.type is not None:
+            self.write(' ')
             self.visit(node.type)
             if node.inst is not None:
                 self.write(', ')
