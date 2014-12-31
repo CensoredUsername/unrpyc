@@ -86,7 +86,6 @@ for (dir, fn) in files:
                     Module("magic", path.join(base_folder, "decompiler/magic.py")),
                     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
                     p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
-                    #p.Assign("renpy_loaders", p.Imports("sys", "meta_path")[:]),
                     Exec("""
 import sys
 for i in sys.modules.copy():
@@ -99,7 +98,9 @@ for i in sys.modules.copy():
                     p.GetModule("traceback"),
                     p.GetModule("codecs"),
                     p.Imports("magic", "fake_package")("renpy"),
-                    Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
+                    p.Imports("magic", "FakeModule")("astdump"), 
+                    #turns out we don't actually need astdump in here
+                    #Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
                     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
                     Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
                     Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),

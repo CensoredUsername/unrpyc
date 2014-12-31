@@ -11,8 +11,6 @@ def minimize(code):
     generator = SourceGenerator(" ", False)
     generator.visit(tree)
     newcode = ''.join(generator.result)
-    with open("test.py", "wb") as f:
-        f.write(newcode)
     return newcode
 
 class Crusher(ast.NodeTransformer):
@@ -52,12 +50,11 @@ class Crusher(ast.NodeTransformer):
         self.varnames[-1] += 1
 
         rv = []
-
-        if not current:
-            return 'a'
-        while current:
+        while True:
             rv.append(chr(current % 26 + 97))
             current //= 26
+            if not current:
+                break
 
         return ''.join(reversed(rv))
 
