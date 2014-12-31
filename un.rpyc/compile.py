@@ -34,6 +34,12 @@ parser.add_argument("-m", "--magic-path", dest="magic", action="store",
 parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
                     help="The pickle protocol used for packing the pickles. default is 1, options are 0, 1 and 2")
 
+parser.add_argument("-r", "--raw", dest="minimize", action="store_false",
+                    help="Don't minimize the compiler modules")
+
+parser.add_argument("-o", "--obfuscate", dest="obfuscate", action="store_true",
+                    help="Enable extra minification measures which do not really turn down the filesize but make the source a lot less readable")
+
 args = parser.parse_args()
 
 if args.magic:
@@ -49,7 +55,8 @@ except ImportError:
 def Module(name, filename):
     with open(filename, "rb" if p.PY2 else "r") as f:
         code = f.read()
-    code = minimize.minimize(code)
+    if args.minimize:
+        code = minimize.minimize(code, args.obfuscate)
     return p.Module(name, code, False)
 
 def Exec(code):
@@ -77,7 +84,7 @@ for (dir, fn) in files:
             continue
         elif fn == "un.rpyc":
             continue
-        elif not (dir, fn[:-1]) in files:
+        elif (dir, fn[:-1]) not in files:
             abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
             fobj = renpy.loader.load(fn)
             sys.files.append((abspath, fn, dir, fobj))
