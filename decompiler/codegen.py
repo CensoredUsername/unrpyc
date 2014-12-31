@@ -42,43 +42,43 @@
 from ast import *
 
 BOOLOP_SYMBOLS = {
-    And:        'and',
-    Or:         'or'
+    And:        ('and', 4),
+    Or:         ('or', 3)
 }
 
 BINOP_SYMBOLS = {
-    Add:        '+',
-    Sub:        '-',
-    Mult:       '*',
-    Div:        '/',
-    FloorDiv:   '//',
-    Mod:        '%',
-    Pow:        '**',
-    LShift:     '<<',
-    RShift:     '>>',
-    BitOr:      '|',
-    BitAnd:     '&',
-    BitXor:     '^'
+    Add:        ('+', 11),
+    Sub:        ('-', 11),
+    Mult:       ('*', 12),
+    Div:        ('/', 12),
+    FloorDiv:   ('//', 12),
+    Mod:        ('%', 12),
+    Pow:        ('**', 14),
+    LShift:     ('<<', 10),
+    RShift:     ('>>', 10),
+    BitOr:      ('|', 7),
+    BitAnd:     ('&', 9),
+    BitXor:     ('^', 8)
 }
 
 CMPOP_SYMBOLS = {
-    Eq:         '==',
-    Gt:         '>',
-    GtE:        '>=',
-    In:         'in',
-    Is:         'is',
-    IsNot:      'is not',
-    Lt:         '<',
-    LtE:        '<=',
-    NotEq:      '!=',
-    NotIn:      'not in'
+    Eq:         ('==', 6),
+    Gt:         ('>', 6),
+    GtE:        ('>=', 6),
+    In:         ('in', 6),
+    Is:         ('is', 6),
+    IsNot:      ('is not', 6),
+    Lt:         ('<', 6),
+    LtE:        ('<=', 6),
+    NotEq:      ('!=', 6),
+    NotIn:      ('not in', 6)
 }
 
 UNARYOP_SYMBOLS = {
-    Invert:     '~',
-    Not:        'not',
-    UAdd:       '+',
-    USub:       '-'
+    Invert:     ('~', 13),
+    Not:        ('not ', 5),
+    UAdd:       ('+', 13),
+    USub:       ('-', 13)
 }
 
 
@@ -118,6 +118,15 @@ class SourceGenerator(NodeVisitor):
         self.add_line_information = add_line_information
         self.indentation = 0
         self.new_lines = 0
+        self.precedence_stack = [0]
+
+    def prec_start(self, value):
+        rv = value < self.precedence_stack[-1]
+        self.precedence_stack.append(value)
+        return rv
+
+    def prec_end(self):
+        return self.precedence_stack.pop() < self.precedence_stack[-1]
 
     def write(self, x):
         if self.new_lines:
@@ -200,7 +209,7 @@ class SourceGenerator(NodeVisitor):
     def visit_AugAssign(self, node):
         self.newline(node)
         self.visit(node.target)
-        self.write(BINOP_SYMBOLS[type(node.op)] + '=')
+        self.write(BINOP_SYMBOLS[type(node.op)][0] + '=')
         self.visit(node.value)
 
     def visit_ImportFrom(self, node):
@@ -498,36 +507,44 @@ class SourceGenerator(NodeVisitor):
         self.write('}')
 
     def visit_BinOp(self, node):
-        self.write('(')
+        symbol, precedence = BINOP_SYMBOLS[type(node.op)]
+        if self.prec_start(precedence):
+            self.write('(')
         self.visit(node.left)
-        self.write(' %s ' % BINOP_SYMBOLS[type(node.op)])
+        self.write(' %s ' % symbol)
         self.visit(node.right)
-        self.write(')')
+        if self.prec_end():
+            self.write(')')
 
     def visit_BoolOp(self, node):
-        self.write('(')
+        symbol, precedence = BOOLOP_SYMBOLS[type(node.op)]
+        if self.prec_start(precedence):
+            self.write('(')
         for idx, value in enumerate(node.values):
             if idx:
-                self.write(' %s ' % BOOLOP_SYMBOLS[type(node.op)])
+                self.write(' %s ' % symbol)
             self.visit(value)
-        self.write(')')
+        if self.prec_end():
+            self.write(')')
 
     def visit_Compare(self, node):
-        self.write('(')
+        if self.prec_start(6):
+            self.write('(')
         self.visit(node.left)
         for op, right in zip(node.ops, node.comparators):
-            self.write(' %s ' % CMPOP_SYMBOLS[type(op)])
+            self.write(' %s ' % CMPOP_SYMBOLS[type(op)][0])
             self.visit(right)
-        self.write(')')
+        if self.prec_end():
+            self.write(')')
 
     def visit_UnaryOp(self, node):
-        self.write('(')
-        op = UNARYOP_SYMBOLS[type(node.op)]
-        self.write(op)
-        if op == 'not':
-            self.write(' ')
+        symbol, precedence = UNARYOP_SYMBOLS[type(node.op)]
+        if self.prec_start(precedence):
+            self.write('(')
+        self.write(symbol)
         self.visit(node.operand)
-        self.write(')')
+        if self.prec_end():
+            self.write(')')
 
     def visit_Subscript(self, node):
         self.visit(node.value)
@@ -557,10 +574,14 @@ class SourceGenerator(NodeVisitor):
         self.visit(node.value)
 
     def visit_Lambda(self, node):
+        if self.prec_start(1):
+            self.write('(')
         self.write('lambda ')
         self.signature(node.args)
         self.write(': ')
         self.visit(node.body)
+        if self.prec_end():
+            self.write(')')
 
     def visit_Ellipsis(self, node):
         self.write('Ellipsis')
@@ -588,11 +609,15 @@ class SourceGenerator(NodeVisitor):
         self.write('}')
 
     def visit_IfExp(self, node):
+        if self.prec_start(2):
+            self.write('(')
         self.visit(node.body)
         self.write(' if ')
         self.visit(node.test)
         self.write(' else ')
         self.visit(node.orelse)
+        if self.prec_end():
+            self.write(')')
 
     def visit_Starred(self, node):
         self.write('*')
