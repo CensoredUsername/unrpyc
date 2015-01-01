@@ -5,10 +5,10 @@ import sys
 sys.path.append("../decompiler")
 import codegen
 
-def minimize(code, obfuscate=False):
+def minimize(code, obfuscate_globals=False, obfuscate_builtins=False, obfuscate_imports=False):
     tree = ast.parse(code)
     tree = DocstringRemover().visit(tree)
-    tree = Crusher(obfuscate, obfuscate).visit(tree)
+    tree = Crusher(obfuscate_globals, obfuscate_builtins, obfuscate_imports).visit(tree)
     generator = DenseSourceGenerator(" ", False)
     generator.visit(tree)
     newcode = ''.join(generator.result)
@@ -23,13 +23,15 @@ class DocstringRemover(ast.NodeTransformer):
             return self.generic_visit(node)    
 
 class Crusher(ast.NodeTransformer):
-    def __init__(self, munge_globals=False, munge_builtins=False):
+    def __init__(self, munge_globals=False, munge_builtins=False, munge_imports=False):
         ast.NodeTransformer.__init__(self)
 
         # Don't munge builtins
         self.NOMUNGE_BUILTINS = not munge_builtins
         # Don't munge globals
         self.NOMUNGE_GLOBALS = not munge_globals
+        # Don't munge imports
+        self.NOMUNGE_IMPORTS = not munge_imports
 
         # Scope stack
         self.scopes = [{}]
@@ -112,7 +114,7 @@ class Crusher(ast.NodeTransformer):
     def register_import(self, alias, module=None):
         if self.scopes[-1] != ():
             if alias.asname is not None:
-                alias.asname = self.write_var(alias.asname)
+                alias.asname = self.write_var(alias.asname, self.NOMUNGE_IMPORTS)
             elif alias.name == "*":
                 # Dangerous.
                 __import__(module)
@@ -128,7 +130,7 @@ class Crusher(ast.NodeTransformer):
                 self.write_var(name, True)
             else:
                 name = alias.name.split(".", 1)[0]
-                newname = self.write_var(name)
+                newname = self.write_var(name, self.NOMUNGE_IMPORTS)
                 if newname != name and newname != alias.asname:
                     alias.asname = newname
 

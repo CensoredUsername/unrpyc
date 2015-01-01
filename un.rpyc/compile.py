@@ -56,12 +56,14 @@ def Module(name, filename):
     with open(filename, "rb" if p.PY2 else "r") as f:
         code = f.read()
     if args.minimize:
-        code = minimize.minimize(code, args.obfuscate)
+        # in modules only locals are worth optimizing
+        code = minimize.minimize(code, args.obfuscate, args.obfuscate, args.obfuscate)
     return p.Module(name, code, False)
 
 def Exec(code):
     if args.minimize:
-        code = minimize.minimize(code, args.obfuscate)
+        # In exec, we should always munge globals
+        code = minimize.minimize(code, True, args.obfuscate, args.obfuscate)
     return p.Exec(code)
 
 
