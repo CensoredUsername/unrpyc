@@ -23,11 +23,13 @@ class DocstringRemover(ast.NodeTransformer):
             return self.generic_visit(node)    
 
 class Crusher(ast.NodeTransformer):
-    def __init__(self, munge_imports=False, munge_builtins=False):
+    def __init__(self, munge_globals=False, munge_builtins=False):
         ast.NodeTransformer.__init__(self)
 
-        self.NOMUNGE_IMPORTS = not munge_imports
+        # Don't munge builtins
         self.NOMUNGE_BUILTINS = not munge_builtins
+        # Don't munge globals
+        self.NOMUNGE_GLOBALS = not munge_globals
 
         # Scope stack
         self.scopes = [{}]
@@ -38,6 +40,9 @@ class Crusher(ast.NodeTransformer):
         self.builtins = {}
         # List of all name nodes
         self.namenodes = []
+        # List of scope-bearing statements discovered in the
+        # current scope
+        self.subscopes = []
 
     # Local mangling logic
     def genvarname(self, on_max=False):
@@ -65,7 +70,7 @@ class Crusher(ast.NodeTransformer):
         elif self.scopes[-1] == ():
             # we're in a class
             return name
-        elif nomunge:
+        elif nomunge or (self.NOMUNGE_GLOBALS and len(self.scopes) == 1):
             self.scopes[-1][name] = name
             return name
         else:
@@ -107,7 +112,7 @@ class Crusher(ast.NodeTransformer):
     def register_import(self, alias, module=None):
         if self.scopes[-1] != ():
             if alias.asname is not None:
-                alias.asname = self.write_var(alias.asname, self.NOMUNGE_IMPORTS)
+                alias.asname = self.write_var(alias.asname)
             elif alias.name == "*":
                 # Dangerous.
                 __import__(module)
@@ -118,11 +123,14 @@ class Crusher(ast.NodeTransformer):
                     names = [name for name in mod.__dict__ if not name.startswith("_")]
                 for name in names:
                     self.write_var(name, True)
+            elif module == "__future__":
+                name = alias.name.split(".", 1)[0]
+                self.write_var(name, True)
             else:
                 name = alias.name.split(".", 1)[0]
-                name = self.write_var(name, self.NOMUNGE_IMPORTS)
-                if not self.NOMUNGE_IMPORTS and module != "__future__":
-                    alias.asname = name
+                newname = self.write_var(name)
+                if newname != name and newname != alias.asname:
+                    alias.asname = newname
 
     def visit_Import(self, node):
         for name in node.names:
@@ -134,13 +142,25 @@ class Crusher(ast.NodeTransformer):
             self.register_import(name, node.module)
         return self.generic_visit(node)
 
+    def visit_subscopes(self):
+        subscopes = self.subscopes
+        self.subscopes = []
+        for node in subscopes:
+            method = 'visit_' + node.__class__.__name__
+            visitor = getattr(self, method, self.generic_visit)
+            visitor(node, True) #subscope pass should only alter nodes
+
     def visit_Module(self, node):
         # Due to dynamic scoping, analyze all global class/module defs
         # Before doing the actual walking
-        for child in node.body:
-            if isinstance(child, (ast.ClassDef, ast.FunctionDef)):
-                self.write_var(child.name, True)
-        rv = self.generic_visit(node)
+        # for child in node.body:
+        #     if isinstance(child, (ast.ClassDef, ast.FunctionDef)):
+        #         self.write_var(child.name, True)
+        self.generic_visit(node)
+        # subscope pass
+        self.visit_subscopes()
+
+        # builtins processing
 
         if not self.NOMUNGE_BUILTINS:
             self.builtins = set(key for key, value in self.builtins.iteritems()
@@ -153,45 +173,60 @@ class Crusher(ast.NodeTransformer):
 
             extra_nodes = [ast.Assign([ast.Name(value, ast.Store())], ast.Name(key, ast.Load()))
                            for key, value in scope.iteritems()]
-            futures = [node for node in rv.body if
-                       isinstance(node, ast.ImportFrom) and node.module == "__future__"]
-            for node in futures:
-                rv.body.remove(node)
-            rv.body = futures + extra_nodes + rv.body
+            futures = [future for future in node.body if
+                       isinstance(future, ast.ImportFrom) and future.module == "__future__"]
+            for future in futures:
+                node.body.remove(future)
+            node.body = futures + extra_nodes + node.body
 
-        return rv
+        return node
 
-    def visit_ClassDef(self, node):
-        # add name to outer scope but don't munge it
-        self.write_var(node.name, True)
+    def visit_ClassDef(self, node, parse_subscope=False):
+        if parse_subscope:
+            # classes have a scope which should not be munged
+            self.scopes.append(())
+            self.varnames.append(0)
+            # First pass
+            self.generic_visit(node)
+            # Subscope pass
+            self.visit_subscopes()
+            self.scopes.pop()
+            self.varnames.pop()
+        else:
+            # add name to outer scope but don't munge it
+            self.write_var(node.name, True)
+            # set this node to be parsed later
+            self.subscopes.append(node)
+        return node
 
-        # classes have a scope which should not be munged
-        self.scopes.append(())
-        self.varnames.append(0)
-        rv = self.generic_visit(node)
-        self.scopes.pop()
-        self.varnames.pop()
-        return rv
-
-    def visit_FunctionDef(self, node):
-        # add name to outer scope but don't munge it
-        self.write_var(node.name, True)
-
-        # functions have a scope
-        self.scopes.append({})
-        self.varnames.append(0)
-        rv = self.generic_visit(node)
-        self.scopes.pop()
-        self.varnames.pop()
-        return rv
+    def visit_FunctionDef(self, node, parse_subscope=False):
+        if parse_subscope:
+            # functions have a scope
+            self.scopes.append({})
+            self.varnames.append(0)
+            # First pass
+            self.generic_visit(node)
+            # Subscope pass
+            self.visit_subscopes()
+            self.scopes.pop()
+            self.varnames.pop()
+        else:
+            # add name to outer scope but don't munge it
+            self.write_var(node.name, True)
+            # set this node to be parsed later
+            self.subscopes.append(node)
+        return node
 
     def visit_Global(self, node):
         # Global means don't munge name except with lowest scope
         for name in node.names:
             if name in self.scopes[0]:
                 self.scopes[-1][name] = self.scopes[0][name]
-            else:
+            else: # elif self.NOMUNGE_GLOBALS:
                 self.scopes[-1][name] = self.scopes[0][name] = name
+            # else:
+                # Annoying, can't determine correct varname to use for global here
+                # newname = genvarname()
         return node
 
     def visit_arguments(self, node):

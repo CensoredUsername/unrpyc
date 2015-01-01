@@ -60,7 +60,9 @@ def Module(name, filename):
     return p.Module(name, code, False)
 
 def Exec(code):
-    return p.Exec(minimize.minimize(code))
+    if args.minimize:
+        code = minimize.minimize(code, args.obfuscate)
+    return p.Exec(code)
 
 
 pack_folder = path.dirname(path.abspath(__file__))
