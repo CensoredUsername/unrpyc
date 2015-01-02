@@ -145,10 +145,10 @@ class SL2Decompiler(DecompilerBase):
     def print_python(self, ast):
         self.indent()
 
-        # Extract the source code from the slast.SLPython object. If it's one line
-        # print it as a $ statement, else, print it as a python block
+        # Extract the source code from the slast.SLPython object. If it starts with a
+        # newline, print it as a python block, else, print it as a $ statement
         code = ast.code.source
-        if "\n" in code:
+        if code[0] == "\n":
             self.write("python:")
             self.indent_level += 1
             for line in code.splitlines():
