@@ -480,6 +480,8 @@ class Decompiler(DecompilerBase):
         if ast.who is not None:
             self.write("%s " % ast.who)
         self.write('"%s"' % string_escape(ast.what))
+        if not ast.interact:
+            self.write(" nointeract")
         if ast.with_ is not None:
             self.write(" with %s" % ast.with_)
     dispatch[renpy.ast.Say] = print_say
