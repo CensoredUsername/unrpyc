@@ -73,21 +73,9 @@ class SL2Decompiler(DecompilerBase):
         self.indent_level += 1
 
         # Print any keywords
-        if ast.tag:
+        for key, value in ast.keyword:
             self.indent()
-            self.write("tag %s" % ast.tag)
-        if ast.zorder and ast.zorder != '0':
-            self.indent()
-            self.write("zorder %s" % ast.zorder)
-        if ast.modal:
-            self.indent()
-            self.write("modal %s" % ast.modal)
-        if ast.variant and ast.variant != "None":
-            self.indent()
-            self.write("variant %s" % ast.variant)
-        if ast.predict and ast.predict != "None":
-            self.indent()
-            self.write("predict %s" % ast.predict)
+            self.write("%s %s" % (key, value))
 
         # If we're decompiling screencode, print it. Else, insert a pass statement
         if self.decompile_screencode:
@@ -129,9 +117,6 @@ class SL2Decompiler(DecompilerBase):
         self.indent_level += 1
 
         for key, value in ast.keyword:
-            if ' ' in value:
-                value = '(%s)' % value
-
             self.indent()
             self.write("%s %s" % (key, value))
 
@@ -257,19 +242,15 @@ class SL2Decompiler(DecompilerBase):
         # This function prints the arguments and keyword arguments
         # Used in a displayable screen statement
         if args:
-            self.write(" " + " ".join(['(%s)' % i if ' ' in i else i for i in args]))
+            self.write(" " + " ".join(args))
 
         if multiline or (self.force_multiline_kwargs and kwargs):
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:
-                if ' ' in value:
-                    value = '(%s)' % value
                 self.indent()
                 self.write("%s %s" % (key, value))
             self.indent_level -= 1
         else:
             for key, value in kwargs:
-                if ' ' in value:
-                    value = '(%s)' % value
                 self.write(" %s %s" % (key, value))
