@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 
 import re
 
-from util import DecompilerBase, reconstruct_paraminfo
+from util import DecompilerBase, reconstruct_paraminfo, simple_expression_guard
 import codegen
 
 # Main API
@@ -78,13 +78,13 @@ class SLDecompiler(DecompilerBase):
             self.write("tag %s" % ast.tag)
         if ast.zorder and ast.zorder != '0':
             self.indent()
-            self.write("zorder %s" % ast.zorder)
+            self.write("zorder %s" % simple_expression_guard(ast.zorder))
         if ast.modal:
             self.indent()
-            self.write("modal %s" % ast.modal)
+            self.write("modal %s" % simple_expression_guard(ast.modal))
         if ast.variant and ast.variant != "None":
             self.indent()
-            self.write("variant %s" % ast.variant)
+            self.write("variant %s" % simple_expression_guard(ast.variant))
 
         if not self.decompile_python:
             self.indent()
@@ -151,7 +151,7 @@ class SLDecompiler(DecompilerBase):
 
     def print_arguments(self, args, kwargs, multiline=True):
         if args:
-            self.write(" " + " ".join(['(%s)' % i if ' ' in i else i for i in args]))
+            self.write(" " + " ".join([simple_expression_guard(i) for i in args]))
         kwargs = dict(kwargs)
 
         # remove renpy-internal kwargs
@@ -161,8 +161,7 @@ class SLDecompiler(DecompilerBase):
             del kwargs['scope']
 
         for key, value in kwargs.iteritems():
-            if ' ' in value:
-                kwargs[key] = '(%s)' % value
+            value = simple_expression_guard(value)
         if multiline or (self.force_multiline_kwargs and kwargs):
             self.write(":")
             self.indent_level += 1

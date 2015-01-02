@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import sys
+import re
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation = '    '):
@@ -123,3 +124,162 @@ def string_escape(s):
     s = s.replace('\n', '\\n')
     s = s.replace('\t', '\\t')
     return s
+
+# Note that the way or/and/not/in/is are parsed are completely broken
+# due to re.escape not escaping \b to \\b, instead to \\\x08
+# but since it's broken, we have to parse it broken too
+OPERATORS = ['or\b', 'and\b', 'not\b', 'in\b', 'is\b', 
+             '<', '<=', '>', '>=', '<>', '!=', '==',
+             '|', '^', '&', '<<', '>>', '+', '-',
+             '*', '/', '//', '%', '~', '**', ]
+# keywords used by ren'py's parser
+KEYWORDS = set(['$', 'as', 'at', 'behind', 'call', 'expression', 'hide',
+                'if', 'in', 'image', 'init', 'jump', 'menu', 'onlayer',
+                'python', 'return', 'scene', 'set', 'show', 'with',
+                'while', 'zorder', 'transform'])
+
+operator_regexp = "|".join(re.escape(i) for i in OPERATORS)
+
+word_regexp = ur'[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*'
+
+def simple_expression_guard(s):
+    # Some things we deal with are supposed to be parsed by 
+    # ren'py's Lexer.simple_expression but actually cannot
+    # be parsed by it. figure out if this is the case
+    # a slightly more naive approach woudl be to check
+    # for spaces in it and surround it with () if necessary
+    # but we're not naive
+    s = s.strip()
+
+    if Lexer(s).simple_expression():
+        return s
+    else:
+        return "(%s)" % s
+
+class Lexer(object):
+    # special lexer for simple_expressions the ren'py way
+    # false negatives aren't dangerous. but false positives are
+    def __init__(self, string):
+        self.pos = 0
+        self.length = len(string)
+        self.string = string
+
+    def re(self, regexp):
+        # see if regexp matches at self.string[self.pos].
+        # if it does, increment self.pos
+        if self.length == self.pos:
+            return None
+
+        match = re.compile(regexp, re.DOTALL).match(self.string, self.pos)
+        if not match:
+            return None
+        
+        self.pos = match.end()
+        return match.group(0)
+
+    def eol(self):
+        # eat the next whitespace and check for the end of this simple_expression
+        self.re(ur"(\s+|\\\n)+")
+        return self.pos >= self.length
+
+    def match(self, regexp):
+        # strip whitespace and match regexp
+        self.re(ur"(\s+|\\\n)+")
+        return self.re(regexp)
+
+    def python_string(self):
+        # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
+        return self.match(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+
+    def container(self):
+        # parses something enclosed by [], () or {}'s. keyword something
+        containers = {"{": "}", "[": "]", "(": ")"}
+        if self.eol():
+            return None
+
+        c = self.string[self.pos]
+        if c not in containers:
+            return None
+        self.pos += 1
+
+        c = containers[c]
+
+        while not self.eol():
+            if c == self.string[self.pos]:
+                self.pos += 1
+                return True
+
+            if self.python_string() or self.container():
+                continue
+
+            self.pos += 1
+
+        return None
+
+    def number(self):
+        # parses a number, float or int (but not forced long)
+        return self.match(r'(\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?')
+
+    def word(self):
+        # parses a word
+        return self.match(word_regexp)
+
+    def name(self):
+        # parses a word unless it's in KEYWORDS.
+        pos = self.pos
+        word = self.word()
+
+        if word in KEYWORDS:
+            self.pos = pos
+            return None
+
+        return word
+
+    def simple_expression(self):
+        # test if the start string was a simple expression
+        start = self.pos
+
+        while True:
+
+            # consume any amount of operators
+            while self.match(operator_regexp):
+                pass
+
+            # no end of line allowed after operators
+            if self.eol():
+                break
+
+            # parse anything which can be called or have attributes requested
+            if not(self.python_string() or
+                   self.number() or
+                   self.container() or
+                   self.name()):
+                break
+
+            while True:
+                # skip whitespace
+                if self.eol():
+                    break
+
+                # if the previous was followed by a dot, there should be a word after it
+                if self.match(r'\.'):
+                    if not self.word():
+                        # ren'py errors here. I just stop caring
+                        return False
+
+                    continue
+
+                # parses slices, function calls, and postfix {}
+                if self.container():
+                    continue
+
+                break
+
+            # if we're not followed by an operator, this is the end
+            if self.match(operator_regexp):
+                continue
+
+            break
+
+            # are we at the end of the simple expression?
+        return self.eol()
