@@ -443,7 +443,7 @@ class Decompiler(DecompilerBase):
             self.indent()
 
         code = ast.code.source
-        if '\n' in code or from_translate:
+        if code[0] == '\n' or from_translate:
             self.write("python")
             if early:
                 self.write(" early")
