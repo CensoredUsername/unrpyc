@@ -301,12 +301,8 @@ class Lexer(object):
                 self.re("[^\n]*")
                 continue
 
-            # This may otherwise consume whitespace
-            pos = self.pos
             if self.python_string(False):
                 continue
-            else:
-                self.pos = pos
 
             self.re(r'\w+| +|.') # consume a word, whitespace or one symbol
 
