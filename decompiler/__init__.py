@@ -452,6 +452,8 @@ class Decompiler(DecompilerBase):
 
         code = ast.code.source
         if code[0] == '\n' or from_translate:
+            if code[0] == '\n':
+                code = code[1:]
             self.write("python")
             if early:
                 self.write(" early")
