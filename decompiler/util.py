@@ -147,6 +147,9 @@ def simple_expression_guard(s):
     else:
         return "(%s)" % s
 
+def split_logical_lines(s):
+    return Lexer(s).split_logical_lines()
+
 class Lexer(object):
     # special lexer for simple_expressions the ren'py way
     # false negatives aren't dangerous. but false positives are
@@ -178,9 +181,13 @@ class Lexer(object):
         self.re(ur"(\s+|\\\n)+")
         return self.re(regexp)
 
-    def python_string(self):
+    def python_string(self, clear_whitespace=True):
         # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
-        return self.match(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+        if clear_whitespace:
+            return self.match(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+        else:
+            return self.re(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+
 
     def container(self):
         # parses something enclosed by [], () or {}'s. keyword something
@@ -259,3 +266,50 @@ class Lexer(object):
 
             # are we at the end of the simple expression?
         return self.eol()
+
+    def split_logical_lines(self):
+        # split a sequence in logical lines
+        # this behaves similarly to .splitlines() which will ignore
+        # a trailing \n
+        lines = []
+
+        contained = 0
+
+        startpos = self.pos
+
+        while self.pos < self.length:
+            c = self.string[self.pos]
+
+            if c == '\n' and not contained:
+                lines.append(self.string[startpos:self.pos])
+                # the '\n' is not included in the emitted line
+                self.pos += 1
+                startpos = self.pos
+                continue
+
+            if c in ('(', '[', '{'):
+                contained += 1
+                self.pos += 1
+                continue
+
+            if c in (')', ']', '}') and contained:
+                contained -= 1
+                self.pos += 1
+                continue
+
+            if c == '#':
+                self.re("[^\n]*")
+                continue
+
+            # This may otherwise consume whitespace
+            pos = self.pos
+            if self.python_string(False):
+                continue
+            else:
+                self.pos = pos
+
+            self.re(r'\w+| +|.') # consume a word, whitespace or one symbol
+
+        if self.pos != startpos:
+            lines.append(self.string[startpos:])
+        return lines

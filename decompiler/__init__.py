@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 from __future__ import unicode_literals
-from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, string_escape
+from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
 
 import magic
 magic.fake_package(b"renpy")
@@ -462,7 +462,7 @@ class Decompiler(DecompilerBase):
             self.write(":")
 
             self.indent_level += 1
-            for line in code.splitlines():
+            for line in split_logical_lines(code):
                 self.indent()
                 self.write(line)
             self.indent_level -= 1

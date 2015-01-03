@@ -21,7 +21,7 @@
 from __future__ import unicode_literals
 import sys
 
-from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo
+from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, split_logical_lines
 
 from renpy import ui, sl2
 from renpy.text import text
@@ -156,7 +156,7 @@ class SL2Decompiler(DecompilerBase):
             code = code[1:]
             self.write("python:")
             self.indent_level += 1
-            for line in code.splitlines():
+            for line in split_logical_lines(code):
                 self.indent()
                 self.write(line)
             self.indent_level -= 1
