@@ -153,6 +153,7 @@ class SL2Decompiler(DecompilerBase):
         # newline, print it as a python block, else, print it as a $ statement
         code = ast.code.source
         if code[0] == "\n":
+            code = code[1:]
             self.write("python:")
             self.indent_level += 1
             for line in code.splitlines():
