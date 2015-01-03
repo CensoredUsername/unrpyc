@@ -73,16 +73,16 @@ class SLDecompiler(DecompilerBase):
         self.indent_level += 1
 
         # Print any keywords
-        if ast.tag:
+        if isinstance(ast.tag, unicode):
             self.indent()
             self.write("tag %s" % ast.tag)
-        if ast.zorder and ast.zorder != '0':
+        if isinstance(ast.zorder, unicode):
             self.indent()
             self.write("zorder %s" % simple_expression_guard(ast.zorder))
-        if ast.modal:
+        if isinstance(ast.modal, unicode):
             self.indent()
             self.write("modal %s" % simple_expression_guard(ast.modal))
-        if ast.variant and ast.variant != "None":
+        if isinstance(ast.variant, unicode):
             self.indent()
             self.write("variant %s" % simple_expression_guard(ast.variant))
 
