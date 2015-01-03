@@ -161,7 +161,7 @@ class SLDecompiler(DecompilerBase):
             del kwargs['scope']
 
         for key, value in kwargs.iteritems():
-            value = simple_expression_guard(value)
+            kwargs[key] = simple_expression_guard(value)
         if multiline or (self.force_multiline_kwargs and kwargs):
             self.write(":")
             self.indent_level += 1

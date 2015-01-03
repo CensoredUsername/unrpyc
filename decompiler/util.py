@@ -125,20 +125,11 @@ def string_escape(s):
     s = s.replace('\t', '\\t')
     return s
 
-# Note that the way or/and/not/in/is are parsed are completely broken
-# due to re.escape not escaping \b to \\b, instead to \\\x08
-# but since it's broken, we have to parse it broken too
-OPERATORS = ['or\b', 'and\b', 'not\b', 'in\b', 'is\b', 
-             '<', '<=', '>', '>=', '<>', '!=', '==',
-             '|', '^', '&', '<<', '>>', '+', '-',
-             '*', '/', '//', '%', '~', '**', ]
 # keywords used by ren'py's parser
 KEYWORDS = set(['$', 'as', 'at', 'behind', 'call', 'expression', 'hide',
                 'if', 'in', 'image', 'init', 'jump', 'menu', 'onlayer',
                 'python', 'return', 'scene', 'set', 'show', 'with',
                 'while', 'zorder', 'transform'])
-
-operator_regexp = "|".join(re.escape(i) for i in OPERATORS)
 
 word_regexp = ur'[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*'
 
@@ -218,7 +209,7 @@ class Lexer(object):
 
     def number(self):
         # parses a number, float or int (but not forced long)
-        return self.match(r'(\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?')
+        return self.match(r'(\+|\-)?(\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?')
 
     def word(self):
         # parses a word
@@ -239,44 +230,29 @@ class Lexer(object):
         # test if the start string was a simple expression
         start = self.pos
 
-        while True:
+        # check if there's anything in here acctually
+        if self.eol():
+            return False
 
-            # consume any amount of operators
-            while self.match(operator_regexp):
-                pass
+        # parse anything which can be called or have attributes requested
+        if not(self.python_string() or
+               self.number() or
+               self.container() or
+               self.name()):
+            return False
 
-            # no end of line allowed after operators
-            if self.eol():
-                break
+        while not self.eol():
 
-            # parse anything which can be called or have attributes requested
-            if not(self.python_string() or
-                   self.number() or
-                   self.container() or
-                   self.name()):
-                break
+            # if the previous was followed by a dot, there should be a word after it
+            if self.match(r'\.'):
+                if not self.name():
+                    # ren'py errors here. I just stop caring
+                    return False
 
-            while True:
-                # skip whitespace
-                if self.eol():
-                    break
+                continue
 
-                # if the previous was followed by a dot, there should be a word after it
-                if self.match(r'\.'):
-                    if not self.word():
-                        # ren'py errors here. I just stop caring
-                        return False
-
-                    continue
-
-                # parses slices, function calls, and postfix {}
-                if self.container():
-                    continue
-
-                break
-
-            # if we're not followed by an operator, this is the end
-            if self.match(operator_regexp):
+            # parses slices, function calls, and postfix {}
+            if self.container():
                 continue
 
             break
