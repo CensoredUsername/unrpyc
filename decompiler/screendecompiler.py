@@ -73,7 +73,7 @@ class SLDecompiler(DecompilerBase):
         self.indent_level += 1
 
         # Print any keywords
-        if isinstance(ast.tag, unicode):
+        if ast.tag:
             self.indent()
             self.write("tag %s" % ast.tag)
         if isinstance(ast.zorder, unicode):
