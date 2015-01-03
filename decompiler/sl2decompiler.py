@@ -199,6 +199,7 @@ class SL2Decompiler(DecompilerBase):
         self.write(name)
         self.print_arguments(ast.positional, ast.keyword, False)
     dispatch[(behavior.OnEvent, None)]          = (print_nochild, "on")
+    dispatch[(behavior.OnEvent, 0)]             = (print_nochild, "on")
     dispatch[(behavior.MouseArea, 0)]           = (print_nochild, "mousearea")
     dispatch[(sld.sl2add, None)]                = (print_nochild, "add")
     dispatch[(ui._hotbar, "hotbar")]            = (print_nochild, "hotbar")
