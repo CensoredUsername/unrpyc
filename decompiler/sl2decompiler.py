@@ -77,6 +77,10 @@ class SL2Decompiler(DecompilerBase):
             self.indent()
             self.write("%s %s" % (key, value))
 
+        if ast.tag:
+            self.indent()
+            self.write("tag %s" % ast.tag)
+
         # If we're decompiling screencode, print it. Else, insert a pass statement
         if self.decompile_screencode:
             self.print_nodes(ast.children)
