@@ -390,14 +390,22 @@ class Decompiler(DecompilerBase):
         # Define has a default priority of 0, screen of -500 and image of 990
         if len(ast.block) == 1 and (
             (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
-            (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define, renpy.ast.Transform, renpy.ast.Style))) or
+            (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
+                                                             renpy.ast.Transform,
+                                                             renpy.ast.Style))) or
             (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))):
             # If they fulfil this criteria we just print the contained statement
             self.print_node(ast.block[0])
 
-        # translatestring statements are split apart and put in an init block. 
-        elif ast.priority == 0 and all(isinstance(i, renpy.ast.TranslateString) for i in ast.block):
-            self.print_nodes(ast.block)
+        # translatestring statements are split apart and put in an init block.
+        # TODO: more general solution to things split over multiple statements.
+        # Some way to check the previous and next node in the current body maybe.
+        elif (len(ast.block) > 0 and
+                ast.priority == 0 and
+                all(isinstance(i, renpy.ast.TranslateString) for i in ast.block)):
+            self.print_translatestring(ast.block[0])
+            for i in ast.block[1:]:
+                self.print_translatestring(i, chained=True)
 
         else:
             self.indent()
@@ -535,9 +543,10 @@ class Decompiler(DecompilerBase):
         pass
     dispatch[renpy.ast.EndTranslate] = print_endtranslate
 
-    def print_translatestring(self, ast):
-        self.indent()
-        self.write("translate %s strings:" % ast.language or "None")
+    def print_translatestring(self, ast, chained=False):
+        if not chained:
+            self.indent()
+            self.write("translate %s strings:" % ast.language or "None")
         self.indent_level += 1
 
         self.indent()
