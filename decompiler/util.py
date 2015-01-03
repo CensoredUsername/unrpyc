@@ -106,7 +106,7 @@ def reconstruct_arginfo(arginfo):
     for (name, val) in arginfo.arguments:
         rv.append(sep())
         if name is not None:
-            rv.append("%s = " % name)
+            rv.append("%s=" % name)
         rv.append(val)
     if arginfo.extrapos:
         rv.append(sep())
