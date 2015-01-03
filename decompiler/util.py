@@ -280,7 +280,7 @@ class Lexer(object):
         while self.pos < self.length:
             c = self.string[self.pos]
 
-            if c == '\n' and not contained:
+            if c == '\n' and not contained and (not self.pos or self.string[self.pos - 1] != '\\'):
                 lines.append(self.string[startpos:self.pos])
                 # the '\n' is not included in the emitted line
                 self.pos += 1
