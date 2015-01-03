@@ -152,25 +152,21 @@ class SLDecompiler(DecompilerBase):
     def print_arguments(self, args, kwargs, multiline=True):
         if args:
             self.write(" " + " ".join([simple_expression_guard(i) for i in args]))
-        kwargs = dict(kwargs)
 
         # remove renpy-internal kwargs
-        if 'id' in kwargs and kwargs['id'].startswith('_'):
-            del kwargs['id']
-        if 'scope' in kwargs and kwargs['scope'] == '_scope':
-            del kwargs['scope']
+        kwargs = [(key, simple_expression_guard(value)) for key, value in kwargs if not
+                  (key == 'id' and value.startswith("_") or
+                   key == 'scope' and value == '_scope')]
 
-        for key, value in kwargs.iteritems():
-            kwargs[key] = simple_expression_guard(value)
         if multiline or (self.force_multiline_kwargs and kwargs):
             self.write(":")
             self.indent_level += 1
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs:
                 self.indent()
                 self.write("%s %s" % (key, value))
             self.indent_level -= 1
         else:
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs:
                 self.write(" %s %s" % (key, value))
 
     def print_condition(self, statement, line):
@@ -289,8 +285,8 @@ class SLDecompiler(DecompilerBase):
         # It would technically be possible for this to be a python statement, but the odds of this are very small.
         # renpy itself will insert some kwargs, we'll delete those and then parse the command here.
         args, kwargs, exargs, exkwargs = self.parse_args(code.strip())
-        del kwargs['_scope']
-        del kwargs['_name']
+        kwargs = [(key, value) for key, value in kwargs if not 
+                  (key == '_scope' or key == '_name')]
 
         self.indent()
         name = args.pop(0)[2:-1]
@@ -300,7 +296,7 @@ class SLDecompiler(DecompilerBase):
         if args or kwargs or exargs or exkwargs:
             self.write("(")
             arglist.extend(args)
-            arglist.extend("%s=%s" % i for i in kwargs.iteritems())
+            arglist.extend("%s=%s" % i for i in kwargs)
             if exargs:
                 arglist.append("*%s" % exargs)
             if exkwargs:
@@ -310,7 +306,7 @@ class SLDecompiler(DecompilerBase):
     dispatch['renpy.use_screen'] = print_use
 
     def print_default(self, header, code):
-        args, kwargs, _, _ = self.parse_args(code.strip())
+        args, _, _, _ = self.parse_args(code.strip())
         key = args[0].split("'", 1)[1].rsplit("'", 1)[0]
         value = args[1]
         self.indent()
@@ -448,14 +444,14 @@ class SLDecompiler(DecompilerBase):
 
         # Parse the arguments
         args = []
-        kwargs = {}
+        kwargs = []
         exargs = None
         exkwargs = None
         for argument in arguments:
             # varname = python_expression
             if re.match('^[a-zA-Z0-9_]+ *=[^=]', argument):
                 name, value = argument.split('=', 1)
-                kwargs[name.strip()] = value.strip()
+                kwargs.append((name.strip(), value.strip()))
             elif argument.startswith("**"):
                 exkwargs = argument[2:]
             elif argument.startswith("*"):
