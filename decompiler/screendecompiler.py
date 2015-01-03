@@ -21,6 +21,7 @@
 from __future__ import unicode_literals
 
 import re
+from collections import OrderedDict
 
 from util import DecompilerBase, reconstruct_paraminfo, simple_expression_guard
 import codegen
@@ -152,7 +153,6 @@ class SLDecompiler(DecompilerBase):
     def print_arguments(self, args, kwargs, multiline=True):
         if args:
             self.write(" " + " ".join([simple_expression_guard(i) for i in args]))
-        kwargs = dict(kwargs)
 
         # remove renpy-internal kwargs
         if 'id' in kwargs and kwargs['id'].startswith('_'):
@@ -448,7 +448,7 @@ class SLDecompiler(DecompilerBase):
 
         # Parse the arguments
         args = []
-        kwargs = {}
+        kwargs = OrderedDict()
         exargs = None
         exkwargs = None
         for argument in arguments:
