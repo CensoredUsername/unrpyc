@@ -14,12 +14,13 @@ class DecompilerBase(object):
         self.block_stack = []
         self.index_stack = []
 
-    def dump(self, ast, indent_level=0, linenumber=1):
+    def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         """
         Write the decompiled representation of `ast` into the opened file given in the constructor
         """
         self.indent_level = indent_level
         self.linenumber = linenumber
+        self.skip_indent_until_write = skip_indent_until_write
         if not isinstance(ast, (tuple, list)):
             ast = [ast]
         self.print_nodes(ast)

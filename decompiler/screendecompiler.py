@@ -29,11 +29,13 @@ import codegen
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
            force_multiline_kwargs=True, decompile_python=True,
-           decompile_screencode=True):
+           decompile_screencode=True, comparable=False,
+           skip_indent_until_write=False):
     return SLDecompiler(out_file,
                  force_multiline_kwargs=force_multiline_kwargs, 
                  decompile_python=decompile_python,
-                 decompile_screencode=decompile_screencode).dump(ast, indent_level, linenumber)
+                 decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                     ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
 
@@ -47,15 +49,16 @@ class SLDecompiler(DecompilerBase):
     dispatch = {}
 
     def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_python=True,
-                 decompile_screencode=True, indentation="    "):
-        super(SLDecompiler, self).__init__(out_file, indentation)
+                 decompile_screencode=True, comparable=False, indentation="    "):
+        super(SLDecompiler, self).__init__(out_file, indentation, comparable)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
 
-    def dump(self, ast, indent_level=0, linenumber=1):
+    def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         self.indent_level = indent_level
         self.linenumber = linenumber
+        self.skip_indent_until_write = skip_indent_until_write
         self.print_screen(ast)
         return self.linenumber
 

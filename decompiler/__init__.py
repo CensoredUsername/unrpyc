@@ -65,12 +65,10 @@ class Decompiler(DecompilerBase):
         self.say_inside_menu = None
 
     def dump(self, ast, indent_level=0):
-        if self.comparable:
-            # Avoid an initial blank line, since we don't write the "Decompiled by" banner
-            self.skip_indent_until_write = True
-        else:
+        if not self.comparable:
             self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc")
-        super(Decompiler, self).dump(ast, indent_level)
+        # Avoid an initial blank line if we don't write out the above banner
+        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=self.comparable)
         self.write("\n") # end file with a newline
 
     def print_node(self, ast):
@@ -593,12 +591,14 @@ class Decompiler(DecompilerBase):
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber, self.force_multiline_kwargs,
-                                    self.decompile_python, self.decompile_screencode)
+                                    self.decompile_python, self.decompile_screencode,
+                                    self.comparable, self.skip_indent_until_write)
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber, self.force_multiline_kwargs,
-                                    self.decompile_screencode)
+                                    self.decompile_screencode, self.comparable,
+                                    self.skip_indent_until_write)
         else:
             self.print_unknown(screen)
     dispatch[renpy.ast.Screen] = print_screen

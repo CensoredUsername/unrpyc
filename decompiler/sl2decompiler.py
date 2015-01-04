@@ -31,10 +31,12 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           force_multiline_kwargs=True, decompile_screencode=True):
+           force_multiline_kwargs=True, decompile_screencode=True,
+           comparable=False, skip_indent_until_write=False):
     return SL2Decompiler(out_file,
                   force_multiline_kwargs=force_multiline_kwargs,
-                  decompile_screencode=decompile_screencode).dump(ast, indent_level, linenumber)
+                  decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
 
@@ -49,8 +51,8 @@ class SL2Decompiler(DecompilerBase):
 
     displayable_names = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    '):
-        super(SL2Decompiler, self).__init__(out_file, indentation)
+    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    ', comparable=False):
+        super(SL2Decompiler, self).__init__(out_file, indentation, comparable)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
 
