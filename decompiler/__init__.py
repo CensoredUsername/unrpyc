@@ -62,6 +62,7 @@ class Decompiler(DecompilerBase):
         self.decompile_python = decompile_python
 
         self.paired_with = False
+        self.say_inside_menu = None
 
     def dump(self, ast, indent_level=0):
         if self.comparable:
@@ -422,6 +423,10 @@ class Decompiler(DecompilerBase):
         self.write("menu:")
         self.indent_level += 1
 
+        if self.say_inside_menu is not None:
+            self.print_say(self.say_inside_menu, inmenu=True)
+            self.say_inside_menu = None
+
         if ast.with_ is not None:
             self.indent()
             self.write("with %s" % ast.with_)
@@ -488,12 +493,23 @@ class Decompiler(DecompilerBase):
 
     # Specials
 
-    def print_say(self, ast):
+    def print_say(self, ast, inmenu=False):
+        if (not ast.interact and not inmenu and ast.who is not None and
+	    ast.with_ is None and ast.attributes is None and
+	    self.index + 1 < len(self.block) and
+	    isinstance(self.block[self.index + 1], renpy.ast.Menu) and
+	    self.block[self.index + 1].items[1][2] is not None and (
+                not hasattr(ast, 'linenumber') or
+                not hasattr(self.block[self.index + 1], 'linenumber') or
+                ast.linenumber >= self.block[self.index + 1].linenumber
+            )):
+            self.say_inside_menu = ast
+            return
         self.indent()
         if ast.who is not None:
             self.write("%s " % ast.who)
         self.write('"%s"' % string_escape(ast.what))
-        if not ast.interact:
+        if not ast.interact and not inmenu:
             self.write(" nointeract")
         if ast.with_ is not None:
             self.write(" with %s" % ast.with_)
