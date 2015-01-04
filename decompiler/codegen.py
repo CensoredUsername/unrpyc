@@ -230,6 +230,17 @@ class SourceGenerator(NodeVisitor):
             self.visit(item)
             self.newline(node)
 
+    def visit_Exec(self, node):
+        self.newline(node)
+        self.write("exec ")
+        self.visit(node.body)
+        if node.globals:
+            self.write(" in ")
+            self.visit(node.globals)
+        if node.locals:
+            self.write(", ")
+            self.visit(node.locals)
+
     def visit_Expr(self, node):
         self.newline(node)
         self.generic_visit(node)
