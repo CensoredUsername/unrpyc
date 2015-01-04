@@ -67,11 +67,14 @@ class Decompiler(DecompilerBase):
         self.after_call = False
 
     def dump(self, ast, indent_level=0):
-        self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc") 
+        if not self.comparable:
+            self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc")
         super(Decompiler, self).dump(ast, indent_level)
         self.write("\n") # end file with a newline
 
     def print_node(self, ast):
+        if hasattr(ast, 'linenumber'):
+            self.advance_to_line(ast.linenumber)
         func = self.dispatch.get(type(ast), None)
         if func:
             func(self, ast)
@@ -553,6 +556,8 @@ class Decompiler(DecompilerBase):
         if not chained:
             self.indent()
             self.write("translate %s strings:" % ast.language or "None")
+        if hasattr(ast, 'linenumber'):
+            self.advance_to_line(ast.linenumber)
         self.indent_level += 1
 
         self.indent()

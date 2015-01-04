@@ -108,7 +108,7 @@ class AstDumper(object):
             return True
         elif key == 'name':
             return type(getattr(ast, key)) != tuple
-        elif key == 'linenumber' or key == 'loc' or key == 'serial' or key == 'filename' or key == 'location':
+        elif key == 'loc' or key == 'serial' or key == 'filename' or key == 'location':
             return False
         else:
             return True

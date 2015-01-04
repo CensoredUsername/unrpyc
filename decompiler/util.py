@@ -28,6 +28,14 @@ class DecompilerBase(object):
         self.linenumber += string.count('\n')
         self.out_file.write(string)
 
+    def should_advance_to_line(self, linenumber):
+        return self.comparable and self.linenumber < linenumber - 1
+
+    def advance_to_line(self, linenumber):
+        if self.should_advance_to_line(linenumber):
+            # Stop one line short, since the call to indent() will advance the last line.
+            self.write("\n" * (linenumber - self.linenumber - 1))
+
     def indent(self):
         """
         Shorthand method for pushing a newline and indenting to the proper indent level
