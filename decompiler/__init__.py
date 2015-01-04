@@ -380,6 +380,10 @@ class Decompiler(DecompilerBase):
             self.write("pass")
     dispatch[renpy.ast.Pass] = print_pass
 
+    def should_come_before(self, first, second):
+        return (self.comparable and hasattr(first, 'linenumber') and
+            hasattr(second, 'linenumber') and first.linenumber < second.linenumber)
+
     def print_init(self, ast):
         # A bunch of statements can have implicit init blocks
         # Define has a default priority of 0, screen of -500 and image of 990
@@ -389,9 +393,7 @@ class Decompiler(DecompilerBase):
                                                              renpy.ast.Transform,
                                                              renpy.ast.Style))) or
             (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
-            hasattr(ast, 'linenumber') and
-            hasattr(ast.block[0], 'linenumber') and
-            ast.linenumber < ast.block[0].linenumber):
+            self.should_come_before(ast, ast.block[0])):
             # If they fulfil this criteria we just print the contained statement
             self.print_nodes(ast.block)
 
@@ -495,14 +497,11 @@ class Decompiler(DecompilerBase):
 
     def print_say(self, ast, inmenu=False):
         if (not ast.interact and not inmenu and ast.who is not None and
-	    ast.with_ is None and ast.attributes is None and
-	    self.index + 1 < len(self.block) and
-	    isinstance(self.block[self.index + 1], renpy.ast.Menu) and
-	    self.block[self.index + 1].items[1][2] is not None and (
-                not hasattr(ast, 'linenumber') or
-                not hasattr(self.block[self.index + 1], 'linenumber') or
-                ast.linenumber >= self.block[self.index + 1].linenumber
-            )):
+            ast.with_ is None and ast.attributes is None and
+            self.index + 1 < len(self.block) and
+            isinstance(self.block[self.index + 1], renpy.ast.Menu) and
+            self.block[self.index + 1].items[1][2] is not None and
+            not self.should_come_before(ast, self.block[self.index + 1])):
             self.say_inside_menu = ast
             return
         self.indent()
