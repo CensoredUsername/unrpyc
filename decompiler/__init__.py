@@ -73,7 +73,9 @@ class Decompiler(DecompilerBase):
         self.write("\n") # end file with a newline
 
     def print_node(self, ast):
-        if hasattr(ast, 'linenumber'):
+        # We special-case line advancement for TranslateString in its print
+        # method, so don't advance lines for it here.
+        if hasattr(ast, 'linenumber') and not isinstance(ast, renpy.ast.TranslateString):
             self.advance_to_line(ast.linenumber)
         func = self.dispatch.get(type(ast), None)
         if func:
@@ -395,7 +397,8 @@ class Decompiler(DecompilerBase):
         # translatestring statements are split apart and put in an init block.
         elif (len(ast.block) > 0 and
                 ast.priority == 0 and
-                all(isinstance(i, renpy.ast.TranslateString) for i in ast.block)):
+                all(isinstance(i, renpy.ast.TranslateString) for i in ast.block) and
+                all(i.language == ast.block[0].language for i in ast.block[1:])):
             self.print_nodes(ast.block)
 
         else:
@@ -553,6 +556,8 @@ class Decompiler(DecompilerBase):
             self.indent()
             self.write("translate %s strings:" % ast.language or "None")
 
+        # TranslateString's linenumber refers to the line with "old", not to the
+        # line with "translate %s strings:"
         if hasattr(ast, 'linenumber'):
             self.advance_to_line(ast.linenumber)
         self.indent_level += 1
