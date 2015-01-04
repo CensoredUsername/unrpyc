@@ -25,10 +25,10 @@ import inspect
 import codegen
 import ast as py_ast
 
-def pprint(out_file, ast, decompile_python=True):
+def pprint(out_file, ast, decompile_python=True, comparable=False):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable).dump(ast)
 
 class AstDumper(object):
     """
@@ -40,10 +40,11 @@ class AstDumper(object):
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=True,  
-                 indentation=u'    '):
+                 comparable=False, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
+        self.comparable = comparable
 
     def dump(self, ast):
         self.indent = 0
@@ -100,6 +101,18 @@ class AstDumper(object):
         self.ind(-1, ast)
         self.p('}')
 
+    def should_print_key(self, ast, key):
+        if key.startswith('_') or not hasattr(ast, key) or inspect.isroutine(getattr(ast, key)):
+            return False
+        elif not self.comparable:
+            return True
+        elif key == 'name':
+            return type(getattr(ast, key)) != tuple
+        elif key == 'linenumber' or key == 'loc' or key == 'serial' or key == 'filename' or key == 'location':
+            return False
+        else:
+            return True
+
     def print_object(self, ast):
         # handles the printing of anything unknown which inherts from object.
         # prints the values of relevant attributes in a dictionary-like way
@@ -114,7 +127,7 @@ class AstDumper(object):
                 self.p('>')
                 return
 
-        keys = list(i for i in dir(ast) if not i.startswith('_') and hasattr(ast, i) and not inspect.isroutine(getattr(ast, i)))
+        keys = list(i for i in dir(ast) if self.should_print_key(ast, i))
         if keys:
             self.p(' ')
         self.ind(1, keys)
