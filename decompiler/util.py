@@ -9,16 +9,20 @@ class DecompilerBase(object):
         self.comparable = comparable
         self.skip_indent_until_write = False
 
+        self.linenumber = 0
+
+        self.block_stack = []
+        self.index_stack = []
+
     def dump(self, ast, indent_level=0, linenumber=1):
         """
         Write the decompiled representation of `ast` into the opened file given in the constructor
         """
         self.indent_level = indent_level
         self.linenumber = linenumber
-        if isinstance(ast, (tuple, list)):
-            self.print_nodes(ast)
-        else:
-            self.print_node(ast)
+        if not isinstance(ast, (tuple, list)):
+            ast = [ast]
+        self.print_nodes(ast)
         return self.linenumber
 
     def write(self, string):
@@ -53,9 +57,32 @@ class DecompilerBase(object):
         # This node is a list of nodes
         # Print every node
         self.indent_level += extra_indent
-        for node in ast:
+        
+        self.block_stack.append(ast)
+        self.index_stack.append(0)
+
+        for i, node in enumerate(ast):
+            self.index_stack[-1] = i
             self.print_node(node)
+
+        self.block_stack.pop()
+        self.index_stack.pop()
+
         self.indent_level -= extra_indent
+
+    @property    
+    def block(self):
+        return self.block_stack[-1]
+
+    @property
+    def index(self):
+        return self.index_stack[-1]
+
+    @property
+    def parent(self):
+        if len(self.block_stack) < 2:
+            return None
+        return self.block_stack[-2][self.index_stack[-2]]
 
     def print_unknown(self, ast):
         # If we encounter a placeholder note, print a warning and insert a placeholder

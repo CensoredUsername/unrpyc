@@ -61,10 +61,7 @@ class Decompiler(DecompilerBase):
         self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
 
-        self.paired_with = None
-        self.with_consumed = True
-
-        self.after_call = False
+        self.paired_with = False
 
     def dump(self, ast, indent_level=0):
         if self.comparable:
@@ -253,11 +250,8 @@ class Decompiler(DecompilerBase):
         self.print_imspec(ast.imspec)
 
         if self.paired_with:
-            if self.with_consumed:
-                raise Exception("Attempted to consume with {} twice".format(
-                                repr(self.paired_with)))
             self.write(" with %s" % self.paired_with)
-            self.with_consumed = True
+            self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
@@ -276,11 +270,8 @@ class Decompiler(DecompilerBase):
             self.print_imspec(ast.imspec)
 
         if self.paired_with:
-            if self.with_consumed:
-                raise Exception("Attempted to consume with {} twice".format(
-                                repr(self.paired_with)))
             self.write(" with %s" % self.paired_with)
-            self.with_consumed = True
+            self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
@@ -298,32 +289,29 @@ class Decompiler(DecompilerBase):
         # and with node afterwards are part of a postfix
         # with statement. detect this and process it properly
         if hasattr(ast, "paired") and ast.paired is not None:
-            self.paired_with = ast.paired
-            self.with_consumed = False
-
-        elif self.paired_with:
-            # Sanity check. check if the previous paired with matches this with
-            if self.paired_with != ast.expr:
+            # Sanity check. check if there's a matching with statement two nodes further
+            if not(isinstance(self.block[self.index + 2], renpy.ast.With) and 
+                   self.block[self.index + 2].expr == ast.paired):
                 raise Exception("Unmatched paired with {0} != {1}".format(
                                 repr(self.paired_with), repr(ast.expr)))
 
-            if not self.with_consumed:
-                # No show/scene statement consumed the with yet.
-                self.write(" with %s" % self.paired_with)
-                self.with_consumed = True
+            self.paired_with = ast.paired
 
-            self.paired_with = None
-
+        elif self.paired_with:
+            # Check if it was consumed by a show/scene statement
+            if self.paired_with is not True:
+                self.write(" with %s" % ast.expr)
+            self.paired_with = False
         else:
             self.indent()
             self.write("with %s" % ast.expr)
+            self.paired_with = False
     dispatch[renpy.ast.With] = print_with
 
     # Flow control
 
     def print_label(self, ast):
-        if self.after_call:
-            self.after_call = False
+        if self.index and isinstance(self.block[self.index - 1], renpy.ast.Call):
             self.write(" from %s" % ast.name)
         else:
             self.indent()
@@ -352,8 +340,6 @@ class Decompiler(DecompilerBase):
             if ast.expression:
                 self.write(" pass ")
             self.write(reconstruct_arginfo(ast.arguments))
-
-        self.after_call = True
     dispatch[renpy.ast.Call] = print_call
 
     def print_return(self, ast):
@@ -385,9 +371,8 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.While] = print_while
 
     def print_pass(self, ast):
-        if self.after_call:
-            self.after_call = False
-        else:
+        if not(self.index and 
+               isinstance(self.block[self.index - 1], renpy.ast.Call)):
             self.indent()
             self.write("pass")
     dispatch[renpy.ast.Pass] = print_pass
@@ -405,17 +390,13 @@ class Decompiler(DecompilerBase):
             hasattr(ast.block[0], 'linenumber') and
             ast.linenumber < ast.block[0].linenumber):
             # If they fulfil this criteria we just print the contained statement
-            self.print_node(ast.block[0])
+            self.print_nodes(ast.block)
 
         # translatestring statements are split apart and put in an init block.
-        # TODO: more general solution to things split over multiple statements.
-        # Some way to check the previous and next node in the current body maybe.
         elif (len(ast.block) > 0 and
                 ast.priority == 0 and
                 all(isinstance(i, renpy.ast.TranslateString) for i in ast.block)):
-            self.print_translatestring(ast.block[0])
-            for i in ast.block[1:]:
-                self.print_translatestring(i, chained=True)
+            self.print_nodes(ast.block)
 
         else:
             self.indent()
@@ -426,7 +407,7 @@ class Decompiler(DecompilerBase):
             if len(ast.block) == 1 and not (hasattr(ast.block[0], 'linenumber') and self.should_advance_to_line(ast.block[0].linenumber)):
                 self.write(" ")
                 self.skip_indent_until_write = True
-                self.print_node(ast.block[0])
+                self.print_nodes(ast.block)
             else:
                 self.write(":")
                 self.print_nodes(ast.block, 1)
@@ -463,7 +444,9 @@ class Decompiler(DecompilerBase):
 
     # Programming related functions
 
-    def print_python(self, ast, early=False, from_translate=False):
+    def print_python(self, ast, early=False):
+        from_translate = (self.index == 0 and 
+            isinstance(self.parent, renpy.ast.TranslateBlock))
         if not from_translate:
             self.indent()
 
@@ -518,9 +501,9 @@ class Decompiler(DecompilerBase):
         self.write(ast.line)
     dispatch[renpy.ast.UserStatement] = print_userstatement
 
-    def print_style(self, ast, from_translate=False):
-        if not from_translate:
-            self.indent()
+    def print_style(self, ast):
+        from_translate = (self.index == 0 and 
+            isinstance(self.parent, renpy.ast.TranslateBlock))
 
         self.write("style %s:" % ast.style_name)
         self.indent_level += 1
@@ -562,10 +545,14 @@ class Decompiler(DecompilerBase):
         pass
     dispatch[renpy.ast.EndTranslate] = print_endtranslate
 
-    def print_translatestring(self, ast, chained=False):
-        if not chained:
+    def print_translatestring(self, ast):
+        # Was the last node a translatestrings node?
+        if not(self.index and
+               isinstance(self.block[self.index - 1], renpy.ast.TranslateString) and
+               self.block[self.index - 1].language == ast.language):
             self.indent()
             self.write("translate %s strings:" % ast.language or "None")
+
         if hasattr(ast, 'linenumber'):
             self.advance_to_line(ast.linenumber)
         self.indent_level += 1
@@ -581,17 +568,8 @@ class Decompiler(DecompilerBase):
     def print_translateblock(self, ast):
         self.indent()
         self.write("translate %s " % (ast.language or "None"))
-        
-        content = ast.block[0]
-        if isinstance(content, renpy.ast.Python):
-            self.print_python(content, from_translate = True)
-        elif isinstance(content, renpy.ast.Style):
-            self.print_style(content, from_translate = True)
-        else:
-            self.print_node(content)
 
-        if len(ast.block) != 1:
-            self.print_nodes(ast.block[1:])
+        self.print_nodes(ast.block)
     dispatch[renpy.ast.TranslateBlock] = print_translateblock
 
     # Screens
