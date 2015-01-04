@@ -381,8 +381,7 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.Pass] = print_pass
 
     def should_come_before(self, first, second):
-        return (self.comparable and hasattr(first, 'linenumber') and
-            hasattr(second, 'linenumber') and first.linenumber < second.linenumber)
+        return self.comparable and first.linenumber < second.linenumber
 
     def print_init(self, ast):
         # A bunch of statements can have implicit init blocks
@@ -410,7 +409,7 @@ class Decompiler(DecompilerBase):
             if ast.priority:
                 self.write(" %d" % ast.priority)
 
-            if len(ast.block) == 1 and not (hasattr(ast.block[0], 'linenumber') and self.should_advance_to_line(ast.block[0].linenumber)):
+            if len(ast.block) == 1 and not self.should_advance_to_line(ast.block[0].linenumber):
                 self.write(" ")
                 self.skip_indent_until_write = True
                 self.print_nodes(ast.block)
@@ -567,8 +566,7 @@ class Decompiler(DecompilerBase):
 
         # TranslateString's linenumber refers to the line with "old", not to the
         # line with "translate %s strings:"
-        if hasattr(ast, 'linenumber'):
-            self.advance_to_line(ast.linenumber)
+        self.advance_to_line(ast.linenumber)
         self.indent_level += 1
 
         self.indent()
