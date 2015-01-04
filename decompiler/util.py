@@ -3,9 +3,10 @@ import sys
 import re
 
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation = '    '):
+    def __init__(self, out_file=None, indentation='    ', comparable=False):
         self.out_file = out_file or sys.stdout
         self.indentation = indentation
+        self.comparable = comparable
 
     def dump(self, ast, indent_level=0):
         """

@@ -56,11 +56,10 @@ class Decompiler(DecompilerBase):
 
     def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True,
                  decompile_python=True, indentation = '    ', comparable=False):
-        super(Decompiler, self).__init__(out_file, indentation)
+        super(Decompiler, self).__init__(out_file, indentation, comparable)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
-        self.comparable = comparable
 
         self.paired_with = None
         self.with_consumed = True
