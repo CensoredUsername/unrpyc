@@ -36,11 +36,12 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 
 def pprint(out_file, ast, indent_level=0,
            force_multiline_kwargs=True, decompile_screencode=True,
-           decompile_python=True):
+           decompile_python=True, comparable=False):
     Decompiler(out_file,
                force_multiline_kwargs=force_multiline_kwargs,
                decompile_screencode=decompile_screencode,
-               decompile_python=decompile_python).dump(ast, indent_level)
+               decompile_python=decompile_python,
+               comparable=comparable).dump(ast, indent_level)
 
 # Implementation
 
@@ -54,11 +55,12 @@ class Decompiler(DecompilerBase):
     dispatch = {}
 
     def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True,
-                 decompile_python=True, indentation = '    '):
+                 decompile_python=True, indentation = '    ', comparable=False):
         super(Decompiler, self).__init__(out_file, indentation)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
+        self.comparable = comparable
 
         self.paired_with = None
         self.with_consumed = True
