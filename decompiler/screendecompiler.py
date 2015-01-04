@@ -158,7 +158,7 @@ class SLDecompiler(DecompilerBase):
                   (key == 'id' and value.startswith("_") or
                    key == 'scope' and value == '_scope')]
 
-        if multiline or (self.force_multiline_kwargs and kwargs):
+        if self.force_multiline_kwargs and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:
@@ -168,6 +168,8 @@ class SLDecompiler(DecompilerBase):
         else:
             for key, value in kwargs:
                 self.write(" %s %s" % (key, value))
+            if multiline:
+                self.write(":")
 
     def print_condition(self, statement, line):
         # This handles parsing of for and if statement conditionals.

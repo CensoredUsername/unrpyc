@@ -235,7 +235,7 @@ class SL2Decompiler(DecompilerBase):
         if args:
             self.write(" " + " ".join(args))
 
-        if multiline or (self.force_multiline_kwargs and kwargs):
+        if self.force_multiline_kwargs and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:
@@ -245,3 +245,5 @@ class SL2Decompiler(DecompilerBase):
         else:
             for key, value in kwargs:
                 self.write(" %s %s" % (key, value))
+            if multiline:
+                self.write(":")
