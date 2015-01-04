@@ -584,13 +584,14 @@ class Decompiler(DecompilerBase):
     def print_screen(self, ast):
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
-            screendecompiler.pprint(self.out_file, screen, self.indent_level,
-                                    self.force_multiline_kwargs, self.decompile_python,
-                                    self.decompile_screencode)
+            self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
+                                    self.linenumber, self.force_multiline_kwargs,
+                                    self.decompile_python, self.decompile_screencode)
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
-            sl2decompiler.pprint(self.out_file, screen, self.indent_level,
-                                 self.force_multiline_kwargs, self.decompile_screencode)
+            self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
+                                    self.linenumber, self.force_multiline_kwargs,
+                                    self.decompile_screencode)
         else:
             self.print_unknown(screen)
     dispatch[renpy.ast.Screen] = print_screen

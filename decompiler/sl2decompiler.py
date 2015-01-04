@@ -30,11 +30,11 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
+def pprint(out_file, ast, indent_level=0, linenumber=1,
            force_multiline_kwargs=True, decompile_screencode=True):
-    SL2Decompiler(out_file,
+    return SL2Decompiler(out_file,
                   force_multiline_kwargs=force_multiline_kwargs,
-                  decompile_screencode=decompile_screencode).dump(ast, indent_level)
+                  decompile_screencode=decompile_screencode).dump(ast, indent_level, linenumber)
 
 # Implementation
 

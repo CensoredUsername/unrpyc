@@ -27,13 +27,13 @@ import codegen
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
+def pprint(out_file, ast, indent_level=0, linenumber=1,
            force_multiline_kwargs=True, decompile_python=True,
            decompile_screencode=True):
-    SLDecompiler(out_file,
+    return SLDecompiler(out_file,
                  force_multiline_kwargs=force_multiline_kwargs, 
                  decompile_python=decompile_python,
-                 decompile_screencode=decompile_screencode).dump(ast, indent_level)
+                 decompile_screencode=decompile_screencode).dump(ast, indent_level, linenumber)
 
 # implementation
 
@@ -53,9 +53,11 @@ class SLDecompiler(DecompilerBase):
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
 
-    def dump(self, ast, indent_level=0):
+    def dump(self, ast, indent_level=0, linenumber=1):
         self.indent_level = indent_level
+        self.linenumber = linenumber
         self.print_screen(ast)
+        return self.linenumber
 
     # Entry point functions
 

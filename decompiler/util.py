@@ -8,21 +8,25 @@ class DecompilerBase(object):
         self.indentation = indentation
         self.comparable = comparable
 
-    def dump(self, ast, indent_level=0):
+    def dump(self, ast, indent_level=0, linenumber=1):
         """
         Write the decompiled representation of `ast` into the opened file given in the constructor
         """
         self.indent_level = indent_level
+        self.linenumber = linenumber
         if isinstance(ast, (tuple, list)):
             self.print_nodes(ast)
         else:
             self.print_node(ast)
+        return self.linenumber
 
     def write(self, string):
         """
         Shorthand method for writing `string` to the file
         """
-        self.out_file.write(unicode(string))
+        string = unicode(string)
+        self.linenumber += string.count('\n')
+        self.out_file.write(string)
 
     def indent(self):
         """
