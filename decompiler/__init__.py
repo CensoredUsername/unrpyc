@@ -496,7 +496,7 @@ class Decompiler(DecompilerBase):
             self.index + 1 < len(self.block)):
             next_block = self.block[self.index + 1]
             if (isinstance(next_block, renpy.ast.Menu) and
-                next_block.items[1][2] is not None and
+                next_block.items[0][2] is not None and
                 not self.should_come_before(ast, next_block)):
                 self.say_inside_menu = ast
                 return
