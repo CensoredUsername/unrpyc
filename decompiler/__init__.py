@@ -455,10 +455,7 @@ class Decompiler(DecompilerBase):
     # Programming related functions
 
     def print_python(self, ast, early=False):
-        from_translate = (self.index == 0 and 
-            isinstance(self.parent, renpy.ast.TranslateBlock))
-        if not from_translate:
-            self.indent()
+        self.indent()
 
         code = ast.code.source
         if code[0] == '\n' or from_translate:
@@ -520,9 +517,7 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.UserStatement] = print_userstatement
 
     def print_style(self, ast):
-        from_translate = (self.index == 0 and 
-            isinstance(self.parent, renpy.ast.TranslateBlock))
-
+        self.indent()
         self.write("style %s:" % ast.style_name)
         self.indent_level += 1
 
@@ -589,6 +584,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("translate %s " % (ast.language or "None"))
 
+        self.skip_indent_until_write = True
         self.print_nodes(ast.block)
     dispatch[renpy.ast.TranslateBlock] = print_translateblock
 
