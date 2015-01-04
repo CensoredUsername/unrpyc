@@ -395,7 +395,10 @@ class Decompiler(DecompilerBase):
             (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
                                                              renpy.ast.Transform,
                                                              renpy.ast.Style))) or
-            (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))):
+            (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
+            hasattr(ast, 'linenumber') and
+            hasattr(ast.block[0], 'linenumber') and
+            ast.linenumber < ast.block[0].linenumber):
             # If they fulfil this criteria we just print the contained statement
             self.print_node(ast.block[0])
 
