@@ -493,12 +493,13 @@ class Decompiler(DecompilerBase):
     def print_say(self, ast, inmenu=False):
         if (not ast.interact and not inmenu and ast.who is not None and
             ast.with_ is None and ast.attributes is None and
-            self.index + 1 < len(self.block) and
-            isinstance(self.block[self.index + 1], renpy.ast.Menu) and
-            self.block[self.index + 1].items[1][2] is not None and
-            not self.should_come_before(ast, self.block[self.index + 1])):
-            self.say_inside_menu = ast
-            return
+            self.index + 1 < len(self.block)):
+            next_block = self.block[self.index + 1]
+            if (isinstance(next_block, renpy.ast.Menu) and
+                next_block.items[1][2] is not None and
+                not self.should_come_before(ast, next_block)):
+                self.say_inside_menu = ast
+                return
         self.indent()
         if ast.who is not None:
             self.write("%s " % ast.who)
