@@ -67,7 +67,10 @@ class Decompiler(DecompilerBase):
         self.after_call = False
 
     def dump(self, ast, indent_level=0):
-        if not self.comparable:
+        if self.comparable:
+            # Avoid an initial blank line, since we don't write the "Decompiled by" banner
+            self.skip_indent_until_write = True
+        else:
             self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc")
         super(Decompiler, self).dump(ast, indent_level)
         self.write("\n") # end file with a newline
@@ -419,8 +422,15 @@ class Decompiler(DecompilerBase):
             self.write("init")
             if ast.priority:
                 self.write(" %d" % ast.priority)
-            self.write(":")
-            self.print_nodes(ast.block, 1)
+
+            if len(ast.block) == 1 and not (hasattr(ast.block[0], 'linenumber') and self.should_advance_to_line(ast.block[0].linenumber)):
+                self.write(" ")
+                self.skip_indent_until_write = True
+                self.print_node(ast.block[0])
+            else:
+                self.write(":")
+                self.print_nodes(ast.block, 1)
+
     dispatch[renpy.ast.Init] = print_init
 
     def print_menu(self, ast):

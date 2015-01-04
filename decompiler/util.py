@@ -7,6 +7,7 @@ class DecompilerBase(object):
         self.out_file = out_file or sys.stdout
         self.indentation = indentation
         self.comparable = comparable
+        self.skip_indent_until_write = False
 
     def dump(self, ast, indent_level=0, linenumber=1):
         """
@@ -26,21 +27,27 @@ class DecompilerBase(object):
         """
         string = unicode(string)
         self.linenumber += string.count('\n')
+        self.skip_indent_until_write = False
         self.out_file.write(string)
 
     def should_advance_to_line(self, linenumber):
-        return self.comparable and self.linenumber < linenumber - 1
+        return self.comparable and self.linenumber < linenumber
 
     def advance_to_line(self, linenumber):
         if self.should_advance_to_line(linenumber):
             # Stop one line short, since the call to indent() will advance the last line.
+            # Note that if self.linenumber == linenumber - 1, this will write the empty string.
+            # This is to make sure that skip_indent_until_write is cleared in that case.
             self.write("\n" * (linenumber - self.linenumber - 1))
 
     def indent(self):
         """
         Shorthand method for pushing a newline and indenting to the proper indent level
+        Setting skip_indent_until_write causes calls to this method to be ignored until something
+        calls the write method
         """
-        self.write('\n' + self.indentation * self.indent_level)
+        if not self.skip_indent_until_write:
+            self.write('\n' + self.indentation * self.indent_level)
 
     def print_nodes(self, ast, extra_indent=0):
         # This node is a list of nodes
