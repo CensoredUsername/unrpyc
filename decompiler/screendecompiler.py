@@ -321,62 +321,45 @@ class SLDecompiler(DecompilerBase):
         self.print_arguments(args, kwargs)
     dispatch['ui.hotspot_with_child'] = print_hotspot
 
-    def print_nochild(self, header, code):
-        line = code.split('\n', 1)[0]
+    def print_ui(self, header, code):
+        split = code.split('\n', 1)
+        line = split[0]
+        block = split[1] if len(split) == 2 else ""
         name = line.split('ui.', 1)[1].split('(', 1)[0]
         self.indent()
         self.write(name)
         args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs, False)
-    dispatch['ui.add']          = print_nochild
-    dispatch['ui.imagebutton']  = print_nochild
-    dispatch['ui.input']        = print_nochild
-    dispatch['ui.key']          = print_nochild
-    dispatch['ui.label']        = print_nochild
-    dispatch['ui.text']         = print_nochild
-    dispatch['ui.null']         = print_nochild
-    dispatch['ui.mousearea']    = print_nochild
-    dispatch['ui.textbutton']   = print_nochild
-    dispatch['ui.timer']        = print_nochild
-    dispatch['ui.bar']          = print_nochild
-    dispatch['ui.vbar']         = print_nochild
-    dispatch['ui.hotbar']       = print_nochild
-
-    def print_onechild(self, header, code):
-        line, block = code.split('\n', 1)
-        name = line.split('ui.', 1)[1].split('(', 1)[0]
-        self.indent()
-        self.write(name)
-        args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs)
-
         split = block.split('\n', 1)
-        if len(split) == 2 and "ui.child_or_fixed()" in split[0]:
-            self.print_nodes(split[1], 1)
-        else:
-            self.print_nodes(block, 1)
-    dispatch['ui.button']       = print_onechild
-    dispatch['ui.frame']        = print_onechild
-    dispatch['ui.transform']    = print_onechild
-    dispatch['ui.viewport']     = print_onechild
-    dispatch['ui.window']       = print_onechild
-    dispatch['ui.drag']         = print_onechild
-
-    def print_manychildren(self, header, code):
-        line, block = code.split('\n', 1)
-        name = line.split('ui.', 1)[1].split('(', 1)[0]
-        self.indent()
-        self.write(name)
-        args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs)
+        if "ui.child_or_fixed()" in split[0]:
+            block = split[1] if len(split) == 2 else ""
+        self.print_arguments(args, kwargs, block)
         self.print_nodes(block, 1)
-    dispatch['ui.fixed']        = print_manychildren
-    dispatch['ui.grid']         = print_manychildren
-    dispatch['ui.hbox']         = print_manychildren
-    dispatch['ui.side']         = print_manychildren
-    dispatch['ui.vbox']         = print_manychildren
-    dispatch['ui.imagemap']     = print_manychildren
-    dispatch['ui.draggroup']    = print_manychildren
+    dispatch['ui.add']          = print_ui
+    dispatch['ui.imagebutton']  = print_ui
+    dispatch['ui.input']        = print_ui
+    dispatch['ui.key']          = print_ui
+    dispatch['ui.label']        = print_ui
+    dispatch['ui.text']         = print_ui
+    dispatch['ui.null']         = print_ui
+    dispatch['ui.mousearea']    = print_ui
+    dispatch['ui.textbutton']   = print_ui
+    dispatch['ui.timer']        = print_ui
+    dispatch['ui.bar']          = print_ui
+    dispatch['ui.vbar']         = print_ui
+    dispatch['ui.hotbar']       = print_ui
+    dispatch['ui.button']       = print_ui
+    dispatch['ui.frame']        = print_ui
+    dispatch['ui.transform']    = print_ui
+    dispatch['ui.viewport']     = print_ui
+    dispatch['ui.window']       = print_ui
+    dispatch['ui.drag']         = print_ui
+    dispatch['ui.fixed']        = print_ui
+    dispatch['ui.grid']         = print_ui
+    dispatch['ui.hbox']         = print_ui
+    dispatch['ui.side']         = print_ui
+    dispatch['ui.vbox']         = print_ui
+    dispatch['ui.imagemap']     = print_ui
+    dispatch['ui.draggroup']    = print_ui
 
     # Parsing functions
 
