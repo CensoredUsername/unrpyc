@@ -47,6 +47,8 @@ class SL2Decompiler(DecompilerBase):
     # what method to call for which slast class
     dispatch = {}
 
+    displayable_names = {}
+
     def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    '):
         super(SL2Decompiler, self).__init__(out_file, indentation)
         self.force_multiline_kwargs = force_multiline_kwargs
@@ -186,63 +188,46 @@ class SL2Decompiler(DecompilerBase):
         # slast.SLDisplayable represents a variety of statements. We can figure out
         # what statement it represents by analyzing the called displayable and style 
         # attributes.
-        func, name = self.dispatch.get((ast.displayable, ast.style), (None, None))
-        if func is None:
+        name = self.displayable_names.get((ast.displayable, ast.style))
+        if name is None:
             self.print_unknown(ast)
         else:
-            func(self, ast, name)
+            self.indent()
+            self.write(name)
+            self.print_arguments(ast.positional, ast.keyword, ast.children)
+            self.print_nodes(ast.children, 1)
     dispatch[sl2.slast.SLDisplayable] = print_displayable
 
-    def print_nochild(self, ast, name):
-        # Print a displayable which does not take any children
-        self.indent()
-        self.write(name)
-        self.print_arguments(ast.positional, ast.keyword, False)
-    dispatch[(behavior.OnEvent, None)]          = (print_nochild, "on")
-    dispatch[(behavior.OnEvent, 0)]             = (print_nochild, "on")
-    dispatch[(behavior.MouseArea, 0)]           = (print_nochild, "mousearea")
-    dispatch[(sld.sl2add, None)]                = (print_nochild, "add")
-    dispatch[(ui._hotbar, "hotbar")]            = (print_nochild, "hotbar")
-    dispatch[(sld.sl2vbar, None)]               = (print_nochild, "vbar")
-    dispatch[(sld.sl2bar, None)]                = (print_nochild, "bar")
-    dispatch[(ui._label, "label")]              = (print_nochild, "label")
-    dispatch[(ui._textbutton, 0)]               = (print_nochild, "textbutton")
-    dispatch[(ui._imagebutton, "image_button")] = (print_nochild, "imagebutton")
-    dispatch[(im.image, "default")]             = (print_nochild, "image")
-    dispatch[(behavior.Input, "input")]         = (print_nochild, "input")
-    dispatch[(behavior.Timer, "default")]       = (print_nochild, "timer")
-    dispatch[(ui._key, None)]                   = (print_nochild, "key")
-    dispatch[(text.Text, "text")]               = (print_nochild, "text")
-    dispatch[(layout.Null, "default")]          = (print_nochild, "null")
-
-    def print_onechild(self, ast, name):
-        # Print a displayable which takes one child
-        # For now this does not have any differences from many children
-        self.indent()
-        self.write(name)
-        self.print_arguments(ast.positional, ast.keyword)
-        self.print_nodes(ast.children, 1)
-    dispatch[(dragdrop.Drag, None)]             = (print_onechild, "drag")
-    dispatch[(motion.Transform, "transform")]   = (print_onechild, "transform")
-    dispatch[(ui._hotspot, "hotspot")]          = (print_onechild, "hotspot")
-    dispatch[(sld.sl2viewport, "viewport")]     = (print_onechild, "viewport")
-    dispatch[(behavior.Button, "button")]       = (print_onechild, "button")
-    dispatch[(layout.Window, "frame")]          = (print_onechild, "frame")
-    dispatch[(layout.Window, "window")]         = (print_onechild, "window")
-
-    def print_manychildren(self, ast, name):
-        # Print a displayable which takes many children
-        self.indent()
-        self.write(name)
-        self.print_arguments(ast.positional, ast.keyword)
-        self.print_nodes(ast.children, 1)
-    dispatch[(dragdrop.DragGroup, None)]        = (print_manychildren, "draggroup")
-    dispatch[(ui._imagemap, "imagemap")]        = (print_manychildren, "imagemap")
-    dispatch[(layout.Side, "side")]             = (print_manychildren, "side")
-    dispatch[(layout.Grid, "grid")]             = (print_manychildren, "grid")
-    dispatch[(layout.MultiBox, "fixed")]        = (print_manychildren, "fixed")
-    dispatch[(layout.MultiBox, "vbox")]         = (print_manychildren, "vbox")
-    dispatch[(layout.MultiBox, "hbox")]         = (print_manychildren, "hbox")
+    displayable_names[(behavior.OnEvent, None)]          = "on"
+    displayable_names[(behavior.OnEvent, 0)]             = "on"
+    displayable_names[(behavior.MouseArea, 0)]           = "mousearea"
+    displayable_names[(sld.sl2add, None)]                = "add"
+    displayable_names[(ui._hotbar, "hotbar")]            = "hotbar"
+    displayable_names[(sld.sl2vbar, None)]               = "vbar"
+    displayable_names[(sld.sl2bar, None)]                = "bar"
+    displayable_names[(ui._label, "label")]              = "label"
+    displayable_names[(ui._textbutton, 0)]               = "textbutton"
+    displayable_names[(ui._imagebutton, "image_button")] = "imagebutton"
+    displayable_names[(im.image, "default")]             = "image"
+    displayable_names[(behavior.Input, "input")]         = "input"
+    displayable_names[(behavior.Timer, "default")]       = "timer"
+    displayable_names[(ui._key, None)]                   = "key"
+    displayable_names[(text.Text, "text")]               = "text"
+    displayable_names[(layout.Null, "default")]          = "null"
+    displayable_names[(dragdrop.Drag, None)]             = "drag"
+    displayable_names[(motion.Transform, "transform")]   = "transform"
+    displayable_names[(ui._hotspot, "hotspot")]          = "hotspot"
+    displayable_names[(sld.sl2viewport, "viewport")]     = "viewport"
+    displayable_names[(behavior.Button, "button")]       = "button"
+    displayable_names[(layout.Window, "frame")]          = "frame"
+    displayable_names[(layout.Window, "window")]         = "window"
+    displayable_names[(dragdrop.DragGroup, None)]        = "draggroup"
+    displayable_names[(ui._imagemap, "imagemap")]        = "imagemap"
+    displayable_names[(layout.Side, "side")]             = "side"
+    displayable_names[(layout.Grid, "grid")]             = "grid"
+    displayable_names[(layout.MultiBox, "fixed")]        = "fixed"
+    displayable_names[(layout.MultiBox, "vbox")]         = "vbox"
+    displayable_names[(layout.MultiBox, "hbox")]         = "hbox"
 
     def print_arguments(self, args, kwargs, multiline=True):
         # This function prints the arguments and keyword arguments
