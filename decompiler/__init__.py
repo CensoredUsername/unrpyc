@@ -94,11 +94,14 @@ class Decompiler(DecompilerBase):
     def print_atl(self, ast):
         self.advance_to_line(ast.loc[1])
         self.indent_level += 1
-        if not ast.statements:
+        if ast.statements:
+            self.print_nodes(ast.statements)
+        # If a statement ends with a colon but has no block after it, loc will
+        # get set to ('', 0). That isn't supposed to be valid syntax, but it's
+        # the only thing that can generate that.
+        elif not self.comparable or ast.loc != ('', 0):
             self.indent()
             self.write("pass")
-        else:
-            self.print_nodes(ast.statements)
         self.indent_level -= 1
 
     def print_atl_rawmulti(self, ast):
