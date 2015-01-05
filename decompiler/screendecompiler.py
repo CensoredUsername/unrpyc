@@ -74,14 +74,36 @@ class SLDecompiler(DecompilerBase):
         # If we have parameters, print them.
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        if isinstance(ast.zorder, unicode):
-            self.write(" zorder %s" % simple_expression_guard(ast.zorder))
-        if isinstance(ast.modal, unicode):
-            self.write(" modal %s" % simple_expression_guard(ast.modal))
-        if isinstance(ast.variant, unicode):
-            self.write(" variant %s" % simple_expression_guard(ast.variant))
+
+        # If zorder, modal, or variant appear on the same line as the screen
+        # statement, and they're not immediately before the colon, the space
+        # after them will end up in the AST. We can't just write them all
+        # their own lines, or we might use more lines than the original code.
+        # We need to carefully choose where to place each of the parameters.
+        with_space = []
+        without_space = []
+        for key in ('zorder', 'modal', 'variant'):
+            value = getattr(ast, key)
+            # Non-Unicode strings are default values rather than user-supplied
+            # values, so we don't need to write them out.
+            if isinstance(value, unicode):
+                guarded_value = simple_expression_guard(value)
+                if value[-1] != " " or guarded_value != value.strip():
+                    without_space.append((key, guarded_value))
+                else:
+                    with_space.append((key, value[:-1]))
+        for i in with_space:
+            self.write(" %s %s" % i)
+        if without_space:
+            self.write(" %s %s" % without_space[0])
+            without_space.pop(0)
+        elif with_space:
+            self.write(" ")
         self.write(":")
         self.indent_level += 1
+        for i in without_space:
+            self.indent()
+            self.write("%s %s" % i)
 
         # Print any keywords
         if ast.tag:
