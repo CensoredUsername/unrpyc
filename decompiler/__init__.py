@@ -459,7 +459,7 @@ class Decompiler(DecompilerBase):
 
         code = ast.code.source
         if code[0] == '\n' or self.force_python_block:
-            if code[0] == '\n':
+            if not self.force_python_block:
                 code = code[1:]
             self.write("python")
             if early:
