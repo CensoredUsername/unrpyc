@@ -124,7 +124,7 @@ class SL2Decompiler(DecompilerBase):
         # this is the reason if doesn't keep a list of children but special Blocks
         self.indent_level += 1
 
-        if self.force_multiline_kwargs:
+        if self.force_multiline_kwargs and not self.comparable:
             for key, value in ast.keyword:
                 self.indent()
                 self.write("%s %s" % (key, value))
@@ -241,7 +241,7 @@ class SL2Decompiler(DecompilerBase):
         if args:
             self.write(" " + " ".join(args))
 
-        if self.force_multiline_kwargs and kwargs:
+        if self.force_multiline_kwargs and not self.comparable and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:

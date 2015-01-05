@@ -103,7 +103,8 @@ def main():
     parser.add_argument('--comparable', dest='comparable', action='store_true',
                         help="Modify the output to make comparing ast dumps easier. "
                         "When decompiling, this causes extra lines to be used to make line numbers match. "
-                        "When dumping the ast, this omits properties such as file paths and modification times.")
+                        "When dumping the ast, this omits properties such as file paths and modification times. "
+                        "This implies --single-line-screen-kwargs")
 
     parser.add_argument('file', type=str, nargs='+', 
                         help="The filenames to decompile")

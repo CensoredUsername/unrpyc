@@ -160,7 +160,7 @@ class SLDecompiler(DecompilerBase):
                   (key == 'id' and value.startswith("_") or
                    key == 'scope' and value == '_scope')]
 
-        if self.force_multiline_kwargs and kwargs:
+        if self.force_multiline_kwargs and not self.comparable and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:
