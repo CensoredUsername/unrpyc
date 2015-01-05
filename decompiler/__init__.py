@@ -76,6 +76,8 @@ class Decompiler(DecompilerBase):
         # method, so don't advance lines for it here.
         if hasattr(ast, 'linenumber') and not isinstance(ast, renpy.ast.TranslateString):
             self.advance_to_line(ast.linenumber)
+        elif hasattr(ast, 'loc'):
+            self.advance_to_line(ast.loc[1])
         func = self.dispatch.get(type(ast), None)
         if func:
             func(self, ast)
@@ -90,6 +92,7 @@ class Decompiler(DecompilerBase):
     #      multiple of the same block are immediately after
     #      each other.
     def print_atl(self, ast):
+        self.advance_to_line(ast.loc[1])
         self.indent_level += 1
         if not ast.statements:
             self.indent()
@@ -173,7 +176,12 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.atl.RawFunction] = print_atl_rawfunction
 
     def print_atl_rawon(self, ast):
-        for name, block in ast.handlers.iteritems():
+        if self.comparable:
+            # Make sure we iterate over the events in order of original appearance
+            events_to_iterate = sorted(ast.handlers.items(), key=lambda i: i[1].loc[1])
+        else:
+            events_to_iterate = ast.handlers.iteritems()
+        for name, block in events_to_iterate:
             self.indent()
             self.write("on %s:" % name)
             self.print_atl(block)
