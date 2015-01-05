@@ -41,47 +41,6 @@
 
 from ast import *
 
-BOOLOP_SYMBOLS = {
-    And:        ('and', 4),
-    Or:         ('or', 3)
-}
-
-BINOP_SYMBOLS = {
-    Add:        ('+', 11),
-    Sub:        ('-', 11),
-    Mult:       ('*', 12),
-    Div:        ('/', 12),
-    FloorDiv:   ('//', 12),
-    Mod:        ('%', 12),
-    Pow:        ('**', 14),
-    LShift:     ('<<', 10),
-    RShift:     ('>>', 10),
-    BitOr:      ('|', 7),
-    BitAnd:     ('&', 9),
-    BitXor:     ('^', 8)
-}
-
-CMPOP_SYMBOLS = {
-    Eq:         ('==', 6),
-    Gt:         ('>', 6),
-    GtE:        ('>=', 6),
-    In:         ('in', 6),
-    Is:         ('is', 6),
-    IsNot:      ('is not', 6),
-    Lt:         ('<', 6),
-    LtE:        ('<=', 6),
-    NotEq:      ('!=', 6),
-    NotIn:      ('not in', 6)
-}
-
-UNARYOP_SYMBOLS = {
-    Invert:     ('~', 13),
-    Not:        ('not ', 5),
-    UAdd:       ('+', 13),
-    USub:       ('-', 13)
-}
-
-
 def to_source(node, indent_with=' ' * 4, add_line_information=False):
     """This function can convert a node tree back into python sourcecode.
     This is useful for debugging purposes, especially if you're dealing with
@@ -103,7 +62,7 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False):
     generator = SourceGenerator(indent_with, add_line_information)
     generator.visit(node)
 
-    return ''.join(generator.result)
+    return SourceGenerator(indent_with, add_line_information).process(node)
 
 
 class SourceGenerator(NodeVisitor):
@@ -111,6 +70,50 @@ class SourceGenerator(NodeVisitor):
     sourcecode.  For more details have a look at the docstring of the
     `node_to_source` function.
     """
+
+    COMMA = ', '
+    COLON = ': '
+    ASSIGN = ' = '
+
+    BOOLOP_SYMBOLS = {
+        And:        (' and ', 4),
+        Or:         (' or ',  3)
+    }
+
+    BINOP_SYMBOLS = {
+        Add:        (' + ',  11),
+        Sub:        (' - ',  11),
+        Mult:       (' * ',  12),
+        Div:        (' / ',  12),
+        FloorDiv:   (' // ', 12),
+        Mod:        (' % ',  12),
+        Pow:        (' ** ', 14),
+        LShift:     (' << ', 10),
+        RShift:     (' >> ', 10),
+        BitOr:      (' | ',  7),
+        BitAnd:     (' & ',  9),
+        BitXor:     (' ^ ',  8)
+    }
+
+    CMPOP_SYMBOLS = {
+        Eq:         (' == ',     6),
+        Gt:         (' > ',      6),
+        GtE:        (' >= ',     6),
+        In:         (' in ',     6),
+        Is:         (' is ',     6),
+        IsNot:      (' is not ', 6),
+        Lt:         (' < ',      6),
+        LtE:        (' <= ',     6),
+        NotEq:      (' != ',     6),
+        NotIn:      (' not in ', 6)
+    }
+
+    UNARYOP_SYMBOLS = {
+        Invert:     ('~',    13),
+        Not:        ('not ', 5),
+        UAdd:       ('+',    13),
+        USub:       ('-',    13)
+    }
 
     def __init__(self, indent_with, add_line_information=False):
         self.result = []
@@ -120,13 +123,24 @@ class SourceGenerator(NodeVisitor):
         self.new_lines = 0
         self.precedence_stack = [0]
 
+    def process(self, node):
+        self.visit(node)
+        result = ''.join(self.result)
+        self.result = []
+        return result
+
+    # Precedence management
+
     def prec_start(self, value):
-        rv = value < self.precedence_stack[-1]
+        if value < self.precedence_stack[-1]:
+            self.write('(')
         self.precedence_stack.append(value)
-        return rv
 
     def prec_end(self):
-        return self.precedence_stack.pop() < self.precedence_stack[-1]
+        if self.precedence_stack.pop() < self.precedence_stack[-1]:
+            self.write(')')
+
+    # convenience functions
 
     def write(self, x):
         if self.new_lines:
@@ -160,7 +174,7 @@ class SourceGenerator(NodeVisitor):
         want_comma = []
         def write_comma():
             if want_comma:
-                self.write(', ')
+                self.write(self.COMMA)
             else:
                 want_comma.append(True)
 
@@ -186,7 +200,7 @@ class SourceGenerator(NodeVisitor):
 
     # Module
     def visit_Module(self, node):
-        NodeVisitor.generic_visit(self, node)
+        self.generic_visit(node)
         self.write('\n')
 
     # Statements
@@ -196,28 +210,33 @@ class SourceGenerator(NodeVisitor):
         self.write('assert ')
         self.visit(node.test)
         if node.msg:
-            self.write(', ')
+            self.write(self.COMMA)
             self.visit(node.msg)
 
     def visit_Assign(self, node):
         self.newline(node)
         for idx, target in enumerate(node.targets):
-            self.visit(target)
-            self.write(' = ')
+            if isinstance(target, Tuple):
+                self.visit_Tuple(target, False)
+            else:
+                self.visit(target)
+            self.write(self.ASSIGN)
         self.visit(node.value)
 
     def visit_AugAssign(self, node):
         self.newline(node)
         self.visit(node.target)
-        self.write(BINOP_SYMBOLS[type(node.op)][0] + '=')
+        self.write(self.BINOP_SYMBOLS[type(node.op)][0].strip() + '=')
         self.visit(node.value)
 
     def visit_ImportFrom(self, node):
         self.newline(node)
-        self.write('from %s%s import ' % ('.' * node.level, node.module))
+        self.write('from ')
+        self.write('%s%s' % ('.' * node.level, node.module))
+        self.write(' import ')
         for idx, item in enumerate(node.names):
             if idx:
-                self.write(', ')
+                self.write(self.COMMA)
             self.write(item.name)
             if item.asname is not None:
                 self.write(' as ')
@@ -232,13 +251,13 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Exec(self, node):
         self.newline(node)
-        self.write("exec ")
+        self.write('exec ')
         self.visit(node.body)
         if node.globals:
-            self.write(" in ")
+            self.write(' in ')
             self.visit(node.globals)
         if node.locals:
-            self.write(", ")
+            self.write(self.COMMA)
             self.visit(node.locals)
 
     def visit_Expr(self, node):
@@ -258,7 +277,7 @@ class SourceGenerator(NodeVisitor):
         have_args = []
         def paren_or_comma():
             if have_args:
-                self.write(', ')
+                self.write(self.COMMA)
             else:
                 have_args.append(True)
                 self.write('(')
@@ -313,7 +332,10 @@ class SourceGenerator(NodeVisitor):
     def visit_For(self, node):
         self.newline(node)
         self.write('for ')
-        self.visit(node.target)
+        if isinstance(node.target, Tuple):
+            self.visit_Tuple(node.target, False)
+        else:
+            self.visit(node.target)
         self.write(' in ')
         self.visit(node.iter)
         self.write(':')
@@ -351,7 +373,7 @@ class SourceGenerator(NodeVisitor):
             want_comma = True
         for value in node.values:
             if want_comma:
-                self.write(', ')
+                self.write(self.COMMA)
             self.visit(value)
             want_comma = True
         if not node.nl:
@@ -362,7 +384,7 @@ class SourceGenerator(NodeVisitor):
         self.write('del ')
         for idx, target in enumerate(node.targets):
             if idx:
-                self.write(', ')
+                self.write(self.COMMA)
             self.visit(target)
 
     def visit_TryExcept(self, node):
@@ -383,7 +405,7 @@ class SourceGenerator(NodeVisitor):
             self.write(' ')
             self.visit(node.type)
         if node.name:
-            self.write(', ')
+            self.write(self.COMMA)
             self.visit(node.name)
         self.write(':')
         self.body(node.body)
@@ -398,11 +420,11 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Global(self, node):
         self.newline(node)
-        self.write('global ' + ', '.join(node.names))
+        self.write('global ' + self.COMMA.join(node.names))
 
     def visit_Nonlocal(self, node):
         self.newline(node)
-        self.write('nonlocal ' + ', '.join(node.names))
+        self.write('nonlocal ' + self.COMMA.join(node.names))
 
     def visit_Return(self, node):
         self.newline(node)
@@ -423,22 +445,23 @@ class SourceGenerator(NodeVisitor):
     def visit_Raise(self, node):
         # XXX: Python 2.6 / 3.0 compatibility
         self.newline(node)
-        self.write('raise')
         if hasattr(node, 'exc') and node.exc is not None:
-            self.write(' ')
+            self.write('raise ')
             self.visit(node.exc)
             if node.cause is not None:
                 self.write(' from ')
                 self.visit(node.cause)
         elif hasattr(node, 'type') and node.type is not None:
-            self.write(' ')
+            self.write('raise ')
             self.visit(node.type)
             if node.inst is not None:
-                self.write(', ')
+                self.write(self.COMMA)
                 self.visit(node.inst)
             if node.tback is not None:
-                self.write(', ')
+                self.write(self.COMMA)
                 self.visit(node.tback)
+        else:
+            self.write('raise')
 
     # Expressions
 
@@ -450,7 +473,7 @@ class SourceGenerator(NodeVisitor):
         want_comma = []
         def write_comma():
             if want_comma:
-                self.write(', ')
+                self.write(self.COMMA)
             else:
                 want_comma.append(True)
 
@@ -485,21 +508,25 @@ class SourceGenerator(NodeVisitor):
     def visit_Num(self, node):
         self.write(repr(node.n))
 
-    def visit_Tuple(self, node):
-        self.write('(')
+    def visit_Tuple(self, node, guard=True):
+        # Don't use extra parenthesis for "for" statement unpacking
+        # and other things
+        if guard:
+            self.write('(')
         idx = -1
         for idx, item in enumerate(node.elts):
             if idx:
-                self.write(', ')
+                self.write(self.COMMA)
             self.visit(item)
-        self.write(idx and ')' or ',)')
+        if guard:
+            self.write(idx and ')' or ',)')
 
     def _sequence_visit(left, right): # pylint: disable=E0213
         def visit(self, node):
             self.write(left)
             for idx, item in enumerate(node.elts):
                 if idx:
-                    self.write(', ')
+                    self.write(self.COMMA)
                 self.visit(item)
             self.write(right)
         return visit
@@ -511,51 +538,43 @@ class SourceGenerator(NodeVisitor):
         self.write('{')
         for idx, (key, value) in enumerate(zip(node.keys, node.values)):
             if idx:
-                self.write(', ')
+                self.write(self.COMMA)
             self.visit(key)
-            self.write(': ')
+            self.write(self.COLON)
             self.visit(value)
         self.write('}')
 
     def visit_BinOp(self, node):
-        symbol, precedence = BINOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
+        symbol, precedence = self.BINOP_SYMBOLS[type(node.op)]
+        self.prec_start(precedence)
         self.visit(node.left)
-        self.write(' %s ' % symbol)
+        self.write(symbol)
         self.visit(node.right)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_BoolOp(self, node):
-        symbol, precedence = BOOLOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
+        symbol, precedence = self.BOOLOP_SYMBOLS[type(node.op)]
+        self.prec_start(precedence)
         for idx, value in enumerate(node.values):
             if idx:
-                self.write(' %s ' % symbol)
+                self.write(symbol)
             self.visit(value)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_Compare(self, node):
-        if self.prec_start(6):
-            self.write('(')
+        self.prec_start(6)
         self.visit(node.left)
         for op, right in zip(node.ops, node.comparators):
-            self.write(' %s ' % CMPOP_SYMBOLS[type(op)][0])
+            self.write(self.CMPOP_SYMBOLS[type(op)][0])
             self.visit(right)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_UnaryOp(self, node):
-        symbol, precedence = UNARYOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
+        symbol, precedence = self.UNARYOP_SYMBOLS[type(node.op)]
+        self.prec_start(precedence)
         self.write(symbol)
         self.visit(node.operand)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_Subscript(self, node):
         self.visit(node.value)
@@ -577,7 +596,7 @@ class SourceGenerator(NodeVisitor):
     def visit_ExtSlice(self, node):
         for idx, item in enumerate(node.dims):
             if idx:
-                self.write(', ')
+                self.write(self.COMMA)
             self.visit(item)
 
     def visit_Yield(self, node):
@@ -585,14 +604,12 @@ class SourceGenerator(NodeVisitor):
         self.visit(node.value)
 
     def visit_Lambda(self, node):
-        if self.prec_start(1):
-            self.write('(')
+        self.prec_start(1)
         self.write('lambda ')
         self.signature(node.args)
-        self.write(': ')
+        self.write(self.COLON)
         self.visit(node.body)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_Ellipsis(self, node):
         self.write('Ellipsis')
@@ -613,22 +630,20 @@ class SourceGenerator(NodeVisitor):
     def visit_DictComp(self, node):
         self.write('{')
         self.visit(node.key)
-        self.write(': ')
+        self.write(self.COLON)
         self.visit(node.value)
         for comprehension in node.generators:
             self.visit(comprehension)
         self.write('}')
 
     def visit_IfExp(self, node):
-        if self.prec_start(2):
-            self.write('(')
+        self.prec_start(2)
         self.visit(node.body)
         self.write(' if ')
         self.visit(node.test)
         self.write(' else ')
         self.visit(node.orelse)
-        if self.prec_end():
-            self.write(')')
+        self.prec_end()
 
     def visit_Starred(self, node):
         self.write('*')
@@ -652,7 +667,6 @@ class SourceGenerator(NodeVisitor):
         self.visit(node.target)
         self.write(' in ')
         self.visit(node.iter)
-        if node.ifs:
-            for if_ in node.ifs:
-                self.write(' if ')
-                self.visit(if_)
+        for if_ in node.ifs:
+            self.write(' if ')
+            self.visit(if_)
