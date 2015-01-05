@@ -76,7 +76,10 @@ class Decompiler(DecompilerBase):
         # method, so don't advance lines for it here.
         if hasattr(ast, 'linenumber') and not isinstance(ast, renpy.ast.TranslateString):
             self.advance_to_line(ast.linenumber)
-        elif hasattr(ast, 'loc'):
+        # It doesn't matter what line "block:" is on. The loc of a RawBlock
+        # refers to the first statement inside the block, which we advance
+        # to from print_atl.
+        elif hasattr(ast, 'loc') and not isinstance(ast, renpy.atl.RawBlock):
             self.advance_to_line(ast.loc[1])
         func = self.dispatch.get(type(ast), None)
         if func:
