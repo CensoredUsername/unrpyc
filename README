@@ -28,10 +28,10 @@ Options:
                  Only for decompiling, don't force all keyword arguments
                  from screencode to different lines
   --comparable   Modify the output to make comparing ast dumps easier.
-                 When decompiling, this causes blank lines to be
-                 inserted to make line numbers match. When dumping the
-                 ast, this omits properties such as file names and
-                 modification times.
+                 When decompiling, this causes extra lines to be used
+                 to make line numbers match. When dumping the ast, this
+                 omits properties such as file paths and modification
+                 times.
 
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
