@@ -57,6 +57,7 @@ class SL2Decompiler(DecompilerBase):
         self.decompile_screencode = decompile_screencode
 
     def print_node(self, ast):
+        self.advance_to_line(ast.location[1])
         # Find the function which can decompile this node
         func = self.dispatch.get(type(ast), None)
         if func:
@@ -109,6 +110,7 @@ class SL2Decompiler(DecompilerBase):
         # the first condition is named if or showif, the rest elif
         keyword = First(keyword, "elif")
         for condition, block in ast.entries:
+            self.advance_to_line(block.location[1])
             self.indent()
             # if condition is None, this is the else clause
             if condition is None:
