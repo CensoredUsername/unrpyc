@@ -124,9 +124,13 @@ class SL2Decompiler(DecompilerBase):
         # this is the reason if doesn't keep a list of children but special Blocks
         self.indent_level += 1
 
-        for key, value in ast.keyword:
+        if self.force_multiline_kwargs:
+            for key, value in ast.keyword:
+                self.indent()
+                self.write("%s %s" % (key, value))
+        elif ast.keyword:
             self.indent()
-            self.write("%s %s" % (key, value))
+            self.write(" ".join(("%s %s" % (key, value)) for key, value in ast.keyword))
 
         self.print_nodes(ast.children)
         self.indent_level -= 1
