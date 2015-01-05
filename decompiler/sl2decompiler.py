@@ -74,13 +74,11 @@ class SL2Decompiler(DecompilerBase):
         # If we have parameters, print them.
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        self.write(":")
-        self.indent_level += 1
-
         # Print any keywords
         for key, value in ast.keyword:
-            self.indent()
-            self.write("%s %s" % (key, value))
+            self.write(" %s %s" % (key, value))
+        self.write(":")
+        self.indent_level += 1
 
         if ast.tag:
             self.indent()

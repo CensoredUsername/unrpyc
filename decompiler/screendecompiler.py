@@ -74,6 +74,12 @@ class SLDecompiler(DecompilerBase):
         # If we have parameters, print them.
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
+        if isinstance(ast.zorder, unicode):
+            self.write(" zorder %s" % simple_expression_guard(ast.zorder))
+        if isinstance(ast.modal, unicode):
+            self.write(" modal %s" % simple_expression_guard(ast.modal))
+        if isinstance(ast.variant, unicode):
+            self.write(" variant %s" % simple_expression_guard(ast.variant))
         self.write(":")
         self.indent_level += 1
 
@@ -81,15 +87,6 @@ class SLDecompiler(DecompilerBase):
         if ast.tag:
             self.indent()
             self.write("tag %s" % ast.tag)
-        if isinstance(ast.zorder, unicode):
-            self.indent()
-            self.write("zorder %s" % simple_expression_guard(ast.zorder))
-        if isinstance(ast.modal, unicode):
-            self.indent()
-            self.write("modal %s" % simple_expression_guard(ast.modal))
-        if isinstance(ast.variant, unicode):
-            self.indent()
-            self.write("variant %s" % simple_expression_guard(ast.variant))
 
         if not self.decompile_python:
             self.indent()
