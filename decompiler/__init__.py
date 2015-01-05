@@ -63,7 +63,6 @@ class Decompiler(DecompilerBase):
 
         self.paired_with = False
         self.say_inside_menu = None
-        self.force_python_block = False
 
     def dump(self, ast, indent_level=0):
         if not self.comparable:
@@ -408,12 +407,12 @@ class Decompiler(DecompilerBase):
             if ast.priority:
                 self.write(" %d" % ast.priority)
 
-            if len(ast.block) == 1 and not self.should_advance_to_line(ast.block[0].linenumber):
+            if len(ast.block) == 1 and (not isinstance(ast.block[0], renpy.ast.Python) or
+                    ast.block[0].code.source[0] == '\n'
+                ) and not self.should_advance_to_line(ast.block[0].linenumber):
                 self.write(" ")
                 self.skip_indent_until_write = True
-                self.force_python_block = True
                 self.print_nodes(ast.block)
-                self.force_python_block = False
             else:
                 self.write(":")
                 self.print_nodes(ast.block, 1)
@@ -458,9 +457,8 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n' or self.force_python_block:
-            if not self.force_python_block:
-                code = code[1:]
+        if code[0] == '\n':
+            code = code[1:]
             self.write("python")
             if early:
                 self.write(" early")
@@ -585,9 +583,7 @@ class Decompiler(DecompilerBase):
         self.write("translate %s " % (ast.language or "None"))
 
         self.skip_indent_until_write = True
-        self.force_python_block = True
         self.print_nodes(ast.block)
-        self.force_python_block = False
     dispatch[renpy.ast.TranslateBlock] = print_translateblock
 
     # Screens
