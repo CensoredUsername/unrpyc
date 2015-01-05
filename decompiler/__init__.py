@@ -223,9 +223,6 @@ class Decompiler(DecompilerBase):
         else:
             self.write(" ".join(imspec[0]))
 
-        if len(imspec[3]) > 0:
-            self.write(" at %s" % ', '.join(imspec[3]))
-
         if imspec[2] is not None:
             self.write(" as %s" % imspec[2])
 
@@ -237,6 +234,15 @@ class Decompiler(DecompilerBase):
 
         if imspec[5] is not None:
             self.write(" zorder %s" % imspec[5])
+
+        # Prior to Ren'Py 6.17, simple expressions didn't have trailing spaces
+        # trimmed, so the last imspec[3] value may end with a space. If it does,
+        # return true so the caller knows not to add another one (which would
+        # otherwise show up in the AST).
+        if len(imspec[3]) > 0:
+            self.write(" at %s" % ', '.join(imspec[3]))
+            return imspec[3][-1][-1] == ' '
+        return False
 
     def print_image(self, ast):
         self.indent()
@@ -265,10 +271,12 @@ class Decompiler(DecompilerBase):
     def print_show(self, ast):
         self.indent()
         self.write("show ")
-        self.print_imspec(ast.imspec)
+        needs_space = not self.print_imspec(ast.imspec)
 
         if self.paired_with:
-            self.write(" with %s" % self.paired_with)
+            if needs_space:
+                self.write(" ")
+            self.write("with %s" % self.paired_with)
             self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
@@ -283,12 +291,15 @@ class Decompiler(DecompilerBase):
         if ast.imspec is None:
             if ast.layer != "master":
                 self.write(" onlayer %s" % ast.layer)
+            needs_space = True
         else:
             self.write(" ")
-            self.print_imspec(ast.imspec)
+            needs_space = not self.print_imspec(ast.imspec)
 
         if self.paired_with:
-            self.write(" with %s" % self.paired_with)
+            if needs_space:
+                self.write(" ")
+            self.write("with %s" % self.paired_with)
             self.paired_with = True
 
         if hasattr(ast, "atl") and ast.atl is not None:
