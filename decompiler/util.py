@@ -357,3 +357,24 @@ class Lexer(object):
         if self.pos != startpos:
             lines.append(self.string[startpos:])
         return lines
+
+# Versions of Ren'Py prior to 6.17 put trailing whitespace on the end of
+# simple_expressions. This class attempts to preserve the amount of
+# whitespace if possible.
+class WordConcatenator(object):
+    def __init__(self, needs_space):
+        self.words = []
+        self.needs_space = needs_space
+
+    def append(self, *args):
+        args = filter(None, args)
+        if not args:
+            return
+        if self.needs_space:
+            self.words.append(' ')
+        self.words.extend((i if i[-1] == ' ' else (i + ' ')) for i in args[:-1])
+        self.words.append(args[-1])
+        self.needs_space = args[-1][-1] != ' '
+
+    def join(self):
+        return ''.join(self.words)

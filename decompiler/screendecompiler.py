@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 
 import re
 
-from util import DecompilerBase, reconstruct_paraminfo, simple_expression_guard
+from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard
 import codegen
 
 # Main API
@@ -75,13 +75,13 @@ class SLDecompiler(DecompilerBase):
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
 
-        # If zorder, modal, or variant appear on the same line as the screen
-        # statement, and they're not immediately before the colon, the space
-        # after them will end up in the AST. We can't just write them all
-        # their own lines, or we might use more lines than the original code.
-        # We need to carefully choose where to place each of the parameters.
-        with_space = []
-        without_space = []
+        # If the value for zorder, modal, or variant has a space after it (even
+        # the space separating it from the next key), it will end up in the AST.
+        # We need to pack as many as possible onto the screen line so that line
+        # numbers can match up, without putting a space after a value that
+        # wasn't there originally.
+        kwargs_for_screen_line = WordConcatenator(True)
+        kwargs_for_separate_lines = []
         for key in ('zorder', 'modal', 'variant'):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
@@ -89,21 +89,18 @@ class SLDecompiler(DecompilerBase):
             if isinstance(value, unicode):
                 guarded_value = simple_expression_guard(value)
                 if value[-1] != " " or guarded_value != value.strip():
-                    without_space.append((key, guarded_value))
+                    kwargs_for_separate_lines.append("%s %s" % (key, guarded_value))
                 else:
-                    with_space.append((key, value[:-1]))
-        for i in with_space:
-            self.write(" %s %s" % i)
-        if without_space:
-            self.write(" %s %s" % without_space[0])
-            without_space.pop(0)
-        elif with_space:
-            self.write(" ")
-        self.write(":")
+                    kwargs_for_screen_line.append(key, value)
+        # One value without a space can go on the end of the screen line, since
+        # no space goes between the last value and the colon.
+        if kwargs_for_separate_lines:
+            kwargs_for_screen_line.append(kwargs_for_separate_lines.pop(0))
+        self.write("%s:" % kwargs_for_screen_line.join())
         self.indent_level += 1
-        for i in without_space:
+        for i in kwargs_for_separate_lines:
             self.indent()
-            self.write("%s %s" % i)
+            self.write(i)
 
         # Print any keywords
         if ast.tag:

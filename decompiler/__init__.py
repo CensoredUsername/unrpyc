@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 from __future__ import unicode_literals
-from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
+from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
 
 import magic
 magic.fake_package(b"renpy")
@@ -106,38 +106,41 @@ class Decompiler(DecompilerBase):
 
     def print_atl_rawmulti(self, ast):
         self.indent()
+        words = WordConcatenator(False)
 
         # warpers
         if ast.warp_function:
-            self.write("warp %s %s " % (ast.warp_function.strip(), ast.duration.strip()))
+            words.append("warp", ast.warp_function, ast.duration)
         elif ast.warper:
-            self.write("%s %s " % (ast.warper, ast.duration.strip()))
-        elif ast.duration.strip() != "0":
-            self.write("pause %s" % ast.duration.strip())
+            words.append(ast.warper, ast.duration)
+        elif ast.duration != "0":
+            words.append("pause", ast.duration)
 
         # revolution
         if ast.revolution:
-            self.write(u"%s " % ast.revolution)
+            words.append(ast.revolution)
 
         # circles
         if ast.circles != "0":
-            self.write("circles %s " % ast.circles.strip())
+            words.append("circles", ast.circles)
 
         # splines
         for name, expressions in ast.splines:
-            self.write("%s " % name)
+            words.append(name)
             for expression in expressions:
-                self.write("knot %s " % expression.strip())
+                words.append("knot", expression)
 
         # properties
         for key, value in ast.properties:
-            self.write("%s %s " % (key, value.strip()))
+            words.append(key, value)
 
         # with
         for (expression, with_expression) in ast.expressions:
-            self.write("%s " % expression.strip())
+            words.append(expression)
             if with_expression:
-                self.write("with %s " % with_expression)
+                words.append("with", with_expression)
+
+        self.write(words.join())
     dispatch[renpy.atl.RawMultipurpose] = print_atl_rawmulti
 
     def print_atl_rawblock(self, ast):
