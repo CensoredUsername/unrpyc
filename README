@@ -28,9 +28,14 @@ Options:
                  Only for decompiling, don't force all keyword arguments
                  from screencode to different lines
   --comparable   Modify the output to make comparing ast dumps easier.
-                 Currently, this has no effect when decompiling. When
-                 dumping the ast, this omits properties such as file
-                 names and modification times.
+                 When decompiling, this causes extra lines to be used
+                 to make line numbers match. When dumping the ast, this
+                 omits properties such as file paths and modification
+                 times. This implies --single-line-screen-kwargs
+  --no-file-metadata
+                 Only for dumping, don't output any file metadata (such
+                 as line numbers). This allows comparing of dumps even
+                 if --comparable was not used when decompiling.
 
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 

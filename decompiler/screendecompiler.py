@@ -22,18 +22,20 @@ from __future__ import unicode_literals
 
 import re
 
-from util import DecompilerBase, reconstruct_paraminfo, simple_expression_guard
+from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard
 import codegen
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
+def pprint(out_file, ast, indent_level=0, linenumber=1,
            force_multiline_kwargs=True, decompile_python=True,
-           decompile_screencode=True):
-    SLDecompiler(out_file,
+           decompile_screencode=True, comparable=False,
+           skip_indent_until_write=False):
+    return SLDecompiler(out_file,
                  force_multiline_kwargs=force_multiline_kwargs, 
                  decompile_python=decompile_python,
-                 decompile_screencode=decompile_screencode).dump(ast, indent_level)
+                 decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                     ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
 
@@ -47,15 +49,18 @@ class SLDecompiler(DecompilerBase):
     dispatch = {}
 
     def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_python=True,
-                 decompile_screencode=True, indentation="    "):
-        super(SLDecompiler, self).__init__(out_file, indentation)
+                 decompile_screencode=True, comparable=False, indentation="    "):
+        super(SLDecompiler, self).__init__(out_file, indentation, comparable)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
 
-    def dump(self, ast, indent_level=0):
+    def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         self.indent_level = indent_level
+        self.linenumber = linenumber
+        self.skip_indent_until_write = skip_indent_until_write
         self.print_screen(ast)
+        return self.linenumber
 
     # Entry point functions
 
@@ -69,22 +74,38 @@ class SLDecompiler(DecompilerBase):
         # If we have parameters, print them.
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        self.write(":")
+
+        # If the value for zorder, modal, or variant has a space after it (even
+        # the space separating it from the next key), it will end up in the AST.
+        # We need to pack as many as possible onto the screen line so that line
+        # numbers can match up, without putting a space after a value that
+        # wasn't there originally.
+        kwargs_for_screen_line = WordConcatenator(True)
+        kwargs_for_separate_lines = []
+        for key in ('zorder', 'modal', 'variant'):
+            value = getattr(ast, key)
+            # Non-Unicode strings are default values rather than user-supplied
+            # values, so we don't need to write them out.
+            if isinstance(value, unicode):
+                guarded_value = simple_expression_guard(value)
+                if value[-1] != " " or guarded_value != value.strip():
+                    kwargs_for_separate_lines.append("%s %s" % (key, guarded_value))
+                else:
+                    kwargs_for_screen_line.append(key, value)
+        # One value without a space can go on the end of the screen line, since
+        # no space goes between the last value and the colon.
+        if kwargs_for_separate_lines:
+            kwargs_for_screen_line.append(kwargs_for_separate_lines.pop(0))
+        self.write("%s:" % kwargs_for_screen_line.join())
         self.indent_level += 1
+        for i in kwargs_for_separate_lines:
+            self.indent()
+            self.write(i)
 
         # Print any keywords
         if ast.tag:
             self.indent()
             self.write("tag %s" % ast.tag)
-        if isinstance(ast.zorder, unicode):
-            self.indent()
-            self.write("zorder %s" % simple_expression_guard(ast.zorder))
-        if isinstance(ast.modal, unicode):
-            self.indent()
-            self.write("modal %s" % simple_expression_guard(ast.modal))
-        if isinstance(ast.variant, unicode):
-            self.indent()
-            self.write("variant %s" % simple_expression_guard(ast.variant))
 
         if not self.decompile_python:
             self.indent()
@@ -158,7 +179,7 @@ class SLDecompiler(DecompilerBase):
                   (key == 'id' and value.startswith("_") or
                    key == 'scope' and value == '_scope')]
 
-        if self.force_multiline_kwargs and kwargs:
+        if self.force_multiline_kwargs and not self.comparable and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:

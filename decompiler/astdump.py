@@ -25,10 +25,10 @@ import inspect
 import codegen
 import ast as py_ast
 
-def pprint(out_file, ast, decompile_python=True, comparable=False):
+def pprint(out_file, ast, decompile_python=True, comparable=False, file_metadata=True):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, file_metadata=file_metadata).dump(ast)
 
 class AstDumper(object):
     """
@@ -40,11 +40,12 @@ class AstDumper(object):
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=True,  
-                 comparable=False, indentation=u'    '):
+                 comparable=False, file_metadata=True, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
-        self.comparable = comparable
+        self.comparable = comparable or not file_metadata # Essentially, --no-file-metadata is a stricter version of --comparable
+        self.file_metadata = file_metadata
 
     def dump(self, ast):
         self.indent = 0
@@ -106,12 +107,24 @@ class AstDumper(object):
             return False
         elif not self.comparable:
             return True
-        elif key == 'name':
-            return type(getattr(ast, key)) != tuple
-        elif key == 'linenumber' or key == 'loc' or key == 'serial' or key == 'filename' or key == 'location':
-            return False
+        elif key == 'serial':
+            ast.serial = 0
+        elif key == 'name' and type(ast.name) == tuple:
+            ast.name = (ast.name[0].split('/')[-1], 0, 0)
+        elif key == 'location' and type(ast.location) == tuple:
+            if len(ast.location) == 4:
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
+            elif len(ast.location) == 3:
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], 0)
+            elif len(ast.location) == 2:
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1])
+        elif key == 'loc' and type(ast.loc) == tuple:
+            ast.loc = (ast.loc[0].split('/')[-1], ast.loc[1])
+        elif key == 'filename':
+            ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
         else:
             return True
+        return self.file_metadata
 
     def print_object(self, ast):
         # handles the printing of anything unknown which inherts from object.

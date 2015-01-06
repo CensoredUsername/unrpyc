@@ -30,11 +30,13 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
-           force_multiline_kwargs=True, decompile_screencode=True):
-    SL2Decompiler(out_file,
+def pprint(out_file, ast, indent_level=0, linenumber=1,
+           force_multiline_kwargs=True, decompile_screencode=True,
+           comparable=False, skip_indent_until_write=False):
+    return SL2Decompiler(out_file,
                   force_multiline_kwargs=force_multiline_kwargs,
-                  decompile_screencode=decompile_screencode).dump(ast, indent_level)
+                  decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
 
@@ -49,12 +51,13 @@ class SL2Decompiler(DecompilerBase):
 
     displayable_names = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    '):
-        super(SL2Decompiler, self).__init__(out_file, indentation)
+    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    ', comparable=False):
+        super(SL2Decompiler, self).__init__(out_file, indentation, comparable)
         self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
 
     def print_node(self, ast):
+        self.advance_to_line(ast.location[1])
         # Find the function which can decompile this node
         func = self.dispatch.get(type(ast), None)
         if func:
@@ -71,13 +74,11 @@ class SL2Decompiler(DecompilerBase):
         # If we have parameters, print them.
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        self.write(":")
-        self.indent_level += 1
-
         # Print any keywords
         for key, value in ast.keyword:
-            self.indent()
-            self.write("%s %s" % (key, value))
+            self.write(" %s %s" % (key, value))
+        self.write(":")
+        self.indent_level += 1
 
         if ast.tag:
             self.indent()
@@ -107,6 +108,7 @@ class SL2Decompiler(DecompilerBase):
         # the first condition is named if or showif, the rest elif
         keyword = First(keyword, "elif")
         for condition, block in ast.entries:
+            self.advance_to_line(block.location[1])
             self.indent()
             # if condition is None, this is the else clause
             if condition is None:
@@ -122,9 +124,13 @@ class SL2Decompiler(DecompilerBase):
         # this is the reason if doesn't keep a list of children but special Blocks
         self.indent_level += 1
 
-        for key, value in ast.keyword:
+        if self.force_multiline_kwargs and not self.comparable:
+            for key, value in ast.keyword:
+                self.indent()
+                self.write("%s %s" % (key, value))
+        elif ast.keyword:
             self.indent()
-            self.write("%s %s" % (key, value))
+            self.write(" ".join(("%s %s" % (key, value)) for key, value in ast.keyword))
 
         self.print_nodes(ast.children)
         self.indent_level -= 1
@@ -235,7 +241,7 @@ class SL2Decompiler(DecompilerBase):
         if args:
             self.write(" " + " ".join(args))
 
-        if self.force_multiline_kwargs and kwargs:
+        if self.force_multiline_kwargs and not self.comparable and kwargs:
             self.write(":")
             self.indent_level += 1
             for key, value in kwargs:

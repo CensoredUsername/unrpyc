@@ -3,39 +3,87 @@ import sys
 import re
 
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation = '    '):
+    def __init__(self, out_file=None, indentation='    ', comparable=False):
         self.out_file = out_file or sys.stdout
         self.indentation = indentation
+        self.comparable = comparable
+        self.skip_indent_until_write = False
 
-    def dump(self, ast, indent_level=0):
+        self.linenumber = 0
+
+        self.block_stack = []
+        self.index_stack = []
+
+    def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         """
         Write the decompiled representation of `ast` into the opened file given in the constructor
         """
         self.indent_level = indent_level
-        if isinstance(ast, (tuple, list)):
-            self.print_nodes(ast)
-        else:
-            self.print_node(ast)
+        self.linenumber = linenumber
+        self.skip_indent_until_write = skip_indent_until_write
+        if not isinstance(ast, (tuple, list)):
+            ast = [ast]
+        self.print_nodes(ast)
+        return self.linenumber
 
     def write(self, string):
         """
         Shorthand method for writing `string` to the file
         """
-        self.out_file.write(unicode(string))
+        string = unicode(string)
+        self.linenumber += string.count('\n')
+        self.skip_indent_until_write = False
+        self.out_file.write(string)
+
+    def should_advance_to_line(self, linenumber):
+        return self.comparable and self.linenumber < linenumber
+
+    def advance_to_line(self, linenumber):
+        if self.should_advance_to_line(linenumber):
+            # Stop one line short, since the call to indent() will advance the last line.
+            # Note that if self.linenumber == linenumber - 1, this will write the empty string.
+            # This is to make sure that skip_indent_until_write is cleared in that case.
+            self.write("\n" * (linenumber - self.linenumber - 1))
 
     def indent(self):
         """
         Shorthand method for pushing a newline and indenting to the proper indent level
+        Setting skip_indent_until_write causes calls to this method to be ignored until something
+        calls the write method
         """
-        self.write('\n' + self.indentation * self.indent_level)
+        if not self.skip_indent_until_write:
+            self.write('\n' + self.indentation * self.indent_level)
 
     def print_nodes(self, ast, extra_indent=0):
         # This node is a list of nodes
         # Print every node
         self.indent_level += extra_indent
-        for node in ast:
+        
+        self.block_stack.append(ast)
+        self.index_stack.append(0)
+
+        for i, node in enumerate(ast):
+            self.index_stack[-1] = i
             self.print_node(node)
+
+        self.block_stack.pop()
+        self.index_stack.pop()
+
         self.indent_level -= extra_indent
+
+    @property    
+    def block(self):
+        return self.block_stack[-1]
+
+    @property
+    def index(self):
+        return self.index_stack[-1]
+
+    @property
+    def parent(self):
+        if len(self.block_stack) < 2:
+            return None
+        return self.block_stack[-2][self.index_stack[-2]]
 
     def print_unknown(self, ast):
         # If we encounter a placeholder note, print a warning and insert a placeholder
@@ -309,3 +357,24 @@ class Lexer(object):
         if self.pos != startpos:
             lines.append(self.string[startpos:])
         return lines
+
+# Versions of Ren'Py prior to 6.17 put trailing whitespace on the end of
+# simple_expressions. This class attempts to preserve the amount of
+# whitespace if possible.
+class WordConcatenator(object):
+    def __init__(self, needs_space):
+        self.words = []
+        self.needs_space = needs_space
+
+    def append(self, *args):
+        args = filter(None, args)
+        if not args:
+            return
+        if self.needs_space:
+            self.words.append(' ')
+        self.words.extend((i if i[-1] == ' ' else (i + ' ')) for i in args[:-1])
+        self.words.append(args[-1])
+        self.needs_space = args[-1][-1] != ' '
+
+    def join(self):
+        return ''.join(self.words)
