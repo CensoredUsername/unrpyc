@@ -56,7 +56,7 @@ def read_ast_from_file(in_file):
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screencode=True,
-                   decompile_python=True, force_multiline_kwargs=True, comparable=False):
+                   decompile_python=True, force_multiline_kwargs=True, comparable=False, file_metadata=True):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -72,7 +72,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
-            astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable)
+            astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
+                                          file_metadata=file_metadata)
         else:
             decompiler.pprint(out_file, ast, force_multiline_kwargs=force_multiline_kwargs,
                                              decompile_screencode=decompile_screencode,
@@ -106,6 +107,10 @@ def main():
                         "When dumping the ast, this omits properties such as file paths and modification times. "
                         "This implies --single-line-screen-kwargs")
 
+    parser.add_argument('--no-file-metadata', dest='file_metadata', action='store_false',
+                        help="Only for dumping, don't output any file metadata (such as line numbers). "
+                        "This allows comparing of dumps even if --comparable was not used when decompiling.")
+
     parser.add_argument('file', type=str, nargs='+', 
                         help="The filenames to decompile")
 
@@ -128,7 +133,7 @@ def main():
             correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
                                                                   decompile_python=args.decompile_python,
                                                                   force_multiline_kwargs=args.force_multiline_kwargs,
-                                                                  comparable=args.comparable)
+                                                                  comparable=args.comparable, file_metadata=args.file_metadata)
         except Exception as e:
             print traceback.format_exc()
             bad += 1
