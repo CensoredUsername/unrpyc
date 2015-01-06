@@ -21,6 +21,9 @@
 from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
 
+import traceback
+from StringIO import StringIO
+
 import magic
 magic.fake_package(b"renpy")
 import renpy
@@ -619,10 +622,28 @@ class Decompiler(DecompilerBase):
     def print_screen(self, ast):
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
-            self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
-                                    self.linenumber, self.force_multiline_kwargs,
-                                    self.decompile_python, self.decompile_screencode,
-                                    self.comparable, self.skip_indent_until_write)
+            out_file = StringIO()
+            try:
+                # Don't assign the return value to self.linenumber in this case,
+                # since the call to write() below will advance it.
+                screendecompiler.pprint(out_file, screen, self.indent_level,
+                                        self.linenumber, self.force_multiline_kwargs,
+                                        self.decompile_python, self.decompile_screencode,
+                                        self.comparable, self.skip_indent_until_write)
+            except Exception as e:
+                if not self.decompile_screencode or not self.decompile_python:
+                    raise
+                print ('%s\nWARNING: Decompiling screen "%s" to screencode failed.\n'
+                      'Attempting decompilation to Python instead.') % (
+                      traceback.format_exc(), screen.name)
+                self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
+                                        self.linenumber, self.force_multiline_kwargs,
+                                        True, False,
+                                        self.comparable, self.skip_indent_until_write)
+            else:
+                self.write(out_file.getvalue())
+            finally:
+                out_file.close()
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
