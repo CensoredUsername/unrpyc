@@ -35,11 +35,8 @@ class DecompilerBase(object):
         self.skip_indent_until_write = False
         self.out_file.write(string)
 
-    def should_advance_to_line(self, linenumber):
-        return self.comparable and self.linenumber < linenumber
-
     def advance_to_line(self, linenumber):
-        if self.should_advance_to_line(linenumber):
+        if self.comparable and self.linenumber < linenumber:
             # Stop one line short, since the call to indent() will advance the last line.
             # Note that if self.linenumber == linenumber - 1, this will write the empty string.
             # This is to make sure that skip_indent_until_write is cleared in that case.
