@@ -461,6 +461,8 @@ POSSIBLE_WHITESPACE = set([
     " is ",
     "not ",
     "if ",
+    " if ",
+    " else ",
     "elif ",
     "for ",
     "while ",
