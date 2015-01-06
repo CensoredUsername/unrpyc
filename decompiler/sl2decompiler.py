@@ -117,7 +117,13 @@ class SL2Decompiler(DecompilerBase):
                 self.write("%s %s:" % (keyword(), condition))
 
             # Every condition has a block of type slast.SLBlock
-            self.print_block(block)
+            if block.keyword or block.children:
+                self.print_block(block)
+            else:
+                self.indent_level += 1
+                self.indent()
+                self.write("pass")
+                self.indent_level -= 1
 
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
