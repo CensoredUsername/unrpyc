@@ -284,6 +284,18 @@ class Decompiler(DecompilerBase):
             self.print_atl(ast.atl)
     dispatch[renpy.ast.Show] = print_show
 
+    def print_showlayer(self, ast):
+        self.indent()
+        self.write("show layer %s" % ast.layer)
+
+        if ast.at_list:
+            self.write(" at %s" % ', '.join(ast.at_list))
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            self.write(":")
+            self.print_atl(ast.atl)
+    dispatch[renpy.ast.ShowLayer] = print_showlayer
+
     def print_scene(self, ast):
         self.indent()
         self.write("scene")
