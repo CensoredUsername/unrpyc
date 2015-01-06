@@ -556,20 +556,31 @@ class Decompiler(DecompilerBase):
     def print_style(self, ast):
         self.indent()
         self.write("style %s" % ast.style_name)
+        kwargs = []
 
         if ast.parent is not None:
-            self.write(" is %s" % ast.parent)
+            kwargs.append("is %s" % ast.parent)
         if ast.clear:
-            self.write(" clear")
+            kwargs.append("clear")
         if ast.take is not None:
-            self.write(" take %s" % ast.take)
+            kwargs.append("take %s" % ast.take)
         for delname in ast.delattr:
-            self.write(" del %s" % delname)
+            kwargs.append("del %s" % delname)
         if ast.variant is not None:
-            self.write(" variant %s" % ast.variant)
+            kwargs.append("variant %s" % ast.variant)
 
         for key, value in ast.properties.iteritems():
-            self.write(" %s %s" % (key, value))
+            kwargs.append("%s %s" % (key, value))
+
+        if self.comparable:
+            self.write(" %s" % " ".join(kwargs))
+        else:
+            self.write(":")
+            self.indent_level += 1
+            for i in kwargs:
+                self.indent()
+                self.write(i)
+            self.indent_level -= 1
     dispatch[renpy.ast.Style] = print_style
 
     # Translation functions
