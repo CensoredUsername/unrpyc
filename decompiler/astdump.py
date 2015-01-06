@@ -122,7 +122,7 @@ class AstDumper(object):
             ast.loc = (ast.loc[0].split('/')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
-        else:
+        elif key != 'linenumber':
             return True
         return self.file_metadata
 
