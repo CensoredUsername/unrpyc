@@ -447,9 +447,7 @@ class Decompiler(DecompilerBase):
             if ast.priority:
                 self.write(" %d" % ast.priority)
 
-            if len(ast.block) == 1 and (not isinstance(ast.block[0], renpy.ast.Python) or
-                    ast.block[0].code.source[0] == '\n'
-                ) and ast.linenumber >= ast.block[0].linenumber:
+            if len(ast.block) == 1 and ast.linenumber >= ast.block[0].linenumber:
                 self.write(" ")
                 self.skip_indent_until_write = True
                 self.print_nodes(ast.block)
