@@ -123,7 +123,11 @@ class SLDecompiler(DecompilerBase):
             self.write("python:")
 
             self.indent_level += 1
-            for line in code.splitlines():
+            # The first line is always "_1 = (_name, 0)", which gets included
+            # even if the python: block is the only thing in the screen. Don't
+            # include ours, since if we do, it'll be included twice when
+            # recompiled.
+            for line in code.splitlines()[1:]:
                 self.indent()
                 self.write(line)
             self.indent_level -= 1
