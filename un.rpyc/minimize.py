@@ -21,7 +21,7 @@
 import ast
 import sys
 sys.path.append("../decompiler")
-import codegen
+from codegen import SourceGenerator
 
 from collections import OrderedDict
 
@@ -452,46 +452,6 @@ class ScopeAnalyzer(ast.NodeTransformer):
 
 # code rewriting implementation
 
-BOOLOP_SYMBOLS = {
-    ast.And:        (' and ', 4),
-    ast.Or:         (' or ', 3)
-}
-
-BINOP_SYMBOLS = {
-    ast.Add:        ('+', 11),
-    ast.Sub:        ('-', 11),
-    ast.Mult:       ('*', 12),
-    ast.Div:        ('/', 12),
-    ast.FloorDiv:   ('//', 12),
-    ast.Mod:        ('%', 12),
-    ast.Pow:        ('**', 14),
-    ast.LShift:     ('<<', 10),
-    ast.RShift:     ('>>', 10),
-    ast.BitOr:      ('|', 7),
-    ast.BitAnd:     ('&', 9),
-    ast.BitXor:     ('^', 8)
-}
-
-CMPOP_SYMBOLS = {
-    ast.Eq:         ('==', 6),
-    ast.Gt:         ('>', 6),
-    ast.GtE:        ('>=', 6),
-    ast.In:         (' in ', 6),
-    ast.Is:         (' is ', 6),
-    ast.IsNot:      (' is not ', 6),
-    ast.Lt:         ('<', 6),
-    ast.LtE:        ('<=', 6),
-    ast.NotEq:      ('!=', 6),
-    ast.NotIn:      (' not in ', 6)
-}
-
-UNARYOP_SYMBOLS = {
-    ast.Invert:     ('~', 13),
-    ast.Not:        ('not ', 5),
-    ast.UAdd:       ('+', 13),
-    ast.USub:       ('-', 13)
-}
-
 POSSIBLE_WHITESPACE = set([
     " and ",
     " or ",
@@ -517,12 +477,26 @@ POSSIBLE_WHITESPACE = set([
     "yield ",
 ])
 
-class DenseSourceGenerator(codegen.SourceGenerator):
+class DenseSourceGenerator(SourceGenerator):
+
+    COMMA = ","
+    COLON = ":"
+    ASSIGN = "="
+
+    BINOP_SYMBOLS = dict((i, (j.strip(), k)) for i, (j, k)
+                         in SourceGenerator.BINOP_SYMBOLS.items())
+    CMPOP_SYMBOLS = dict((i, (j.strip(), k)) 
+                         if j not in POSSIBLE_WHITESPACE 
+                         else (i, (j, k))
+                         for i, (j, k)
+                         in SourceGenerator.CMPOP_SYMBOLS.items()
+                         )
+
     def __init__(self, add_line_information=False):
-        codegen.SourceGenerator.__init__(self, " ", add_line_information)
-        self.new_line = True
+        SourceGenerator.__init__(self, " ", add_line_information)
 
     def process(self, node):
+        self.new_line = True
         self.visit(node)
 
         if len(self.result) > 2:
@@ -537,7 +511,9 @@ class DenseSourceGenerator(codegen.SourceGenerator):
                         if not (end.isalnum() or end == "_"):
                             self.result[i] = self.result[i].lstrip()
 
-        return ''.join(self.result)
+        result = ''.join(self.result)
+        self.result = []
+        return result
 
     def body(self, statements):
         self.new_line = True
@@ -562,195 +538,3 @@ class DenseSourceGenerator(codegen.SourceGenerator):
         if node is not None and self.add_line_information:
             self.write('# line: %s' % node.lineno)
             self.new_lines = 1
-
-    def visit_Dict(self, node):
-        self.write('{')
-        for idx, (key, value) in enumerate(zip(node.keys, node.values)):
-            if idx:
-                self.write(',')
-            self.visit(key)
-            self.write(':')
-            self.visit(value)
-        self.write('}')
-
-    def visit_Call(self, node):
-        want_comma = []
-        def write_comma():
-            if want_comma:
-                self.write(',')
-            else:
-                want_comma.append(True)
-
-        self.visit(node.func)
-        self.write('(')
-        for arg in node.args:
-            write_comma()
-            self.visit(arg)
-        for keyword in node.keywords:
-            write_comma()
-            self.write(keyword.arg + '=')
-            self.visit(keyword.value)
-        if node.starargs is not None:
-            write_comma()
-            self.write('*')
-            self.visit(node.starargs)
-        if node.kwargs is not None:
-            write_comma()
-            self.write('**')
-            self.visit(node.kwargs)
-        self.write(')')
-
-    def visit_ImportFrom(self, node):
-        self.newline(node)
-        self.write('from ')
-        self.write('%s%s' % ('.' * node.level, node.module))
-        self.write(' import ')
-        for idx, item in enumerate(node.names):
-            if idx:
-                self.write(',')
-            self.write(item.name)
-            if item.asname is not None:
-                self.write(' as ')
-                self.write(item.asname)
-
-    def visit_Exec(self, node):
-        self.newline(node)
-        self.write("exec ")
-        self.visit(node.body)
-        if node.globals:
-            self.write(" in ")
-            self.visit(node.globals)
-        if node.locals:
-            self.write(",")
-            self.visit(node.locals)
-
-    def visit_ExceptHandler(self, node):
-        self.newline(node)
-        if node.type:
-            self.write('except ')
-            self.visit(node.type)
-            if node.name:
-                self.write(',')
-                self.visit(node.name)
-        else:
-            self.write('except')
-        self.write(':')
-        self.body(node.body)
-
-    def _sequence_visit(left, right):
-        def visit(self, node):
-            self.write(left)
-            for idx, item in enumerate(node.elts):
-                if idx:
-                    self.write(',')
-                self.visit(item)
-            self.write(right)
-        return visit
-
-    visit_List = _sequence_visit('[', ']')
-    visit_Set = _sequence_visit('{', '}')
-
-    def visit_Tuple(self, node, guard=True):
-        if guard:
-            self.write('(')
-        idx = -1
-        for idx, item in enumerate(node.elts):
-            if idx:
-                self.write(',')
-            self.visit(item)
-        if guard:
-            self.write(idx and ')' or ',)')
-
-    def visit_Assign(self, node):
-        self.newline(node)
-        for idx, target in enumerate(node.targets):
-            if isinstance(target, ast.Tuple):
-                self.visit_Tuple(target, False)
-            else:
-                self.visit(target)
-            self.write('=')
-        self.visit(node.value)
-
-    def visit_BinOp(self, node):
-        symbol, precedence = BINOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
-        self.visit(node.left)
-        self.write('%s' % symbol)
-        self.visit(node.right)
-        if self.prec_end():
-            self.write(')')
-
-    def visit_BoolOp(self, node):
-        symbol, precedence = BOOLOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
-        for idx, value in enumerate(node.values):
-            if idx:
-                self.write('%s' % symbol)
-            self.visit(value)
-        if self.prec_end():
-            self.write(')')
-
-    def visit_Compare(self, node):
-        if self.prec_start(6):
-            self.write('(')
-        self.visit(node.left)
-        for op, right in zip(node.ops, node.comparators):
-            self.write('%s' % CMPOP_SYMBOLS[type(op)][0])
-            self.visit(right)
-        if self.prec_end():
-            self.write(')')
-
-    def visit_UnaryOp(self, node):
-        symbol, precedence = UNARYOP_SYMBOLS[type(node.op)]
-        if self.prec_start(precedence):
-            self.write('(')
-        self.write(symbol)
-        self.visit(node.operand)
-        if self.prec_end():
-            self.write(')')
-
-    def visit_Lambda(self, node):
-        if self.prec_start(1):
-            self.write('(')
-        self.write('lambda ')
-        self.signature(node.args)
-        self.write(':')
-        self.visit(node.body)
-        if self.prec_end():
-            self.write(')')
-
-    def signature(self, node):
-        want_comma = []
-        def write_comma():
-            if want_comma:
-                self.write(',')
-            else:
-                want_comma.append(True)
-
-        padding = [None] * (len(node.args) - len(node.defaults))
-        for arg, default in zip(node.args, padding + node.defaults):
-            write_comma()
-            self.visit(arg)
-            if default is not None:
-                self.write('=')
-                self.visit(default)
-        if node.vararg is not None:
-            write_comma()
-            self.write('*' + node.vararg)
-        if node.kwarg is not None:
-            write_comma()
-            self.write('**' + node.kwarg)
-
-    def visit_For(self, node):
-        self.newline(node)
-        self.write('for ')
-        if isinstance(node.target, ast.Tuple):
-            self.visit_Tuple(node.target, False)
-        else:
-            self.visit(node.target)
-        self.write(' in ')
-        self.visit(node.iter)
-        self.write(':')
-        self.body_or_else(node)
