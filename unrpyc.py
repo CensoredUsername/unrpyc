@@ -62,7 +62,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
     out_filename = filepath + ('.txt' if dump else '.rpy')
 
     print "Decompiling %s to %s..." % (input_filename, out_filename)
-    
+
     if not overwrite and path.exists(out_filename):
         print "Output file already exists. Pass --clobber to overwrite."
         return False # Don't stop decompiling if one file already exists
@@ -111,7 +111,7 @@ def main():
                         help="Only for dumping, don't output any file metadata (such as line numbers). "
                         "This allows comparing of dumps even if --comparable was not used when decompiling.")
 
-    parser.add_argument('file', type=str, nargs='+', 
+    parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile")
 
     args = parser.parse_args()

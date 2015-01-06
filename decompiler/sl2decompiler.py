@@ -198,7 +198,7 @@ class SL2Decompiler(DecompilerBase):
 
     def print_displayable(self, ast):
         # slast.SLDisplayable represents a variety of statements. We can figure out
-        # what statement it represents by analyzing the called displayable and style 
+        # what statement it represents by analyzing the called displayable and style
         # attributes.
         name = self.displayable_names.get((ast.displayable, ast.style))
         if name is None:

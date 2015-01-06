@@ -27,7 +27,7 @@ from collections import OrderedDict
 
 # Main API
 
-def minimize(code, remove_docstrings=True, obfuscate_globals=False, 
+def minimize(code, remove_docstrings=True, obfuscate_globals=False,
              obfuscate_builtins=False, obfuscate_imports=False):
     # convert the code to an AST
     tree = ast.parse(code)
@@ -49,7 +49,7 @@ class DocstringRemover(ast.NodeTransformer):
         if isinstance(node.value, ast.Str):
             return None
         else:
-            return self.generic_visit(node)    
+            return self.generic_visit(node)
 
 # Scope analysis implementation
 
@@ -223,7 +223,7 @@ class Scope(object):
             else:
                 self.bound_vars[name] = munger(startval, name)
                 startval+= 1
-        
+
         for scope in self.children:
             scope.munge(munger, startval)
 
@@ -285,7 +285,7 @@ class ScopeAnalyzer(ast.NodeTransformer):
             # append the nodes to rename builtins
             extra_nodes = [ast.Assign([ast.Name(value, ast.Store())], ast.Name(key, ast.Load()))
                            for key, value in self.builtin_scope.bound_vars.iteritems() if key != value]
-            # ensure any "from __future__ import thing" statements are at the start of the 
+            # ensure any "from __future__ import thing" statements are at the start of the
             futures = [future for future in node.body if
                        isinstance(future, ast.ImportFrom) and future.module == "__future__"]
             # This is technically O(n^2) but from future import statements will always be at the
@@ -487,8 +487,8 @@ class DenseSourceGenerator(SourceGenerator):
 
     BINOP_SYMBOLS = dict((i, (j.strip(), k)) for i, (j, k)
                          in SourceGenerator.BINOP_SYMBOLS.items())
-    CMPOP_SYMBOLS = dict((i, (j.strip(), k)) 
-                         if j not in POSSIBLE_WHITESPACE 
+    CMPOP_SYMBOLS = dict((i, (j.strip(), k))
+                         if j not in POSSIBLE_WHITESPACE
                          else (i, (j, k))
                          for i, (j, k)
                          in SourceGenerator.CMPOP_SYMBOLS.items()

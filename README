@@ -18,7 +18,7 @@ Options:
   -d, --dump     Instead of decompiling, pretty print the contents
                  of the AST in a human readable format.
                  This is mainly useful for debugging.
-  --no-screenlang   
+  --no-screenlang
                  Only for decompiling, don't decompile back to screen language
 
   --no-codegen   Only dumping and for decompiling screen language 1 screens.
