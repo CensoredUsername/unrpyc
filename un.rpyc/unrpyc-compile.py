@@ -56,7 +56,7 @@ def decompile_rpyc(file_obj, abspath):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
     out_filename = filepath + '.rpy'
-    
+
     ast = read_ast_from_file(file_obj)
 
     ensure_dir(out_filename)

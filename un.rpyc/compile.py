@@ -109,7 +109,7 @@ for i in sys.modules.copy():
                     p.GetModule("traceback"),
                     p.GetModule("codecs"),
                     p.Imports("magic", "fake_package")("renpy"),
-                    p.Imports("magic", "FakeModule")("astdump"), 
+                    p.Imports("magic", "FakeModule")("astdump"),
                     #turns out we don't actually need astdump in here
                     #Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
                     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
@@ -146,7 +146,7 @@ if args.debug:
         pickletools.dis(data, f)
 
     for com, arg, _ in pickletools.genops(data):
-        if arg and (isinstance(arg, str) or 
+        if arg and (isinstance(arg, str) or
                     p.PY3 and isinstance(arg, bytes)) and len(arg) > 1000:
 
             if p.PY3 and isinstance(arg, str):

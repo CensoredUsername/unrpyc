@@ -284,6 +284,18 @@ class Decompiler(DecompilerBase):
             self.print_atl(ast.atl)
     dispatch[renpy.ast.Show] = print_show
 
+    def print_showlayer(self, ast):
+        self.indent()
+        self.write("show layer %s" % ast.layer)
+
+        if ast.at_list:
+            self.write(" at %s" % ', '.join(ast.at_list))
+
+        if hasattr(ast, "atl") and ast.atl is not None:
+            self.write(":")
+            self.print_atl(ast.atl)
+    dispatch[renpy.ast.ShowLayer] = print_showlayer
+
     def print_scene(self, ast):
         self.indent()
         self.write("scene")
@@ -319,7 +331,7 @@ class Decompiler(DecompilerBase):
         # with statement. detect this and process it properly
         if hasattr(ast, "paired") and ast.paired is not None:
             # Sanity check. check if there's a matching with statement two nodes further
-            if not(isinstance(self.block[self.index + 2], renpy.ast.With) and 
+            if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
                    self.block[self.index + 2].expr == ast.paired):
                 raise Exception("Unmatched paired with {0} != {1}".format(
                                 repr(self.paired_with), repr(ast.expr)))
@@ -400,7 +412,7 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.While] = print_while
 
     def print_pass(self, ast):
-        if not(self.index and 
+        if not(self.index and
                isinstance(self.block[self.index - 1], renpy.ast.Call)):
             self.indent()
             self.write("pass")
@@ -435,9 +447,7 @@ class Decompiler(DecompilerBase):
             if ast.priority:
                 self.write(" %d" % ast.priority)
 
-            if len(ast.block) == 1 and (not isinstance(ast.block[0], renpy.ast.Python) or
-                    ast.block[0].code.source[0] == '\n'
-                ) and ast.linenumber >= ast.block[0].linenumber:
+            if len(ast.block) == 1 and ast.linenumber >= ast.block[0].linenumber:
                 self.write(" ")
                 self.skip_indent_until_write = True
                 self.print_nodes(ast.block)
@@ -545,30 +555,32 @@ class Decompiler(DecompilerBase):
 
     def print_style(self, ast):
         self.indent()
-        self.write("style %s:" % ast.style_name)
-        self.indent_level += 1
+        self.write("style %s" % ast.style_name)
+        kwargs = []
 
         if ast.parent is not None:
-            self.indent()
-            self.write("is %s" % ast.parent)
+            kwargs.append("is %s" % ast.parent)
         if ast.clear:
-            self.indent()
-            self.write("clear")
+            kwargs.append("clear")
         if ast.take is not None:
-            self.indent()
-            self.write("take %s" % ast.take)
+            kwargs.append("take %s" % ast.take)
         for delname in ast.delattr:
-            self.indent()
-            self.write("del %s" % delname)
+            kwargs.append("del %s" % delname)
         if ast.variant is not None:
-            self.indent()
-            self.write("variant %s" % ast.variant)
+            kwargs.append("variant %s" % ast.variant)
 
         for key, value in ast.properties.iteritems():
-            self.indent()
-            self.write("%s %s" % (key, value))
+            kwargs.append("%s %s" % (key, value))
 
-        self.indent_level -= 1
+        if self.comparable:
+            self.write(" %s" % " ".join(kwargs))
+        else:
+            self.write(":")
+            self.indent_level += 1
+            for i in kwargs:
+                self.indent()
+                self.write(i)
+            self.indent_level -= 1
     dispatch[renpy.ast.Style] = print_style
 
     # Translation functions
@@ -602,7 +614,7 @@ class Decompiler(DecompilerBase):
         self.write('old "%s"' % string_escape(ast.old))
         self.indent()
         self.write('new "%s"' % string_escape(ast.new))
-        
+
         self.indent_level -= 1
     dispatch[renpy.ast.TranslateString] = print_translatestring
 

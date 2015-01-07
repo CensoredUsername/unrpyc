@@ -32,7 +32,7 @@ def pprint(out_file, ast, indent_level=0, linenumber=1,
            decompile_screencode=True, comparable=False,
            skip_indent_until_write=False):
     return SLDecompiler(out_file,
-                 force_multiline_kwargs=force_multiline_kwargs, 
+                 force_multiline_kwargs=force_multiline_kwargs,
                  decompile_python=decompile_python,
                  decompile_screencode=decompile_screencode, comparable=comparable).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
@@ -75,14 +75,17 @@ class SLDecompiler(DecompilerBase):
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
 
-        # If the value for zorder, modal, or variant has a space after it (even
-        # the space separating it from the next key), it will end up in the AST.
-        # We need to pack as many as possible onto the screen line so that line
+        if ast.tag:
+            self.write(" tag %s" % ast.tag)
+
+        # If the value for a simple_expression has a space after it (even the
+        # space separating it from the next key), it will end up in the AST. We
+        # need to pack as many as possible onto the screen line so that line
         # numbers can match up, without putting a space after a value that
         # wasn't there originally.
         kwargs_for_screen_line = WordConcatenator(True)
         kwargs_for_separate_lines = []
-        for key in ('zorder', 'modal', 'variant'):
+        for key in ('modal', 'zorder', 'variant', 'predict'):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
@@ -101,11 +104,6 @@ class SLDecompiler(DecompilerBase):
         for i in kwargs_for_separate_lines:
             self.indent()
             self.write(i)
-
-        # Print any keywords
-        if ast.tag:
-            self.indent()
-            self.write("tag %s" % ast.tag)
 
         if not self.decompile_python:
             self.indent()
@@ -234,7 +232,7 @@ class SLDecompiler(DecompilerBase):
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
-        # Note that because of ui.close() stripping at the start this might not necessarily 
+        # Note that because of ui.close() stripping at the start this might not necessarily
         # still be valid code if we couldn't parse a screen statement containing children.
         self.indent()
 
@@ -291,9 +289,9 @@ class SLDecompiler(DecompilerBase):
     dispatch['if'] = print_if
 
     def print_for(self, header, code):
-        # Here we handle the for statement. Note that the for statement generates some extra python code to 
-        # Keep track of it's header indices. The first one is ignored by the statement parser, 
-        # the second line is just ingored here. 
+        # Here we handle the for statement. Note that the for statement generates some extra python code to
+        # Keep track of it's header indices. The first one is ignored by the statement parser,
+        # the second line is just ingored here.
 
         # note that it is possible for a python block to have "for" as it's first statement
         # so we check here if a second header appears after the for block to correct this.
@@ -312,7 +310,7 @@ class SLDecompiler(DecompilerBase):
         # It would technically be possible for this to be a python statement, but the odds of this are very small.
         # renpy itself will insert some kwargs, we'll delete those and then parse the command here.
         args, kwargs, exargs, exkwargs = self.parse_args(code.strip())
-        kwargs = [(key, value) for key, value in kwargs if not 
+        kwargs = [(key, value) for key, value in kwargs if not
                   (key == '_scope' or key == '_name')]
 
         self.indent()
@@ -410,13 +408,13 @@ class SLDecompiler(DecompilerBase):
         return count
 
     def parse_args(self, string):
-        # This function parses a functionstring, splits it on comma's using splitargs, and then 
+        # This function parses a functionstring, splits it on comma's using splitargs, and then
         # orders them by args, kwargs, *args and **kwargs.
 
         # First, we'll split the arguments in a quick and dirty way
         arguments = []
 
-        # If this string contains more than just the arguments, 
+        # If this string contains more than just the arguments,
         # isolate the part of the string actually containing the arguments
         match = re.match(r'.*?\((.*)\)', string)
         if match:

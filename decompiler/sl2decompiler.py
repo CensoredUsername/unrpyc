@@ -75,14 +75,12 @@ class SL2Decompiler(DecompilerBase):
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
         # Print any keywords
+        if ast.tag:
+            self.write(" tag %s" % ast.tag)
         for key, value in ast.keyword:
             self.write(" %s %s" % (key, value))
         self.write(":")
         self.indent_level += 1
-
-        if ast.tag:
-            self.indent()
-            self.write("tag %s" % ast.tag)
 
         # If we're decompiling screencode, print it. Else, insert a pass statement
         if self.decompile_screencode:
@@ -117,7 +115,13 @@ class SL2Decompiler(DecompilerBase):
                 self.write("%s %s:" % (keyword(), condition))
 
             # Every condition has a block of type slast.SLBlock
-            self.print_block(block)
+            if block.keyword or block.children:
+                self.print_block(block)
+            else:
+                self.indent_level += 1
+                self.indent()
+                self.write("pass")
+                self.indent_level -= 1
 
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
@@ -192,7 +196,7 @@ class SL2Decompiler(DecompilerBase):
 
     def print_displayable(self, ast):
         # slast.SLDisplayable represents a variety of statements. We can figure out
-        # what statement it represents by analyzing the called displayable and style 
+        # what statement it represents by analyzing the called displayable and style
         # attributes.
         name = self.displayable_names.get((ast.displayable, ast.style))
         if name is None:

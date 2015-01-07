@@ -74,7 +74,7 @@ def remove_fake_package(name):
 
     # It is impossible to kill references to the modules, but all traces
     # of it have been removed from the import machinery and the submodule
-    # tree structure has been broken up. 
+    # tree structure has been broken up.
 
 # Fake class implementation
 
@@ -132,72 +132,72 @@ def _ignore_new(cls, *args):
 def _strict_setstate(self, state):
     slotstate = None
 
-    if (isinstance(state, tuple) and len(state) == 2 and 
+    if (isinstance(state, tuple) and len(state) == 2 and
         (state[0] is None or isinstance(state[0], dict)) and
         (state[1] is None or isinstance(state[1], dict))):
         state, slotstate = state
-    
+
     if state:
         # Don't have to check for slotstate here since it's either None or a dict
         if not isinstance(state, dict):
             raise ValueError("{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state))
         else:
             self.__dict__.update(state)
-        
+
     if slotstate:
         self.__dict__.update(slotstate)
 
 def _warning_setstate(self, state):
     slotstate = None
 
-    if (isinstance(state, tuple) and len(state) == 2 and 
+    if (isinstance(state, tuple) and len(state) == 2 and
         (state[0] is None or isinstance(state[0], dict)) and
         (state[1] is None or isinstance(state[1], dict))):
         state, slotstate = state
-    
+
     if state:
         # Don't have to check for slotstate here since it's either None or a dict
         if not isinstance(state, dict):
             print "{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state)
-            self._setstate_args = state 
+            self._setstate_args = state
         else:
             self.__dict__.update(state)
-        
+
     if slotstate:
         self.__dict__.update(slotstate)
 
 def _ignore_setstate(self, state):
     slotstate = None
 
-    if (isinstance(state, tuple) and len(state) == 2 and 
+    if (isinstance(state, tuple) and len(state) == 2 and
         (state[0] is None or isinstance(state[0], dict)) and
         (state[1] is None or isinstance(state[1], dict))):
         state, slotstate = state
-    
+
     if state and isinstance(state, dict):
         self.__dict__.update(state)
-        
+
     if slotstate:
         self.__dict__.update(slotstate)
 
 class FakeClassFactory(object):
     """
-    A factory which instantiates FakeClasses which inherit from given bases 
+    A factory which instantiates FakeClasses which inherit from given bases
     with given methods and attributes
     """
 
     def __init__(self, special_cases, errors='strict', fake_metaclass=FakeClassType, default_bases=(object,)):
         """
-        `special_cases` should be a dict with a mapping of name to a tuple of a tuple of 
+        `special_cases` should be a dict with a mapping of name to a tuple of a tuple of
         classes the special case should inherit from and a dict of attribute name to attribute
-        value. 
+        value.
 
         e.g. special_cases = {"foo.bar": ((object, ), {"__str__": lambda self: "baz"})}
 
         To mimic another class would require the equivalent of this:
         special_cases = {class.__module__ + "." + class.__name__: (class.__bases__, class.__dict__)}
 
-        `errors` determines how errors around object instatiation from the pickle will be 
+        `errors` determines how errors around object instatiation from the pickle will be
         handled by the default __new__ and __setstate__ methods used by FakeClasses.
 
         There are three possible cases. 'strict', the default, will raise a ValueError
@@ -320,7 +320,7 @@ class FakePackage(FakeModule):
         modname = self.__name__ + "." + name
         mod = sys.modules.get(modname, None)
         if mod is None:
-            try: 
+            try:
                 __import__(modname)
             except:
                 mod = FakePackage(modname)
@@ -330,7 +330,7 @@ class FakePackage(FakeModule):
 
 class FakePackageLoader(object):
     """
-    A loader for FakePackage modules. This is mounted at a certain root, 
+    A loader for FakePackage modules. This is mounted at a certain root,
     and from that point on any module imported which is that root or
     would be a submodule from that root will be a FakePackage
     """
@@ -351,8 +351,8 @@ class FakePackageLoader(object):
 class FakeUnpickler(pickle.Unpickler):
     """
     This unpickler behaves like a normal unpickler as long as it can import
-    the modules and classes that are requested in the pickle. If however it 
-    encounters an unknown module or class it will insert FakeModules and 
+    the modules and classes that are requested in the pickle. If however it
+    encounters an unknown module or class it will insert FakeModules and
     FakeClasses where necessary.
 
     This means that this pickle is as close to the original data as possible,

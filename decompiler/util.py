@@ -55,7 +55,7 @@ class DecompilerBase(object):
         # This node is a list of nodes
         # Print every node
         self.indent_level += extra_indent
-        
+
         self.block_stack.append(ast)
         self.index_stack.append(0)
 
@@ -68,7 +68,7 @@ class DecompilerBase(object):
 
         self.indent_level -= extra_indent
 
-    @property    
+    @property
     def block(self):
         return self.block_stack[-1]
 
@@ -179,7 +179,7 @@ KEYWORDS = set(['$', 'as', 'at', 'behind', 'call', 'expression', 'hide',
 word_regexp = ur'[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*'
 
 def simple_expression_guard(s):
-    # Some things we deal with are supposed to be parsed by 
+    # Some things we deal with are supposed to be parsed by
     # ren'py's Lexer.simple_expression but actually cannot
     # be parsed by it. figure out if this is the case
     # a slightly more naive approach woudl be to check
@@ -212,7 +212,7 @@ class Lexer(object):
         match = re.compile(regexp, re.DOTALL).match(self.string, self.pos)
         if not match:
             return None
-        
+
         self.pos = match.end()
         return match.group(0)
 

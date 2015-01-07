@@ -39,7 +39,7 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
-    def __init__(self, out_file=None, decompile_python=True,  
+    def __init__(self, out_file=None, decompile_python=True,
                  comparable=False, file_metadata=True, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
@@ -75,9 +75,9 @@ class AstDumper(object):
         self.passed.pop()
 
     def print_list(self, ast):
-        # handles the printing of simple containers of N elements. 
+        # handles the printing of simple containers of N elements.
         self.p(self.MAP_OPEN[ast.__class__])
-        
+
         self.ind(1, ast)
         for i, obj in enumerate(ast):
             self.print_ast(obj)
