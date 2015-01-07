@@ -146,7 +146,7 @@ def reconstruct_paraminfo(paraminfo):
         rv.append(sep())
         rv.append(parameter[0])
         if parameter[1] is not None:
-            rv.append(" = %s" % parameter[1])
+            rv.append("=%s" % parameter[1])
     if paraminfo.extrapos:
         rv.append(sep())
         rv.append("*%s" % paraminfo.extrapos)
@@ -158,7 +158,7 @@ def reconstruct_paraminfo(paraminfo):
             rv.append(sep())
             rv.append(parameter[0])
             if param[1] is not None:
-                rv.append(" = %s" % parameter[1])
+                rv.append("=%s" % parameter[1])
     if paraminfo.extrakw:
         rv.append(sep())
         rv.append("**%s" % paraminfo.extrakw)
