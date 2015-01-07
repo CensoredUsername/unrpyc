@@ -369,6 +369,8 @@ class SLDecompiler(DecompilerBase):
     dispatch['ui.bar']          = print_nochild
     dispatch['ui.vbar']         = print_nochild
     dispatch['ui.hotbar']       = print_nochild
+    dispatch['ui.on']           = print_nochild
+    dispatch['ui.image']        = print_nochild
 
     # These functions themselves don't have a ui.close() at the end, but
     # they're always immediately followed by one that does (usually
