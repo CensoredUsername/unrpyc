@@ -75,14 +75,12 @@ class SL2Decompiler(DecompilerBase):
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
         # Print any keywords
+        if ast.tag:
+            self.write(" tag %s" % ast.tag)
         for key, value in ast.keyword:
             self.write(" %s %s" % (key, value))
         self.write(":")
         self.indent_level += 1
-
-        if ast.tag:
-            self.indent()
-            self.write("tag %s" % ast.tag)
 
         # If we're decompiling screencode, print it. Else, insert a pass statement
         if self.decompile_screencode:

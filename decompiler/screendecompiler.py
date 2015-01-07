@@ -75,14 +75,17 @@ class SLDecompiler(DecompilerBase):
         if hasattr(ast, "parameters") and ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
 
-        # If the value for zorder, modal, or variant has a space after it (even
-        # the space separating it from the next key), it will end up in the AST.
-        # We need to pack as many as possible onto the screen line so that line
+        if ast.tag:
+            self.write(" tag %s" % ast.tag)
+
+        # If the value for a simple_expression has a space after it (even the
+        # space separating it from the next key), it will end up in the AST. We
+        # need to pack as many as possible onto the screen line so that line
         # numbers can match up, without putting a space after a value that
         # wasn't there originally.
         kwargs_for_screen_line = WordConcatenator(True)
         kwargs_for_separate_lines = []
-        for key in ('zorder', 'modal', 'variant'):
+        for key in ('modal', 'zorder', 'variant', 'predict'):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
@@ -101,11 +104,6 @@ class SLDecompiler(DecompilerBase):
         for i in kwargs_for_separate_lines:
             self.indent()
             self.write(i)
-
-        # Print any keywords
-        if ast.tag:
-            self.indent()
-            self.write("tag %s" % ast.tag)
 
         if not self.decompile_python:
             self.indent()
