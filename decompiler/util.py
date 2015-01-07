@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import sys
 import re
+from StringIO import StringIO
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation='    ', comparable=False):
@@ -34,6 +35,30 @@ class DecompilerBase(object):
         self.linenumber += string.count('\n')
         self.skip_indent_until_write = False
         self.out_file.write(string)
+
+    def save_state(self):
+        """
+        Save our current state.
+        """
+        state = (self.out_file, self.skip_indent_until_write, self.linenumber,
+            self.block_stack, self.index_stack, self.indent_level)
+        self.out_file = StringIO()
+        return state
+
+    def commit_state(self, state):
+        """
+        Commit changes since a saved state.
+        """
+        out_file = state[0]
+        out_file.write(self.out_file.getvalue())
+        self.out_file = out_file
+
+    def rollback_state(self, state):
+        """
+        Roll back to a saved state.
+        """
+        (self.out_file, self.skip_indent_until_write, self.linenumber,
+            self.block_stack, self.index_stack, self.indent_level) = state
 
     def advance_to_line(self, linenumber):
         if self.comparable and self.linenumber < linenumber:

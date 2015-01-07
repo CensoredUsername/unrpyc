@@ -113,8 +113,7 @@ class SLDecompiler(DecompilerBase):
         code = codegen.to_source(ast.code.source, self.indentation)
 
         if self.decompile_screencode:
-            lines = [line for line in code.splitlines() if line.strip() != "ui.close()"]
-            self.print_nodes('\n'.join(lines))
+            self.print_nodes(code)
 
         else:
             self.indent()
@@ -132,7 +131,7 @@ class SLDecompiler(DecompilerBase):
 
         self.indent_level -= 1
 
-    def print_nodes(self, code, extra_indent=0):
+    def print_nodes(self, code, extra_indent=0, has_block=False):
         # Print a block of statements, splitting it up on one level.
         # The screen language parser emits lines in the shape _0 = (_0, 0) from which indentation can be revealed.
         # It translates roughly to "id = (parent_id, index_in_parent_children)". When parsing a block
@@ -140,6 +139,8 @@ class SLDecompiler(DecompilerBase):
         # in this block.
         split = code.split('\n', 1)
         if len(split) == 1:
+            if has_block:
+                raise BadHasBlockException()
             return
         header, _ = split
 
@@ -149,10 +150,10 @@ class SLDecompiler(DecompilerBase):
 
         self.indent_level += extra_indent
         for i in range(1, len(split), 2):
-            self.print_node(split[i], split[i+1])
+            self.print_node(split[i], split[i+1], has_block)
         self.indent_level -= extra_indent
 
-    def print_node(self, header, code):
+    def print_node(self, header, code, has_block=False):
         # Here we derermine how to handle a statement.
         # To do this we look at how the first line in the statement code starts, after the header.
         # Then we call the appropriate function as specified in ui_function_dict.
@@ -161,15 +162,22 @@ class SLDecompiler(DecompilerBase):
 
         # The for statement has an extra header. we just swallow it here in case it appears.
         # Otherwise the parser is clueless.
-        if re.match(r' *_[0-9]+ = 0', code):
+        if not has_block and re.match(r' *_[0-9]+ = 0', code):
             _, code = code.split('\n', 1)
 
         for statement, func in self.dispatch.iteritems():
             if code.lstrip().startswith(statement):
-                func(self, header, code)
-                break
-        else:
-            self.print_python(header, code)
+                if has_block:
+                    if func not in (SLDecompiler.print_onechild.__func__,
+                        SLDecompiler.print_manychildren.__func__):
+                        raise BadHasBlockException()
+                    func(self, header, code, True)
+                else:
+                    func(self, header, code)
+                return
+        if has_block:
+            raise BadHasBlockException()
+        self.print_python(header, code)
     # Helper printing functions
 
     def print_arguments(self, args, kwargs, multiline=True):
@@ -232,8 +240,6 @@ class SLDecompiler(DecompilerBase):
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
-        # Note that because of ui.close() stripping at the start this might not necessarily
-        # still be valid code if we couldn't parse a screen statement containing children.
         self.indent()
 
         if '\n' in code.strip():
@@ -338,53 +344,123 @@ class SLDecompiler(DecompilerBase):
         self.write("default %s = %s" % (key, value))
     dispatch['_scope.setdefault'] = print_default
 
-    def print_hotspot(self, header, code):
-        line = code.split('\n', 1)[0]
-        self.indent()
-        self.write("hotspot")
-        args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs)
-    dispatch['ui.hotspot_with_child'] = print_hotspot
-
-    def print_ui(self, header, code):
+    # These never have a ui.close() at the end
+    def print_nochild(self, header, code):
         split = code.split('\n', 1)
+        if len(split) == 2 and split[1]:
+            self.print_python(header, code)
+            return
         line = split[0]
-        block = split[1] if len(split) == 2 else ""
         name = line.split('ui.', 1)[1].split('(', 1)[0]
         self.indent()
         self.write(name)
         args, kwargs, _, _ = self.parse_args(line)
-        split = block.split('\n', 1)
-        if "ui.child_or_fixed()" in split[0]:
-            block = split[1] if len(split) == 2 else ""
-        self.print_arguments(args, kwargs, block)
-        self.print_nodes(block, 1)
-    dispatch['ui.add']          = print_ui
-    dispatch['ui.imagebutton']  = print_ui
-    dispatch['ui.input']        = print_ui
-    dispatch['ui.key']          = print_ui
-    dispatch['ui.label']        = print_ui
-    dispatch['ui.text']         = print_ui
-    dispatch['ui.null']         = print_ui
-    dispatch['ui.mousearea']    = print_ui
-    dispatch['ui.textbutton']   = print_ui
-    dispatch['ui.timer']        = print_ui
-    dispatch['ui.bar']          = print_ui
-    dispatch['ui.vbar']         = print_ui
-    dispatch['ui.hotbar']       = print_ui
-    dispatch['ui.button']       = print_ui
-    dispatch['ui.frame']        = print_ui
-    dispatch['ui.transform']    = print_ui
-    dispatch['ui.viewport']     = print_ui
-    dispatch['ui.window']       = print_ui
-    dispatch['ui.drag']         = print_ui
-    dispatch['ui.fixed']        = print_ui
-    dispatch['ui.grid']         = print_ui
-    dispatch['ui.hbox']         = print_ui
-    dispatch['ui.side']         = print_ui
-    dispatch['ui.vbox']         = print_ui
-    dispatch['ui.imagemap']     = print_ui
-    dispatch['ui.draggroup']    = print_ui
+        self.print_arguments(args, kwargs, False)
+    dispatch['ui.add']          = print_nochild
+    dispatch['ui.imagebutton']  = print_nochild
+    dispatch['ui.input']        = print_nochild
+    dispatch['ui.key']          = print_nochild
+    dispatch['ui.label']        = print_nochild
+    dispatch['ui.text']         = print_nochild
+    dispatch['ui.null']         = print_nochild
+    dispatch['ui.mousearea']    = print_nochild
+    dispatch['ui.textbutton']   = print_nochild
+    dispatch['ui.timer']        = print_nochild
+    dispatch['ui.bar']          = print_nochild
+    dispatch['ui.vbar']         = print_nochild
+    dispatch['ui.hotbar']       = print_nochild
+
+    # These functions themselves don't have a ui.close() at the end, but
+    # they're always immediately followed by one that does (usually
+    # ui.child_or_fixed(), but also possibly one set with "has")
+    def print_onechild(self, header, code, has_block=False):
+        lines = code.splitlines()
+        # We expect to have at least ourself, one child, and ui.close()
+        if len(lines) < 3 or lines[-1].strip() != 'ui.close()':
+            if has_block:
+                raise BadHasBlockException()
+            self.print_python(header, code)
+            return
+        line = lines[0]
+        name = line.split('ui.', 1)[1].split('(', 1)[0]
+        if name == 'hotspot_with_child':
+            name = 'hotspot'
+        if lines[1].strip() != 'ui.child_or_fixed()':
+            # Handle the case where a "has" statement was used
+            if has_block:
+                # Ren'Py lets users nest "has" blocks for some reason, and it
+                # puts the ui.close() statement in the wrong place when they do.
+                # Since we checked for ui.close() being in the right place
+                # before, the only way we could ever get here is if a user added
+                # one inside a python block at the end. If this happens, turn
+                # the whole outer block into Python instead of screencode.
+                raise BadHasBlockException()
+            block = '\n'.join(lines[1:])
+            if not self.parse_header(block):
+                self.print_python(header, code)
+                return
+            state = self.save_state()
+            try:
+                self.indent()
+                self.write(name)
+                args, kwargs, _, _ = self.parse_args(line)
+                self.print_arguments(args, kwargs)
+                self.indent_level += 1
+                self.indent()
+                self.write("has ")
+                self.indent_level -= 1
+                self.skip_indent_until_write = True
+                self.print_nodes(block, 1, True)
+            except BadHasBlockException as e:
+                self.rollback_state(state)
+                self.print_python(header, code)
+            else:
+                self.commit_state(state)
+        else:
+            # Remove ourself, ui.child_or_fixed(), and ui.close()
+            block = '\n'.join(lines[2:-1])
+            if block and not self.parse_header(block):
+                if has_block:
+                    raise BadHasBlockException()
+                self.print_python(header, code)
+                return
+            self.indent()
+            self.write(name)
+            args, kwargs, _, _ = self.parse_args(line)
+            self.print_arguments(args, kwargs, not has_block and block)
+            self.print_nodes(block, 0 if has_block else 1)
+    dispatch['ui.button']             = print_onechild
+    dispatch['ui.frame']              = print_onechild
+    dispatch['ui.transform']          = print_onechild
+    dispatch['ui.viewport']           = print_onechild
+    dispatch['ui.window']             = print_onechild
+    dispatch['ui.drag']               = print_onechild
+    dispatch['ui.hotspot_with_child'] = print_onechild
+
+    # These always have a ui.close() at the end
+    def print_manychildren(self, header, code, has_block=False):
+        lines = code.splitlines()
+        if lines[-1].strip() != 'ui.close()' or (
+            len(lines) != 2 and not self.parse_header(lines[1])):
+            if has_block:
+                raise BadHasBlockException()
+            self.print_python(header, code)
+            return
+        line = lines[0]
+        block = '\n'.join(lines[1:-1])
+        name = line.split('ui.', 1)[1].split('(', 1)[0]
+        self.indent()
+        self.write(name)
+        args, kwargs, _, _ = self.parse_args(line)
+        self.print_arguments(args, kwargs, not has_block and block)
+        self.print_nodes(block, 0 if has_block else 1)
+    dispatch['ui.fixed']        = print_manychildren
+    dispatch['ui.grid']         = print_manychildren
+    dispatch['ui.hbox']         = print_manychildren
+    dispatch['ui.side']         = print_manychildren
+    dispatch['ui.vbox']         = print_manychildren
+    dispatch['ui.imagemap']     = print_manychildren
+    dispatch['ui.draggroup']    = print_manychildren
 
     # Parsing functions
 
@@ -468,3 +544,6 @@ class SLDecompiler(DecompilerBase):
                 args.append(argument)
 
         return args, kwargs, exargs, exkwargs
+
+class BadHasBlockException(Exception):
+    pass
