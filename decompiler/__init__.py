@@ -541,6 +541,9 @@ class Decompiler(DecompilerBase):
         self.indent()
         if ast.who is not None:
             self.write("%s " % ast.who)
+        if ast.attributes is not None:
+            for i in ast.attributes:
+                self.write("%s " % i)
         self.write('"%s"' % string_escape(ast.what))
         if not ast.interact and not inmenu:
             self.write(" nointeract")
