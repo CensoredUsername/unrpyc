@@ -635,12 +635,14 @@ class Decompiler(DecompilerBase):
                                     self.linenumber, self.force_multiline_kwargs,
                                     self.decompile_python, self.decompile_screencode,
                                     self.comparable, self.skip_indent_until_write)
+	    self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber, self.force_multiline_kwargs,
                                     self.decompile_screencode, self.comparable,
                                     self.skip_indent_until_write)
+	    self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
     dispatch[renpy.ast.Screen] = print_screen
