@@ -352,9 +352,8 @@ class Decompiler(DecompilerBase):
     # Flow control
 
     def print_label(self, ast):
-        if self.index and isinstance(self.block[self.index - 1], renpy.ast.Call):
-            self.write(" from %s" % ast.name)
-        else:
+        # If a Call block preceded us, it printed us as "from"
+        if not (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             self.indent()
             self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
             self.print_nodes(ast.block, 1)
@@ -371,16 +370,24 @@ class Decompiler(DecompilerBase):
 
     def print_call(self, ast):
         self.indent()
-        self.write("call ")
+        words = WordConcatenator(False)
+        words.append("call")
         if ast.expression:
-            self.write("expression %s" % ast.label)
-        else:
-            self.write(ast.label)
+            words.append("expression")
+        words.append(ast.label)
 
         if ast.arguments is not None:
             if ast.expression:
-                self.write(" pass ")
-            self.write(reconstruct_arginfo(ast.arguments))
+                words.append("pass")
+            words.append(reconstruct_arginfo(ast.arguments))
+
+        # We don't have to check if there's enough elements here,
+        # since a Label or a Pass is always emitted after a Call.
+        next_block = self.block[self.index + 1]
+        if isinstance(next_block, renpy.ast.Label):
+            words.append("from %s" % next_block.name)
+
+        self.write(words.join())
     dispatch[renpy.ast.Call] = print_call
 
     def print_return(self, ast):
@@ -638,14 +645,14 @@ class Decompiler(DecompilerBase):
                                     self.linenumber, self.force_multiline_kwargs,
                                     self.decompile_python, self.decompile_screencode,
                                     self.comparable, self.skip_indent_until_write)
-	    self.skip_indent_until_write = False
+            self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber, self.force_multiline_kwargs,
                                     self.decompile_screencode, self.comparable,
                                     self.skip_indent_until_write)
-	    self.skip_indent_until_write = False
+            self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
     dispatch[renpy.ast.Screen] = print_screen
