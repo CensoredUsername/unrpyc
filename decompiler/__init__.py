@@ -63,6 +63,7 @@ class Decompiler(DecompilerBase):
 
         self.paired_with = False
         self.say_inside_menu = None
+        self.label_inside_menu = None
 
     def dump(self, ast, indent_level=0):
         if not self.comparable:
@@ -353,10 +354,20 @@ class Decompiler(DecompilerBase):
 
     def print_label(self, ast):
         # If a Call block preceded us, it printed us as "from"
-        if not (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
-            self.indent()
-            self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
-            self.print_nodes(ast.block, 1)
+        if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
+            return
+        remaining_blocks = len(self.block) - self.index
+        # See if we're the label for a menu, rather than a standalone label.
+        if remaining_blocks > 1 and not ast.block and ast.parameters is None:
+            next_ast = self.block[self.index + 1]
+            if isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
+                isinstance(next_ast, renpy.ast.Say) and
+                self.say_belongs_to_menu(next_ast, self.block[self.index + 2])):
+                self.label_inside_menu = ast
+                return
+        self.indent()
+        self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
+        self.print_nodes(ast.block, 1)
     dispatch[renpy.ast.Label] = print_label
 
     def print_jump(self, ast):
@@ -466,7 +477,11 @@ class Decompiler(DecompilerBase):
 
     def print_menu(self, ast):
         self.indent()
-        self.write("menu:")
+        self.write("menu")
+        if self.label_inside_menu is not None:
+            self.write(" %s" % self.label_inside_menu.name)
+            self.label_inside_menu = None
+        self.write(":")
         self.indent_level += 1
 
         if self.say_inside_menu is not None:
