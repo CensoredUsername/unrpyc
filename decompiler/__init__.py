@@ -535,16 +535,20 @@ class Decompiler(DecompilerBase):
 
     # Specials
 
+    # Returns whether a Say statement immediately preceding a Menu statement
+    # actually belongs inside of the Menu statement.
+    def say_belongs_to_menu(self, say, menu):
+        return (not say.interact and say.who is not None and
+            say.with_ is None and say.attributes is None and
+            isinstance(menu, renpy.ast.Menu) and
+            menu.items[0][2] is not None and
+            not self.should_come_before(say, menu))
+
     def print_say(self, ast, inmenu=False):
-        if (not ast.interact and not inmenu and ast.who is not None and
-            ast.with_ is None and ast.attributes is None and
-            self.index + 1 < len(self.block)):
-            next_block = self.block[self.index + 1]
-            if (isinstance(next_block, renpy.ast.Menu) and
-                next_block.items[0][2] is not None and
-                not self.should_come_before(ast, next_block)):
-                self.say_inside_menu = ast
-                return
+        if (not inmenu and self.index + 1 < len(self.block) and
+            self.say_belongs_to_menu(ast, self.block[self.index + 1])):
+            self.say_inside_menu = ast
+            return
         self.indent()
         if ast.who is not None:
             self.write("%s " % ast.who)
