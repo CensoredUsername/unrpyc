@@ -133,12 +133,11 @@ class AstDumper(object):
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
 
-        if isinstance(ast, py_ast.Module):
+        if isinstance(ast, py_ast.Module) and self.decompile_python:
             self.p('.code = ')
-            if self.decompile_python:
-                self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
-                self.p('>')
-                return
+            self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
+            self.p('>')
+            return
 
         keys = list(i for i in dir(ast) if self.should_print_key(ast, i))
         if keys:
