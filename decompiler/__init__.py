@@ -91,10 +91,6 @@ class Decompiler(DecompilerBase):
 
     # ATL printing functions
 
-    # TODO "choice" and "parallel" blocks are greedily combined
-    #      so we need a "pass" statement to separate them if
-    #      multiple of the same block are immediately after
-    #      each other.
     def print_atl(self, ast):
         self.advance_to_line(ast.loc[1])
         self.indent_level += 1
@@ -168,6 +164,10 @@ class Decompiler(DecompilerBase):
                 self.write(" %s" % chance)
             self.write(":")
             self.print_atl(block)
+        if (self.index + 1 < len(self.block) and
+            isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
+            self.indent()
+            self.write("pass")
     dispatch[renpy.atl.RawChoice] = print_atl_rawchoice
 
     def print_atl_rawcontainsexpr(self, ast):
@@ -202,6 +202,10 @@ class Decompiler(DecompilerBase):
             self.indent()
             self.write("parallel:")
             self.print_atl(block)
+        if (self.index + 1 < len(self.block) and
+            isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
+            self.indent()
+            self.write("pass")
     dispatch[renpy.atl.RawParallel] = print_atl_rawparallel
 
     def print_atl_rawrepeat(self, ast):
