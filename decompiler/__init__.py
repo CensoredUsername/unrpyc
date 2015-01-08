@@ -223,31 +223,29 @@ class Decompiler(DecompilerBase):
     # Displayable related functions
 
     def print_imspec(self, imspec):
+        words = WordConcatenator(False)
         if imspec[1] is not None:
-            self.write("expression %s" % imspec[1])
+            words.append("expression %s" % imspec[1])
         else:
-            self.write(" ".join(imspec[0]))
+            words.append(" ".join(imspec[0]))
 
         if imspec[2] is not None:
-            self.write(" as %s" % imspec[2])
+            words.append("as %s" % imspec[2])
 
         if len(imspec[6]) > 0:
-            self.write(" behind %s" % ', '.join(imspec[6]))
+            words.append("behind %s" % ', '.join(imspec[6]))
 
         if imspec[4] != "master":
-            self.write(" onlayer %s" % imspec[4])
+            words.append("onlayer %s" % imspec[4])
 
         if imspec[5] is not None:
-            self.write(" zorder %s" % imspec[5])
+            words.append("zorder %s" % imspec[5])
 
-        # Prior to Ren'Py 6.17, simple expressions didn't have trailing spaces
-        # trimmed, so the last imspec[3] value may end with a space. If it does,
-        # return true so the caller knows not to add another one (which would
-        # otherwise show up in the AST).
         if len(imspec[3]) > 0:
-            self.write(" at %s" % ', '.join(imspec[3]))
-            return imspec[3][-1][-1] == ' '
-        return False
+            words.append("at %s" % ', '.join(imspec[3]))
+
+        self.write(words.join())
+        return words.needs_space
 
     def print_image(self, ast):
         self.indent()
@@ -276,7 +274,7 @@ class Decompiler(DecompilerBase):
     def print_show(self, ast):
         self.indent()
         self.write("show ")
-        needs_space = not self.print_imspec(ast.imspec)
+        needs_space = self.print_imspec(ast.imspec)
 
         if self.paired_with:
             if needs_space:
@@ -311,7 +309,7 @@ class Decompiler(DecompilerBase):
             needs_space = True
         else:
             self.write(" ")
-            needs_space = not self.print_imspec(ast.imspec)
+            needs_space = self.print_imspec(ast.imspec)
 
         if self.paired_with:
             if needs_space:
@@ -327,7 +325,12 @@ class Decompiler(DecompilerBase):
     def print_hide(self, ast):
         self.indent()
         self.write("hide ")
-        self.print_imspec(ast.imspec)
+        needs_space = self.print_imspec(ast.imspec)
+        if self.paired_with:
+            if needs_space:
+                self.write(" ")
+            self.write("with %s" % self.paired_with)
+            self.paired_with = True
     dispatch[renpy.ast.Hide] = print_hide
 
     def print_with(self, ast):
