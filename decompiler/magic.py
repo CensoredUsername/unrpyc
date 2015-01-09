@@ -431,7 +431,8 @@ class FakeModule(types.ModuleType):
             parent_name, child_name = name.rsplit(".", 1)
 
             try:
-                parent = __import__(parent_name)
+                __import__(parent_name)
+                parent = sys.modules[parent_name]
             except:
                 parent = FakeModule(parent_name)
             setattr(parent, child_name, self)
