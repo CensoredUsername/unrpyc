@@ -302,16 +302,19 @@ class SLDecompiler(DecompilerBase):
                 self.parse_header(nodes[0].orelse[0]))
 
     def is_renpy_for(self, nodes):
-        # TODO make sure the last line of body is what we expect
-        if not (len(nodes) == 2 and isinstance(nodes[0], ast.Assign) and
+        return (len(nodes) == 2 and isinstance(nodes[0], ast.Assign) and
+            len(nodes[0].targets) == 1 and
+            isinstance(nodes[0].targets[0], ast.Name) and
+            re.match(r"_[0-9]+$", nodes[0].targets[0].id) and
             isinstance(nodes[0].value, ast.Num) and nodes[0].value.n == 0 and
-            len(nodes[0].targets) == 1 and isinstance(nodes[1], ast.For) and
-            not nodes[1].orelse and nodes[1].body and
-            self.parse_header(nodes[1].body[0])):
-            return False
-        target = nodes[0].targets[0]
-        return (isinstance(target, ast.Name) and
-            re.match(r"_[0-9]+$", target.id))
+            isinstance(nodes[1], ast.For) and not nodes[1].orelse and
+            nodes[1].body and self.parse_header(nodes[1].body[0]) and
+            isinstance(nodes[1].body[-1], ast.AugAssign) and
+            isinstance(nodes[1].body[-1].op, ast.Add) and
+            isinstance(nodes[1].body[-1].target, ast.Name) and
+            re.match(r"_[0-9]+$", nodes[1].body[-1].target.id) and
+            isinstance(nodes[1].body[-1].value, ast.Num) and
+            nodes[1].body[-1].value.n == 1)
 
     def strip_parens(self, text):
         if text and text[0] == '(' and text[-1] == ')':
