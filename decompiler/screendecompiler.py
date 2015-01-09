@@ -205,28 +205,35 @@ class SLDecompiler(DecompilerBase):
             self.print_python(header, code)
     # Helper printing functions
 
-    def print_arguments(self, node, needs_colon):
+    def print_args(self, node):
         if node.args:
             self.write(" " + " ".join([simple_expression_guard(
                 self.to_source(i)) for i in node.args]))
+
+    def filter_and_group_keywords(self, keywords, lineno):
         keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
-            i.value.lineno) for i in node.keywords if not (isinstance(
+            i.value.lineno) for i in keywords if not (isinstance(
             i.value, ast.Name) and (
             (i.arg == 'id' and i.value.id.startswith('_')) or
             (i.arg == 'scope' and i.value.id == '_scope')))]
         # Sort the keywords according to what line they belong on
-        # TODO handle nodes that come before keywords
-        lineno = node.lineno
+        # The first element always exists for the line the block starts on,
+        # even if there's no keywords that go on it
         keywords_by_line = [(lineno, [])]
         for i in keywords:
             if i[2] > lineno:
                 lineno = i[2]
                 keywords_by_line.append((lineno, []))
             keywords_by_line[-1][1].append(i)
+        return keywords_by_line
+
+    def print_keywords(self, node, needs_colon):
+        keywords_by_line = self.filter_and_group_keywords(node.keywords,
+                                                          node.lineno)
         # First do all of the keywords that belong on the current line
         for i in keywords_by_line[0][1]:
             self.write(" %s %s" % (i[0], i[1]))
-        if needs_colon or lineno > node.lineno:
+        if needs_colon or len(keywords_by_line) > 1:
             self.write(':')
         # Next do all of the keywords that belong on later lines
         self.indent_level += 1
@@ -380,7 +387,8 @@ class SLDecompiler(DecompilerBase):
         line = code[0]
         self.indent()
         self.write(line.value.func.attr)
-        self.print_arguments(line.value, False)
+        self.print_args(line.value)
+        self.print_keywords(line.value, False)
     dispatch[('ui', 'add')]          = print_nochild
     dispatch[('ui', 'imagebutton')]  = print_nochild
     dispatch[('ui', 'input')]        = print_nochild
@@ -429,7 +437,8 @@ class SLDecompiler(DecompilerBase):
             try:
                 self.indent()
                 self.write(name)
-                self.print_arguments(line.value, True)
+                self.print_args(line.value)
+                self.print_keywords(line.value, True)
                 self.indent_level += 1
                 self.indent()
                 self.write("has ")
@@ -451,7 +460,8 @@ class SLDecompiler(DecompilerBase):
                 return
             self.indent()
             self.write(name)
-            self.print_arguments(line.value, not has_block and block)
+            self.print_args(line.value)
+            self.print_keywords(line.value, not has_block and block)
             self.print_nodes(block, 0 if has_block else 1)
     dispatch[('ui', 'button')]             = print_onechild
     dispatch[('ui', 'frame')]              = print_onechild
@@ -473,7 +483,8 @@ class SLDecompiler(DecompilerBase):
         block = code[1:-1]
         self.indent()
         self.write(line.value.func.attr)
-        self.print_arguments(line.value, not has_block and block)
+        self.print_args(line.value)
+        self.print_keywords(line.value, not has_block and block)
         self.print_nodes(block, 0 if has_block else 1)
     dispatch[('ui', 'fixed')]        = print_manychildren
     dispatch[('ui', 'grid')]         = print_manychildren
