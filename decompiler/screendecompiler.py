@@ -21,7 +21,7 @@
 from __future__ import unicode_literals
 
 import re
-import _ast
+import ast
 
 from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard
 import codegen
@@ -157,10 +157,10 @@ class SLDecompiler(DecompilerBase):
         self.indent_level -= extra_indent
 
     def get_dispatch_key(self, node):
-        if (isinstance(node, _ast.Expr) and
-                isinstance(node.value, _ast.Call) and
-                isinstance(node.value.func, _ast.Attribute) and
-                isinstance(node.value.func.value, _ast.Name)):
+        if (isinstance(node, ast.Expr) and
+                isinstance(node.value, ast.Call) and
+                isinstance(node.value.func, ast.Attribute) and
+                isinstance(node.value.func.value, ast.Name)):
             return node.value.func.value.id, node.value.func.attr
         else:
             return None
@@ -174,11 +174,11 @@ class SLDecompiler(DecompilerBase):
 
         # The for statement has an extra header. we just swallow it here in case it appears.
         # Otherwise the parser is clueless.
-        if (not has_block and isinstance(code[0], _ast.Assign) and
-            isinstance(code[0].value, _ast.Num) and code[0].value.n == 0 and
+        if (not has_block and isinstance(code[0], ast.Assign) and
+            isinstance(code[0].value, ast.Num) and code[0].value.n == 0 and
             len(code[0].targets) == 1):
             target = code[0].targets[0]
-            if (isinstance(target, _ast.Name) and
+            if (isinstance(target, ast.Name) and
                 re.match(r"_[0-9]+$", target.id)):
                 code = code[1:]
 
@@ -196,7 +196,7 @@ class SLDecompiler(DecompilerBase):
             func(self, header, code)
         elif has_block:
             raise BadHasBlockException()
-        elif isinstance(code[0], _ast.For):
+        elif isinstance(code[0], ast.For):
             self.print_for(header, code)
         elif self.is_renpy_if(code):
             self.print_if(header, code)
@@ -254,7 +254,7 @@ class SLDecompiler(DecompilerBase):
             self.write("$ %s" % code.strip())
 
     def is_renpy_if(self, nodes):
-        return len(nodes) == 1 and isinstance(nodes[0], _ast.If) and (
+        return len(nodes) == 1 and isinstance(nodes[0], ast.If) and (
             not nodes[0].body or self.parse_header(nodes[0].body[0])) and (
                 not nodes[0].orelse or self.is_renpy_if(nodes[0].orelse) or
                 self.parse_header(nodes[0].orelse[0]))
@@ -324,7 +324,7 @@ class SLDecompiler(DecompilerBase):
         # It would technically be possible for this to be a python statement, but the odds of this are very small.
         # renpy itself will insert some kwargs, we'll delete those and then parse the command here.
         if (len(code) != 1 or not code[0].value.args or
-            not isinstance(code[0].value.args[0], _ast.Str)):
+            not isinstance(code[0].value.args[0], ast.Str)):
             return self.print_python(header, code)
         args, kwargs, exargs, exkwargs = self.parse_args(code[0])
         kwargs = [(key, value) for key, value in kwargs if not
@@ -350,7 +350,7 @@ class SLDecompiler(DecompilerBase):
     def print_default(self, header, code):
         if (len(code) != 1 or code[0].value.keywords or code[0].value.kwargs or
             len(code[0].value.args) != 2 or code[0].value.starargs or
-            not isinstance(code[0].value.args[0], _ast.Str)):
+            not isinstance(code[0].value.args[0], ast.Str)):
             return self.print_python(header, code)
         self.indent()
         self.write("default %s = %s" %
@@ -477,17 +477,17 @@ class SLDecompiler(DecompilerBase):
     def parse_header(self, header):
         # Given a Python AST node, returns the parent ID if the node represents
         # a header, or None otherwise.
-        if (isinstance(header, _ast.Assign) and len(header.targets) == 1 and
-                isinstance(header.targets[0], _ast.Name) and
+        if (isinstance(header, ast.Assign) and len(header.targets) == 1 and
+                isinstance(header.targets[0], ast.Name) and
                 re.match(r"_[0-9]+$", header.targets[0].id) and
-                isinstance(header.value, _ast.Tuple) and
+                isinstance(header.value, ast.Tuple) and
                 len(header.value.elts) == 2 and
-                isinstance(header.value.elts[0], _ast.Name)):
+                isinstance(header.value.elts[0], ast.Name)):
             parent_id = header.value.elts[0].id
             index = header.value.elts[1]
             if re.match(r"_([0-9]+|name)$", parent_id) and (
-                    isinstance(index, _ast.Num) or
-                    (isinstance(index, _ast.Name) and
+                    isinstance(index, ast.Num) or
+                    (isinstance(index, ast.Name) and
                     re.match(r"_[0-9]+$", index.id))):
                 return parent_id
         return None
