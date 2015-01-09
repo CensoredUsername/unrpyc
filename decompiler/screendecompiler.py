@@ -445,6 +445,11 @@ class SLDecompiler(DecompilerBase):
                 self.print_args(line.value)
                 self.print_keywords(line.value, True)
                 self.indent_level += 1
+                if len(block) > 1 and isinstance(block[1], ast.Expr):
+                    # If this isn't true, we'll get a BadHasBlockException
+                    # later anyway. This check is just to keep it from being
+                    # an exception that we can't handle.
+                    self.advance_to_line(block[1].value.lineno)
                 self.indent()
                 self.write("has ")
                 self.indent_level -= 1
