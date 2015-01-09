@@ -668,7 +668,7 @@ class Decompiler(DecompilerBase):
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
-                                    self.linenumber, self.force_multiline_kwargs,
+                                    self.linenumber,
                                     self.decompile_python, self.decompile_screencode,
                                     self.comparable, self.skip_indent_until_write)
             self.skip_indent_until_write = False

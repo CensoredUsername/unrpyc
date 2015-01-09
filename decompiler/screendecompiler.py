@@ -29,11 +29,10 @@ import codegen
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           force_multiline_kwargs=True, decompile_python=True,
+           decompile_python=True,
            decompile_screencode=True, comparable=False,
            skip_indent_until_write=False):
     return SLDecompiler(out_file,
-                 force_multiline_kwargs=force_multiline_kwargs,
                  decompile_python=decompile_python,
                  decompile_screencode=decompile_screencode, comparable=comparable).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
@@ -49,10 +48,9 @@ class SLDecompiler(DecompilerBase):
     # what method to call for which statement
     dispatch = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_python=True,
+    def __init__(self, out_file=None, decompile_python=True,
                  decompile_screencode=True, comparable=False, indentation="    "):
         super(SLDecompiler, self).__init__(out_file, indentation, comparable)
-        self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
 
@@ -187,6 +185,8 @@ class SLDecompiler(DecompilerBase):
         # form "first.second(...)". Anything else gets converted to Python.
         dispatch_key = self.get_dispatch_key(code[0])
         if dispatch_key:
+            if not has_block:
+                self.advance_to_line(code[0].value.lineno)
             func = self.dispatch.get(dispatch_key, self.print_python.__func__)
             if has_block:
                 if func not in (self.print_onechild.__func__,
@@ -205,33 +205,45 @@ class SLDecompiler(DecompilerBase):
             self.print_python(header, code)
     # Helper printing functions
 
-    def print_arguments(self, args, kwargs, multiline=True):
-        if args:
-            self.write(" " + " ".join([simple_expression_guard(i) for i in args]))
-
-        # remove renpy-internal kwargs
-        kwargs = [(key, simple_expression_guard(value)) for key, value in kwargs if not
-                  (key == 'id' and value.startswith("_") or
-                   key == 'scope' and value == '_scope')]
-
-        if self.force_multiline_kwargs and not self.comparable and kwargs:
-            self.write(":")
-            self.indent_level += 1
-            for key, value in kwargs:
-                self.indent()
-                self.write("%s %s" % (key, value))
-            self.indent_level -= 1
-        else:
-            for key, value in kwargs:
-                self.write(" %s %s" % (key, value))
-            if multiline:
-                self.write(":")
+    def print_arguments(self, node, needs_colon):
+        if node.args:
+            self.write(" " + " ".join([simple_expression_guard(
+                self.to_source(i)) for i in node.args]))
+        keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
+            i.value.lineno) for i in node.keywords if not (isinstance(
+            i.value, ast.Name) and (
+            (i.arg == 'id' and i.value.id.startswith('_')) or
+            (i.arg == 'scope' and i.value.id == '_scope')))]
+        # Sort the keywords according to what line they belong on
+        # TODO handle nodes that come before keywords
+        lineno = node.lineno
+        keywords_by_line = [(lineno, [])]
+        for i in keywords:
+            if i[2] > lineno:
+                lineno = i[2]
+                keywords_by_line.append((lineno, []))
+            keywords_by_line[-1][1].append(i)
+        # First do all of the keywords that belong on the current line
+        for i in keywords_by_line[0][1]:
+            self.write(" %s %s" % (i[0], i[1]))
+        if needs_colon or lineno > node.lineno:
+            self.write(':')
+        # Next do all of the keywords that belong on later lines
+        self.indent_level += 1
+        for line in keywords_by_line[1:]:
+            self.advance_to_line(line[0])
+            self.indent()
+            self.write("%s %s" % (line[1][0][0], line[1][0][1]))
+            for i in line[1][1:]:
+                self.write(" %s %s" % (i[0], i[1]))
+        self.indent_level -= 1
 
     # Node printing functions
 
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
+        self.advance_to_line(code[0].lineno)
         lines = []
         for i in code:
             lines.append(self.to_source(i))
@@ -271,6 +283,7 @@ class SLDecompiler(DecompilerBase):
         # checking for the header that should normally occur within the if statement.
         # The if statement parser might also generate a second header if there's more than one screen
         # statement enclosed in the if/elif/else statements. We'll take care of that too.
+        self.advance_to_line(code[0].test.lineno)
         self.indent()
         self.write("if %s:" % self.strip_parens(self.to_source(code[0].test)))
         if (len(code[0].body) >= 2 and self.parse_header(code[0].body[0]) and
@@ -308,6 +321,7 @@ class SLDecompiler(DecompilerBase):
             # This is not a screenlang statement
             return self.print_python(header, code)
 
+        self.advance_to_line(line.target.lineno)
         self.indent()
         self.write("for %s in %s:" % (
             self.strip_parens(self.to_source(line.target)),
@@ -366,8 +380,7 @@ class SLDecompiler(DecompilerBase):
         line = code[0]
         self.indent()
         self.write(line.value.func.attr)
-        args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs, False)
+        self.print_arguments(line.value, False)
     dispatch[('ui', 'add')]          = print_nochild
     dispatch[('ui', 'imagebutton')]  = print_nochild
     dispatch[('ui', 'input')]        = print_nochild
@@ -416,8 +429,7 @@ class SLDecompiler(DecompilerBase):
             try:
                 self.indent()
                 self.write(name)
-                args, kwargs, _, _ = self.parse_args(line)
-                self.print_arguments(args, kwargs)
+                self.print_arguments(line.value, True)
                 self.indent_level += 1
                 self.indent()
                 self.write("has ")
@@ -439,8 +451,7 @@ class SLDecompiler(DecompilerBase):
                 return
             self.indent()
             self.write(name)
-            args, kwargs, _, _ = self.parse_args(line)
-            self.print_arguments(args, kwargs, not has_block and block)
+            self.print_arguments(line.value, not has_block and block)
             self.print_nodes(block, 0 if has_block else 1)
     dispatch[('ui', 'button')]             = print_onechild
     dispatch[('ui', 'frame')]              = print_onechild
@@ -462,8 +473,7 @@ class SLDecompiler(DecompilerBase):
         block = code[1:-1]
         self.indent()
         self.write(line.value.func.attr)
-        args, kwargs, _, _ = self.parse_args(line)
-        self.print_arguments(args, kwargs, not has_block and block)
+        self.print_arguments(line.value, not has_block and block)
         self.print_nodes(block, 0 if has_block else 1)
     dispatch[('ui', 'fixed')]        = print_manychildren
     dispatch[('ui', 'grid')]         = print_manychildren
