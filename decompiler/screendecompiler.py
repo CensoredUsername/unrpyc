@@ -190,6 +190,9 @@ class SLDecompiler(DecompilerBase):
         return keywords_by_line
 
     def print_keywords_and_nodes(self, kwnode, nodes, needs_colon, has_block):
+        # Keywords and child nodes can be mixed with each other, so they need
+        # to be printed at the same time. This function takes each list and
+        # combines them into one, then prints it.
         if kwnode:
             keywords = self.make_printable_keywords(kwnode.keywords,
                                                     kwnode.lineno)
