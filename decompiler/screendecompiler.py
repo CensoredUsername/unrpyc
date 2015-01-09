@@ -128,30 +128,34 @@ class SLDecompiler(DecompilerBase):
 
         self.indent_level -= 1
 
+    def split_nodes_at_headers(self, nodes):
+        if not nodes:
+            return []
+        rv = [nodes[:1]]
+        parent_id = self.parse_header(nodes[0])
+        if parent_id is None:
+            raise Exception(
+                "First node passed to split_nodes_at_headers was not a header")
+        for i in nodes[1:]:
+            if self.parse_header(i) == parent_id:
+                rv.append([i])
+                header = i
+            else:
+                rv[-1].append(i)
+        return rv
+
     def print_nodes(self, nodes, extra_indent=0, has_block=False):
         # Print a block of statements, splitting it up on one level.
         # The screen language parser emits lines in the shape _0 = (_0, 0) from which indentation can be revealed.
         # It translates roughly to "id = (parent_id, index_in_parent_children)". When parsing a block
         # parse the first header line to find the parent_id, and then split around headers with the same parent id
         # in this block.
-        if not nodes:
-            if has_block:
-                raise BadHasBlockException()
-            return
-        parent_id = self.parse_header(nodes[0])
-        if parent_id is None:
-            raise Exception("First node passed to print_nodes was not a header")
-        header = nodes[0]
-        code = []
+        if has_block and not nodes:
+            raise BadHasBlockException()
+        split = self.split_nodes_at_headers(nodes)
         self.indent_level += extra_indent
-        for i in nodes[1:]:
-            if self.parse_header(i) == parent_id:
-                self.print_node(header, code, has_block)
-                header = i
-                code = []
-            else:
-                code.append(i)
-        self.print_node(header, code, has_block)
+        for i in split:
+            self.print_node(i[0], i[1:], has_block)
         self.indent_level -= extra_indent
 
     def get_dispatch_key(self, node):
