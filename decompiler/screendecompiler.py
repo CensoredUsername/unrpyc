@@ -188,12 +188,13 @@ class SLDecompiler(DecompilerBase):
         dispatch_key = self.get_dispatch_key(code[0])
         if dispatch_key:
             func = self.dispatch.get(dispatch_key, self.print_python.__func__)
-            if has_block and func not in (
-                    self.print_onechild.__func__,
-                    self.print_manychildren.__func__
-                ):
-                raise BadHasBlockException()
-            func(self, header, code)
+            if has_block:
+                if func not in (self.print_onechild.__func__,
+                    self.print_manychildren.__func__):
+                    raise BadHasBlockException()
+                func(self, header, code, True)
+            else:
+                func(self, header, code)
         elif has_block:
             raise BadHasBlockException()
         elif isinstance(code[0], ast.For):
