@@ -275,17 +275,16 @@ class SLDecompiler(DecompilerBase):
                 self.parse_header(nodes[0].orelse[0]))
 
     def is_renpy_for(self, nodes):
-        if (isinstance(nodes[0], ast.Assign) and
-            isinstance(nodes[0].value, ast.Num) and nodes[0].value.n == 0 and
-            len(nodes[0].targets) == 1):
-            target = nodes[0].targets[0]
-            if (isinstance(target, ast.Name) and
-                re.match(r"_[0-9]+$", target.id)):
-                nodes = nodes[1:]
-        return (len(nodes) == 1 and isinstance(nodes[0], ast.For) and
-            not nodes[0].orelse and nodes[0].body and
-            self.parse_header(nodes[0].body[0]))
         # TODO make sure the last line of body is what we expect
+        if not (len(nodes) == 2 and isinstance(nodes[0], ast.Assign) and
+            isinstance(nodes[0].value, ast.Num) and nodes[0].value.n == 0 and
+            len(nodes[0].targets) == 1 and isinstance(nodes[1], ast.For) and
+            not nodes[1].orelse and nodes[1].body and
+            self.parse_header(nodes[1].body[0])):
+            return False
+        target = nodes[0].targets[0]
+        return (isinstance(target, ast.Name) and
+            re.match(r"_[0-9]+$", target.id))
 
     def strip_parens(self, text):
         if text and text[0] == '(' and text[-1] == ')':
@@ -327,16 +326,7 @@ class SLDecompiler(DecompilerBase):
         # Here we handle the for statement. Note that the for statement generates some extra python code to
         # Keep track of it's header indices. The first one is ignored by the statement parser,
         # the second line is just ingored here.
-        if isinstance(code[0], ast.Assign):
-            code = code[1:]
-        line = code[0]
-
-        # note that it is possible for a python block to have "for" as it's first statement
-        # so we check here if a second header appears after the for block to correct this.
-        if (len(code) != 1 or line.orelse or
-            (line.body and not self.parse_header(line.body[0]))):
-            # This is not a screenlang statement
-            return self.print_python(header, code)
+        line = code[1]
 
         self.advance_to_line(line.target.lineno)
         self.indent()
