@@ -210,16 +210,6 @@ class SLDecompiler(DecompilerBase):
         # If the statement is unknown, we can still emit valid screen code by just
         # stuffing it inside a python block.
 
-        # The for statement has an extra header. we just swallow it here in case it appears.
-        # Otherwise the parser is clueless.
-        if (not has_block and isinstance(code[0], ast.Assign) and
-            isinstance(code[0].value, ast.Num) and code[0].value.n == 0 and
-            len(code[0].targets) == 1):
-            target = code[0].targets[0]
-            if (isinstance(target, ast.Name) and
-                re.match(r"_[0-9]+$", target.id)):
-                code = code[1:]
-
         # There's 3 categories of things that we can convert to screencode:
         # if statements, for statements, and function calls of the
         # form "first.second(...)". Anything else gets converted to Python.
@@ -237,7 +227,7 @@ class SLDecompiler(DecompilerBase):
                 func(self, header, code)
         elif has_block:
             raise BadHasBlockException()
-        elif isinstance(code[0], ast.For):
+        elif self.is_renpy_for(code):
             self.print_for(header, code)
         elif self.is_renpy_if(code):
             self.print_if(header, code)
@@ -280,9 +270,22 @@ class SLDecompiler(DecompilerBase):
 
     def is_renpy_if(self, nodes):
         return len(nodes) == 1 and isinstance(nodes[0], ast.If) and (
-            not nodes[0].body or self.parse_header(nodes[0].body[0])) and (
+            nodes[0].body and self.parse_header(nodes[0].body[0])) and (
                 not nodes[0].orelse or self.is_renpy_if(nodes[0].orelse) or
                 self.parse_header(nodes[0].orelse[0]))
+
+    def is_renpy_for(self, nodes):
+        if (isinstance(nodes[0], ast.Assign) and
+            isinstance(nodes[0].value, ast.Num) and nodes[0].value.n == 0 and
+            len(nodes[0].targets) == 1):
+            target = nodes[0].targets[0]
+            if (isinstance(target, ast.Name) and
+                re.match(r"_[0-9]+$", target.id)):
+                nodes = nodes[1:]
+        return (len(nodes) == 1 and isinstance(nodes[0], ast.For) and
+            not nodes[0].orelse and nodes[0].body and
+            self.parse_header(nodes[0].body[0]))
+        # TODO make sure the last line of body is what we expect
 
     def strip_parens(self, text):
         if text and text[0] == '(' and text[-1] == ')':
@@ -324,6 +327,8 @@ class SLDecompiler(DecompilerBase):
         # Here we handle the for statement. Note that the for statement generates some extra python code to
         # Keep track of it's header indices. The first one is ignored by the statement parser,
         # the second line is just ingored here.
+        if isinstance(code[0], ast.Assign):
+            code = code[1:]
         line = code[0]
 
         # note that it is possible for a python block to have "for" as it's first statement
