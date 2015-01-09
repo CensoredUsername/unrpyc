@@ -64,7 +64,7 @@ def decompile_rpyc(file_obj, abspath):
         decompiler.pprint(out_file, ast, force_multiline_kwargs=True,
                                              decompile_screencode=True,
                                              decompile_python=True,
-                                             comparable=True)
+                                             comparable=False)
     return True
 
 def decompile_game():
