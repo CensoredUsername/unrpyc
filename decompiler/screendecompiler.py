@@ -158,6 +158,42 @@ class SLDecompiler(DecompilerBase):
             self.print_node(i[0], i[1:], has_block)
         self.indent_level -= extra_indent
 
+    def make_printable_keywords(self, keywords, lineno):
+        keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
+            i.value.lineno) for i in keywords if not (isinstance(
+            i.value, ast.Name) and (
+            (i.arg == 'id' and i.value.id.startswith('_')) or
+            (i.arg == 'scope' and i.value.id == '_scope')))]
+        # Sort the keywords according to what line they belong on
+        # The first element always exists for the line the block starts on,
+        # even if there's no keywords that go on it
+        keywords_by_line = []
+        current_line = []
+        for i in keywords:
+            if i[2] > lineno:
+                keywords_by_line.append((lineno, ' '.join(current_line)))
+                lineno = i[2]
+                current_line = []
+            current_line.extend(i[:2])
+        keywords_by_line.append((lineno, ' '.join(current_line)))
+        return keywords_by_line
+
+    def print_keywords(self, node, needs_colon):
+        keywords_by_line = self.make_printable_keywords(node.keywords,
+                                                        node.lineno)
+        # First do all of the keywords that belong on the current line
+        if keywords_by_line[0][1]:
+            self.write(" %s" % keywords_by_line[0][1])
+        if needs_colon or len(keywords_by_line) > 1:
+            self.write(':')
+        # Next do all of the keywords that belong on later lines
+        self.indent_level += 1
+        for line in keywords_by_line[1:]:
+            self.advance_to_line(line[0])
+            self.indent()
+            self.write(line[1])
+        self.indent_level -= 1
+
     def get_dispatch_key(self, node):
         if (isinstance(node, ast.Expr) and
                 isinstance(node.value, ast.Call) and
@@ -213,42 +249,6 @@ class SLDecompiler(DecompilerBase):
         if node.args:
             self.write(" " + " ".join([simple_expression_guard(
                 self.to_source(i)) for i in node.args]))
-
-    def make_printable_keywords(self, keywords, lineno):
-        keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
-            i.value.lineno) for i in keywords if not (isinstance(
-            i.value, ast.Name) and (
-            (i.arg == 'id' and i.value.id.startswith('_')) or
-            (i.arg == 'scope' and i.value.id == '_scope')))]
-        # Sort the keywords according to what line they belong on
-        # The first element always exists for the line the block starts on,
-        # even if there's no keywords that go on it
-        keywords_by_line = []
-        current_line = []
-        for i in keywords:
-            if i[2] > lineno:
-                keywords_by_line.append((lineno, ' '.join(current_line)))
-                lineno = i[2]
-                current_line = []
-            current_line.extend(i[:2])
-        keywords_by_line.append((lineno, ' '.join(current_line)))
-        return keywords_by_line
-
-    def print_keywords(self, node, needs_colon):
-        keywords_by_line = self.make_printable_keywords(node.keywords,
-                                                        node.lineno)
-        # First do all of the keywords that belong on the current line
-        if keywords_by_line[0][1]:
-            self.write(" %s" % keywords_by_line[0][1])
-        if needs_colon or len(keywords_by_line) > 1:
-            self.write(':')
-        # Next do all of the keywords that belong on later lines
-        self.indent_level += 1
-        for line in keywords_by_line[1:]:
-            self.advance_to_line(line[0])
-            self.indent()
-            self.write(line[1])
-        self.indent_level -= 1
 
     # Node printing functions
 
