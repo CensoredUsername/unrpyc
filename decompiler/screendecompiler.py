@@ -158,6 +158,16 @@ class SLDecompiler(DecompilerBase):
             self.print_node(i[0], i[1:], has_block)
         self.indent_level -= extra_indent
 
+    def get_first_line(self, nodes):
+        if self.get_dispatch_key(nodes[0]):
+            return nodes[0].value.lineno
+        elif self.is_renpy_for(nodes):
+            return nodes[1].target.lineno
+        elif self.is_renpy_if(nodes):
+            return nodes[0].test.lineno
+        else:
+            return nodes[0].lineno # TODO line numbers for Python blocks
+
     def make_printable_keywords(self, keywords, lineno):
         keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
             i.value.lineno) for i in keywords if not (isinstance(
@@ -213,10 +223,10 @@ class SLDecompiler(DecompilerBase):
         # There's 3 categories of things that we can convert to screencode:
         # if statements, for statements, and function calls of the
         # form "first.second(...)". Anything else gets converted to Python.
+        if not has_block:
+            self.advance_to_line(self.get_first_line(code))
         dispatch_key = self.get_dispatch_key(code[0])
         if dispatch_key:
-            if not has_block:
-                self.advance_to_line(code[0].value.lineno)
             func = self.dispatch.get(dispatch_key, self.print_python.__func__)
             if has_block:
                 if func not in (self.print_onechild.__func__,
@@ -245,7 +255,6 @@ class SLDecompiler(DecompilerBase):
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
-        self.advance_to_line(code[0].lineno)
         lines = []
         for i in code:
             lines.append(self.to_source(i))
@@ -297,7 +306,6 @@ class SLDecompiler(DecompilerBase):
         # checking for the header that should normally occur within the if statement.
         # The if statement parser might also generate a second header if there's more than one screen
         # statement enclosed in the if/elif/else statements. We'll take care of that too.
-        self.advance_to_line(code[0].test.lineno)
         self.indent()
         self.write("if %s:" % self.strip_parens(self.to_source(code[0].test)))
         if (len(code[0].body) >= 2 and self.parse_header(code[0].body[0]) and
@@ -328,7 +336,6 @@ class SLDecompiler(DecompilerBase):
         # the second line is just ingored here.
         line = code[1]
 
-        self.advance_to_line(line.target.lineno)
         self.indent()
         self.write("for %s in %s:" % (
             self.strip_parens(self.to_source(line.target)),
