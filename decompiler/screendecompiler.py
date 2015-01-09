@@ -153,7 +153,7 @@ class SLDecompiler(DecompilerBase):
                 code = []
             else:
                 code.append(i)
-        self.print_node(header, code)
+        self.print_node(header, code, has_block)
         self.indent_level -= extra_indent
 
     def get_dispatch_key(self, node):
