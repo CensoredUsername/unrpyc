@@ -189,27 +189,28 @@ class SLDecompiler(DecompilerBase):
         keywords_by_line.append((lineno, ' '.join(current_line)))
         return keywords_by_line
 
-    def print_keywords_and_nodes(self, kwnode, nodes, needs_colon):
+    def print_keywords_and_nodes(self, kwnode, nodes, needs_colon, has_block):
         if kwnode:
             keywords = self.make_printable_keywords(kwnode.keywords,
                                                     kwnode.lineno)
             if keywords[0][1]:
                 self.write(" %s" % keywords[0][1])
-            if len(keywords) != 1:
+            if len(keywords) != 1 and not has_block:
                 needs_colon = True
         else:
             keywords = []
         if nodes:
             nodelists = [(self.get_first_line(i[1:]), i)
                          for i in self.split_nodes_at_headers(nodes)]
-            needs_colon = True
+            if not has_block:
+                needs_colon = True
         else:
             nodelists = []
-        if not needs_colon:
-            return
-        self.write(":")
+        if needs_colon:
+            self.write(":")
         stuff_to_print = sorted(keywords[1:] + nodelists, key=itemgetter(0))
-        self.indent_level += 1
+        if not has_block:
+            self.indent_level += 1
         for i in stuff_to_print:
             # Nodes are lists. Keywords are ready-to-print strings.
             if type(i[1]) == list:
@@ -218,7 +219,8 @@ class SLDecompiler(DecompilerBase):
                 self.advance_to_line(i[0])
                 self.indent()
                 self.write(i[1])
-        self.indent_level -= 1
+        if not has_block:
+            self.indent_level -= 1
 
     def get_dispatch_key(self, node):
         if (isinstance(node, ast.Expr) and
@@ -411,7 +413,7 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_keywords_and_nodes(line.value, None, False)
+        self.print_keywords_and_nodes(line.value, None, False, False)
     dispatch[('ui', 'add')]          = print_nochild
     dispatch[('ui', 'imagebutton')]  = print_nochild
     dispatch[('ui', 'input')]        = print_nochild
@@ -461,7 +463,7 @@ class SLDecompiler(DecompilerBase):
                 self.indent()
                 self.write(name)
                 self.print_args(line.value)
-                self.print_keywords_and_nodes(line.value, None, True)
+                self.print_keywords_and_nodes(line.value, None, True, False)
                 self.indent_level += 1
                 if len(block) > 1 and isinstance(block[1], ast.Expr):
                     # If this isn't true, we'll get a BadHasBlockException
@@ -489,11 +491,7 @@ class SLDecompiler(DecompilerBase):
             self.indent()
             self.write(name)
             self.print_args(line.value)
-            if has_block:
-                self.print_keywords_and_nodes(line.value, None, False)
-                self.print_nodes(block, 0)
-            else:
-                self.print_keywords_and_nodes(line.value, block, False)
+            self.print_keywords_and_nodes(line.value, block, False, has_block)
     dispatch[('ui', 'button')]             = print_onechild
     dispatch[('ui', 'frame')]              = print_onechild
     dispatch[('ui', 'transform')]          = print_onechild
@@ -515,11 +513,7 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        if has_block:
-            self.print_keywords_and_nodes(line.value, None, False)
-            self.print_nodes(block, 0)
-        else:
-            self.print_keywords_and_nodes(line.value, block, False)
+        self.print_keywords_and_nodes(line.value, block, False, has_block)
     dispatch[('ui', 'fixed')]        = print_manychildren
     dispatch[('ui', 'grid')]         = print_manychildren
     dispatch[('ui', 'hbox')]         = print_manychildren
