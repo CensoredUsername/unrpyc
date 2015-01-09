@@ -21,6 +21,7 @@
 from __future__ import unicode_literals
 
 import re
+import _ast
 
 from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard
 import codegen
@@ -61,6 +62,9 @@ class SLDecompiler(DecompilerBase):
         self.skip_indent_until_write = skip_indent_until_write
         self.print_screen(ast)
         return self.linenumber
+
+    def to_source(self, node):
+        return codegen.to_source(node, self.indentation)
 
     # Entry point functions
 
@@ -108,13 +112,8 @@ class SLDecompiler(DecompilerBase):
         if not self.decompile_python:
             self.indent()
             self.write("pass # Screen code not extracted")
-            return
-
-        code = codegen.to_source(ast.code.source, self.indentation)
-
-        if self.decompile_screencode:
-            self.print_nodes(code)
-
+        elif self.decompile_screencode:
+            self.print_nodes(ast.code.source.body)
         else:
             self.indent()
             self.write("python:")
@@ -124,34 +123,47 @@ class SLDecompiler(DecompilerBase):
             # even if the python: block is the only thing in the screen. Don't
             # include ours, since if we do, it'll be included twice when
             # recompiled.
-            for line in code.splitlines()[1:]:
+            for line in self.to_source(ast.code.source).splitlines()[1:]:
                 self.indent()
                 self.write(line)
             self.indent_level -= 1
 
         self.indent_level -= 1
 
-    def print_nodes(self, code, extra_indent=0, has_block=False):
+    def print_nodes(self, nodes, extra_indent=0, has_block=False):
         # Print a block of statements, splitting it up on one level.
         # The screen language parser emits lines in the shape _0 = (_0, 0) from which indentation can be revealed.
         # It translates roughly to "id = (parent_id, index_in_parent_children)". When parsing a block
         # parse the first header line to find the parent_id, and then split around headers with the same parent id
         # in this block.
-        split = code.split('\n', 1)
-        if len(split) == 1:
+        if not nodes:
             if has_block:
                 raise BadHasBlockException()
             return
-        header, _ = split
-
-        my_id, parent_id, index = self.parse_header(header)
-        # split is [garbage, header1, item1, header2, item2, ...]
-        split = re.split(r'( *_[0-9]+ = \(_%s, _?[0-9]+\) *\n?)' % parent_id, code)
-
+        parent_id = self.parse_header(nodes[0])
+        if parent_id is None:
+            raise Exception("First node passed to print_nodes was not a header")
+        header = nodes[0]
+        code = []
         self.indent_level += extra_indent
-        for i in range(1, len(split), 2):
-            self.print_node(split[i], split[i+1], has_block)
+        for i in nodes[1:]:
+            if self.parse_header(i) == parent_id:
+                self.print_node(header, code, has_block)
+                header = i
+                code = []
+            else:
+                code.append(i)
+        self.print_node(header, code)
         self.indent_level -= extra_indent
+
+    def get_dispatch_key(self, node):
+        if (isinstance(node, _ast.Expr) and
+                isinstance(node.value, _ast.Call) and
+                isinstance(node.value.func, _ast.Attribute) and
+                isinstance(node.value.func.value, _ast.Name)):
+            return node.value.func.value.id, node.value.func.attr
+        else:
+            return None
 
     def print_node(self, header, code, has_block=False):
         # Here we derermine how to handle a statement.
@@ -162,22 +174,34 @@ class SLDecompiler(DecompilerBase):
 
         # The for statement has an extra header. we just swallow it here in case it appears.
         # Otherwise the parser is clueless.
-        if not has_block and re.match(r' *_[0-9]+ = 0', code):
-            _, code = code.split('\n', 1)
+        if (not has_block and isinstance(code[0], _ast.Assign) and
+            isinstance(code[0].value, _ast.Num) and code[0].value.n == 0 and
+            len(code[0].targets) == 1):
+            target = code[0].targets[0]
+            if (isinstance(target, _ast.Name) and
+                re.match(r"_[0-9]+$", target.id)):
+                code = code[1:]
 
-        for statement, func in self.dispatch.iteritems():
-            if code.lstrip().startswith(statement):
-                if has_block:
-                    if func not in (SLDecompiler.print_onechild.__func__,
-                        SLDecompiler.print_manychildren.__func__):
-                        raise BadHasBlockException()
-                    func(self, header, code, True)
-                else:
-                    func(self, header, code)
-                return
-        if has_block:
+        # There's 3 categories of things that we can convert to screencode:
+        # if statements, for statements, and function calls of the
+        # form "first.second(...)". Anything else gets converted to Python.
+        dispatch_key = self.get_dispatch_key(code[0])
+        if dispatch_key:
+            func = self.dispatch.get(dispatch_key, self.print_python.__func__)
+            if has_block and func not in (
+                    self.print_onechild.__func__,
+                    self.print_manychildren.__func__
+                ):
+                raise BadHasBlockException()
+            func(self, header, code)
+        elif has_block:
             raise BadHasBlockException()
-        self.print_python(header, code)
+        elif isinstance(code[0], _ast.For):
+            self.print_for(header, code)
+        elif self.is_renpy_if(code):
+            self.print_if(header, code)
+        else:
+            self.print_python(header, code)
     # Helper printing functions
 
     def print_arguments(self, args, kwargs, multiline=True):
@@ -202,44 +226,15 @@ class SLDecompiler(DecompilerBase):
             if multiline:
                 self.write(":")
 
-    def print_condition(self, statement, line):
-        # This handles parsing of for and if statement conditionals.
-        # It also strips the brackets the parser adds around for statement assignments
-        # to prevent ren'py from getting a heart attack.
-
-        # Take whatever is between the statement and :
-        condition = line.rsplit(":", 1)[0].split(statement, 1)[1].strip()
-
-        if statement == "for":
-            variables, expression = condition.split(" in ", 1)
-            variables = variables.strip()
-            if variables.startswith("(") and variables.endswith(")"):
-                # ren'py's for parser is broken
-                variables = variables[1:-1]
-            condition = "%s in %s" % (variables, expression)
-        else:
-            condition = condition.strip()
-            if condition.startswith("(") and condition.endswith(")"):
-                condition = condition[1:-1]
-        self.write("%s %s:" % (statement, condition))
-
-    def print_block(self, block):
-            # does this statement contain a block or just one statement
-            if len(block) > 2 and self.parse_header(block[0]) and self.parse_header(block[1]):
-                self.print_nodes('\n'.join(block[1:]), 1)
-            elif len(block) > 1 and self.parse_header(block[0]):
-                self.print_nodes('\n'.join(block), 1)
-            else:
-                self.indent_level += 1
-                self.indent()
-                self.write("pass")
-                self.indent_level -= 1
-
     # Node printing functions
 
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
+        lines = []
+        for i in code:
+            lines.append(self.to_source(i))
+        code = '\n'.join(lines)
         self.indent()
 
         if '\n' in code.strip():
@@ -258,70 +253,86 @@ class SLDecompiler(DecompilerBase):
         else:
             self.write("$ %s" % code.strip())
 
+    def is_renpy_if(self, nodes):
+        return len(nodes) == 1 and isinstance(nodes[0], _ast.If) and (
+            not nodes[0].body or self.parse_header(nodes[0].body[0])) and (
+                not nodes[0].orelse or self.is_renpy_if(nodes[0].orelse) or
+                self.parse_header(nodes[0].orelse[0]))
+
+    def strip_parens(self, text):
+        if text and text[0] == '(' and text[-1] == ')':
+            return text[1:-1]
+        else:
+            return text
+
     def print_if(self, header, code):
         # Here we handle the if statement. It might be valid python but we can check for this by
         # checking for the header that should normally occur within the if statement.
         # The if statement parser might also generate a second header if there's more than one screen
         # statement enclosed in the if/elif/else statements. We'll take care of that too.
-
-        # note that it is possible for a python block to have "if" as it's first statement
-        # so we check here if a second header appears after the if block to correct this.
-        lines = code.splitlines()
-        if not self.parse_header(lines[1]):
-            # This is not a screenlang if statement, but an if statement in a python block
-            return self.print_python(header, code)
         self.indent()
-
-        if_indent = len(lines[0]) - len(lines[0].lstrip())
-        current_block = []
-        for i, line in enumerate(lines):
-            if not i:
-                self.print_condition("if", line)
-            elif line[if_indent:].startswith("elif"):
-                self.print_block(current_block)
-                self.indent()
-                self.print_condition("elif", line)
-                current_block = []
-            elif line[if_indent:].startswith("else"):
-                self.print_block(current_block)
-                self.indent()
-                self.write("else:")
-                current_block = []
-            elif i == len(lines)-1:
-                current_block.append(line)
-                self.print_block(current_block)
+        self.write("if %s:" % self.strip_parens(self.to_source(code[0].test)))
+        if (len(code[0].body) >= 2 and self.parse_header(code[0].body[0]) and
+            self.parse_header(code[0].body[1])):
+            body = code[0].body[1:]
+        else:
+            body = code[0].body
+        self.print_nodes(body, 1)
+        if code[0].orelse:
+            self.indent()
+            if self.is_renpy_if(code[0].orelse):
+                self.write("el") # beginning of "elif"
+                self.skip_indent_until_write = True
+                self.print_if(header, code[0].orelse)
             else:
-                current_block.append(line)
-    dispatch['if'] = print_if
+                self.write("else:")
+                if (len(code[0].orelse) >= 2 and
+                    self.parse_header(code[0].orelse[0]) and
+                    self.parse_header(code[0].orelse[1])):
+                    orelse = code[0].orelse[1:]
+                else:
+                    orelse = code[0].orelse
+                self.print_nodes(orelse, 1)
 
     def print_for(self, header, code):
         # Here we handle the for statement. Note that the for statement generates some extra python code to
         # Keep track of it's header indices. The first one is ignored by the statement parser,
         # the second line is just ingored here.
+        line = code[0]
 
         # note that it is possible for a python block to have "for" as it's first statement
         # so we check here if a second header appears after the for block to correct this.
-        lines = code.splitlines()
-        if not self.parse_header(lines[1]):
+        if (len(code) != 1 or line.orelse or
+            (line.body and not self.parse_header(line.body[0]))):
             # This is not a screenlang statement
             return self.print_python(header, code)
 
         self.indent()
-        self.print_condition("for", lines[0])
-        self.print_block(lines[1:-1])
-    dispatch['for'] = print_for
+        self.write("for %s in %s:" % (
+            self.strip_parens(self.to_source(line.target)),
+            self.to_source(line.iter)))
+        if (len(line.body) >= 3 and self.parse_header(line.body[0]) and
+            self.parse_header(line.body[1])):
+            body = line.body[1:]
+        else:
+            body = line.body
+        self.print_nodes(body[:-1], 1)
+        return
 
     def print_use(self, header, code):
         # This function handles the use statement, which translates into a python expression "renpy.use_screen".
         # It would technically be possible for this to be a python statement, but the odds of this are very small.
         # renpy itself will insert some kwargs, we'll delete those and then parse the command here.
-        args, kwargs, exargs, exkwargs = self.parse_args(code.strip())
+        if (len(code) != 1 or not code[0].value.args or
+            not isinstance(code[0].value.args[0], _ast.Str)):
+            return self.print_python(header, code)
+        args, kwargs, exargs, exkwargs = self.parse_args(code[0])
         kwargs = [(key, value) for key, value in kwargs if not
                   (key == '_scope' or key == '_name')]
 
         self.indent()
-        name = args.pop(0)[2:-1]
-        self.write("use %s" % name)
+        self.write("use %s" % code[0].value.args[0].s)
+        args.pop(0)
 
         arglist = []
         if args or kwargs or exargs or exkwargs:
@@ -334,60 +345,59 @@ class SLDecompiler(DecompilerBase):
                 arglist.append("**%s" % exkwargs)
             self.write(", ".join(arglist))
             self.write(")")
-    dispatch['renpy.use_screen'] = print_use
+    dispatch[('renpy', 'use_screen')] = print_use
 
     def print_default(self, header, code):
-        args, _, _, _ = self.parse_args(code.strip())
-        key = args[0].split("'", 1)[1].rsplit("'", 1)[0]
-        value = args[1]
+        if (len(code) != 1 or code[0].value.keywords or code[0].value.kwargs or
+            len(code[0].value.args) != 2 or code[0].value.starargs or
+            not isinstance(code[0].value.args[0], _ast.Str)):
+            return self.print_python(header, code)
         self.indent()
-        self.write("default %s = %s" % (key, value))
-    dispatch['_scope.setdefault'] = print_default
+        self.write("default %s = %s" %
+            (code[0].value.args[0].s, self.to_source(code[0].value.args[1])))
+    dispatch[('_scope', 'setdefault')] = print_default
 
     # These never have a ui.close() at the end
     def print_nochild(self, header, code):
-        split = code.split('\n', 1)
-        if len(split) == 2 and split[1]:
+        if len(code) != 1:
             self.print_python(header, code)
             return
-        line = split[0]
-        name = line.split('ui.', 1)[1].split('(', 1)[0]
+        line = code[0]
         self.indent()
-        self.write(name)
+        self.write(line.value.func.attr)
         args, kwargs, _, _ = self.parse_args(line)
         self.print_arguments(args, kwargs, False)
-    dispatch['ui.add']          = print_nochild
-    dispatch['ui.imagebutton']  = print_nochild
-    dispatch['ui.input']        = print_nochild
-    dispatch['ui.key']          = print_nochild
-    dispatch['ui.label']        = print_nochild
-    dispatch['ui.text']         = print_nochild
-    dispatch['ui.null']         = print_nochild
-    dispatch['ui.mousearea']    = print_nochild
-    dispatch['ui.textbutton']   = print_nochild
-    dispatch['ui.timer']        = print_nochild
-    dispatch['ui.bar']          = print_nochild
-    dispatch['ui.vbar']         = print_nochild
-    dispatch['ui.hotbar']       = print_nochild
-    dispatch['ui.on']           = print_nochild
-    dispatch['ui.image']        = print_nochild
+    dispatch[('ui', 'add')]          = print_nochild
+    dispatch[('ui', 'imagebutton')]  = print_nochild
+    dispatch[('ui', 'input')]        = print_nochild
+    dispatch[('ui', 'key')]          = print_nochild
+    dispatch[('ui', 'label')]        = print_nochild
+    dispatch[('ui', 'text')]         = print_nochild
+    dispatch[('ui', 'null')]         = print_nochild
+    dispatch[('ui', 'mousearea')]    = print_nochild
+    dispatch[('ui', 'textbutton')]   = print_nochild
+    dispatch[('ui', 'timer')]        = print_nochild
+    dispatch[('ui', 'bar')]          = print_nochild
+    dispatch[('ui', 'vbar')]         = print_nochild
+    dispatch[('ui', 'hotbar')]       = print_nochild
+    dispatch[('ui', 'on')]           = print_nochild
+    dispatch[('ui', 'image')]        = print_nochild
 
     # These functions themselves don't have a ui.close() at the end, but
     # they're always immediately followed by one that does (usually
     # ui.child_or_fixed(), but also possibly one set with "has")
     def print_onechild(self, header, code, has_block=False):
-        lines = code.splitlines()
         # We expect to have at least ourself, one child, and ui.close()
-        if len(lines) < 3 or lines[-1].strip() != 'ui.close()':
+        if len(code) < 3 or self.get_dispatch_key(code[-1]) != ('ui', 'close'):
             if has_block:
                 raise BadHasBlockException()
             self.print_python(header, code)
             return
-        line = lines[0]
-        name = line.split('ui.', 1)[1].split('(', 1)[0]
+        line = code[0]
+        name = line.value.func.attr
         if name == 'hotspot_with_child':
             name = 'hotspot'
-        if lines[1].strip() != 'ui.child_or_fixed()':
+        if self.get_dispatch_key(code[1]) != ('ui', 'child_or_fixed'):
             # Handle the case where a "has" statement was used
             if has_block:
                 # Ren'Py lets users nest "has" blocks for some reason, and it
@@ -397,10 +407,10 @@ class SLDecompiler(DecompilerBase):
                 # one inside a python block at the end. If this happens, turn
                 # the whole outer block into Python instead of screencode.
                 raise BadHasBlockException()
-            block = '\n'.join(lines[1:])
-            if not self.parse_header(block):
+            if not self.parse_header(code[1]):
                 self.print_python(header, code)
                 return
+            block = code[1:]
             state = self.save_state()
             try:
                 self.indent()
@@ -420,8 +430,8 @@ class SLDecompiler(DecompilerBase):
                 self.commit_state(state)
         else:
             # Remove ourself, ui.child_or_fixed(), and ui.close()
-            block = '\n'.join(lines[2:-1])
-            if block and not self.parse_header(block):
+            block = code[2:-1]
+            if block and not self.parse_header(block[0]):
                 if has_block:
                     raise BadHasBlockException()
                 self.print_python(header, code)
@@ -431,121 +441,62 @@ class SLDecompiler(DecompilerBase):
             args, kwargs, _, _ = self.parse_args(line)
             self.print_arguments(args, kwargs, not has_block and block)
             self.print_nodes(block, 0 if has_block else 1)
-    dispatch['ui.button']             = print_onechild
-    dispatch['ui.frame']              = print_onechild
-    dispatch['ui.transform']          = print_onechild
-    dispatch['ui.viewport']           = print_onechild
-    dispatch['ui.window']             = print_onechild
-    dispatch['ui.drag']               = print_onechild
-    dispatch['ui.hotspot_with_child'] = print_onechild
+    dispatch[('ui', 'button')]             = print_onechild
+    dispatch[('ui', 'frame')]              = print_onechild
+    dispatch[('ui', 'transform')]          = print_onechild
+    dispatch[('ui', 'viewport')]           = print_onechild
+    dispatch[('ui', 'window')]             = print_onechild
+    dispatch[('ui', 'drag')]               = print_onechild
+    dispatch[('ui', 'hotspot_with_child')] = print_onechild
 
     # These always have a ui.close() at the end
     def print_manychildren(self, header, code, has_block=False):
-        lines = code.splitlines()
-        if lines[-1].strip() != 'ui.close()' or (
-            len(lines) != 2 and not self.parse_header(lines[1])):
+        if (self.get_dispatch_key(code[-1]) != ('ui', 'close') or
+            (len(code) != 2 and not self.parse_header(code[1]))):
             if has_block:
                 raise BadHasBlockException()
             self.print_python(header, code)
             return
-        line = lines[0]
-        block = '\n'.join(lines[1:-1])
-        name = line.split('ui.', 1)[1].split('(', 1)[0]
+        line = code[0]
+        block = code[1:-1]
         self.indent()
-        self.write(name)
+        self.write(line.value.func.attr)
         args, kwargs, _, _ = self.parse_args(line)
         self.print_arguments(args, kwargs, not has_block and block)
         self.print_nodes(block, 0 if has_block else 1)
-    dispatch['ui.fixed']        = print_manychildren
-    dispatch['ui.grid']         = print_manychildren
-    dispatch['ui.hbox']         = print_manychildren
-    dispatch['ui.side']         = print_manychildren
-    dispatch['ui.vbox']         = print_manychildren
-    dispatch['ui.imagemap']     = print_manychildren
-    dispatch['ui.draggroup']    = print_manychildren
+    dispatch[('ui', 'fixed')]        = print_manychildren
+    dispatch[('ui', 'grid')]         = print_manychildren
+    dispatch[('ui', 'hbox')]         = print_manychildren
+    dispatch[('ui', 'side')]         = print_manychildren
+    dispatch[('ui', 'vbox')]         = print_manychildren
+    dispatch[('ui', 'imagemap')]     = print_manychildren
+    dispatch[('ui', 'draggroup')]    = print_manychildren
 
     # Parsing functions
 
     def parse_header(self, header):
-        # This parses a pyscreen header into a tuple of id, parent_id, index strings.
-        # Note that lowest-level blocks have "_name" as parent
-        # instead of a number. after this numbering starts at _1, indexes start at 0
-        match = re.search(r' *_([0-9]+) = \(_([0-9]+|name), _?([0-9]+)\) *\n?', header)
-        if match:
-            return match.group(1), match.group(2), match.group(3)
-        else:
-            return None
+        # Given a Python AST node, returns the parent ID if the node represents
+        # a header, or None otherwise.
+        if (isinstance(header, _ast.Assign) and len(header.targets) == 1 and
+                isinstance(header.targets[0], _ast.Name) and
+                re.match(r"_[0-9]+$", header.targets[0].id) and
+                isinstance(header.value, _ast.Tuple) and
+                len(header.value.elts) == 2 and
+                isinstance(header.value.elts[0], _ast.Name)):
+            parent_id = header.value.elts[0].id
+            index = header.value.elts[1]
+            if re.match(r"_([0-9]+|name)$", parent_id) and (
+                    isinstance(index, _ast.Num) or
+                    (isinstance(index, _ast.Name) and
+                    re.match(r"_[0-9]+$", index.id))):
+                return parent_id
+        return None
 
-    def count_trailing_slashes(self, split):
-        count = 0
-        for char in reversed(split):
-            if char == '\\':
-                count += 1
-            else:
-                break
-        return count
-
-    def parse_args(self, string):
-        # This function parses a functionstring, splits it on comma's using splitargs, and then
-        # orders them by args, kwargs, *args and **kwargs.
-
-        # First, we'll split the arguments in a quick and dirty way
-        arguments = []
-
-        # If this string contains more than just the arguments,
-        # isolate the part of the string actually containing the arguments
-        match = re.match(r'.*?\((.*)\)', string)
-        if match:
-            string = match.group(1)
-
-        # TODO: support docstrings properly
-
-        stack = [None]
-        current_parse = []
-        for character in string:
-            # Quotes start or end strings
-            if character in ("'", '"'):
-                # They start them when we're not in a string
-                if stack[-1] not in ("'", '"'):
-                    stack.append(character)
-                # And they end them when there's an even amount of backslashes in front of them
-                elif character == stack[-1] and not (self.count_trailing_slashes(current_parse) % 2):
-                    stack.pop()
-            elif stack[-1] not in ("'", '"'):
-                # These characters start a container
-                if character in ('[', '(', '{'):
-                    stack.append(character)
-                # And these close it
-                elif character in (']', ')', '}'):
-                    # We don't check if they match the entering char since we assume it's valid python
-                    stack.pop()
-            # If the stack is empty and there's a comma, we have a split
-            if len(stack) == 1 and character == ',':
-                arguments.append(''.join(current_parse).strip())
-                current_parse = []
-            else:
-                current_parse.append(character)
-        # Append the trailing split
-        arguments.append(''.join(current_parse).strip())
-
-        # Parse the arguments
-        args = []
-        kwargs = []
-        exargs = None
-        exkwargs = None
-        for argument in arguments:
-            # varname = python_expression
-            if re.match('^[a-zA-Z0-9_]+ *=[^=]', argument):
-                name, value = argument.split('=', 1)
-                kwargs.append((name.strip(), value.strip()))
-            elif argument.startswith("**"):
-                exkwargs = argument[2:]
-            elif argument.startswith("*"):
-                exargs = argument[1:]
-            else:
-                args.append(argument)
-
-        return args, kwargs, exargs, exkwargs
+    def parse_args(self, node):
+        return ([self.to_source(i) for i in node.value.args],
+            [(i.arg, self.to_source(i.value)) for i in node.value.keywords],
+            node.value.starargs and self.to_source(node.value.starargs),
+            node.value.kwargs and self.to_source(node.value.kwargs))
 
 class BadHasBlockException(Exception):
     pass
