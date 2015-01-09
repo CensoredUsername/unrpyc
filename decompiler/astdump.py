@@ -24,6 +24,7 @@ import sys
 import inspect
 import codegen
 import ast as py_ast
+import renpy
 
 def pprint(out_file, ast, decompile_python=True, comparable=False, file_metadata=True):
     # The main function of this module, a wrapper which sets
@@ -60,6 +61,8 @@ class AstDumper(object):
         self.passed.append(ast)
         if isinstance(ast, (list, tuple, set, frozenset)):
             self.print_list(ast)
+        elif isinstance(ast, renpy.ast.PyExpr):
+            self.print_pyexpr(ast)
         elif isinstance(ast, dict):
             self.print_dict(ast)
         elif isinstance(ast, (str, unicode)):
@@ -153,6 +156,12 @@ class AstDumper(object):
                 self.ind()
         self.ind(-1, keys)
         self.p('>')
+
+    def print_pyexpr(self, ast):
+        if self.file_metadata:
+            self.print_object(ast)
+            self.p(' = ')
+        self.print_string(ast)
 
     def print_class(self, ast):
         # handles the printing of classes
