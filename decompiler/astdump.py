@@ -122,7 +122,7 @@ class AstDumper(object):
             elif len(ast.location) == 2:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1])
         elif key == 'loc' and type(ast.loc) == tuple:
-            ast.loc = (ast.loc[0].split('/')[-1], ast.loc[1])
+            ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
         elif key != 'linenumber':
