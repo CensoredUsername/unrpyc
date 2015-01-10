@@ -186,12 +186,8 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.atl.RawFunction] = print_atl_rawfunction
 
     def print_atl_rawon(self, ast):
-        if self.comparable:
-            # Make sure we iterate over the events in order of original appearance
-            events_to_iterate = sorted(ast.handlers.items(), key=lambda i: i[1].loc[1])
-        else:
-            events_to_iterate = ast.handlers.iteritems()
-        for name, block in events_to_iterate:
+        for name, block in sorted(ast.handlers.items(),
+                                  key=lambda i: i[1].loc[1]):
             self.indent()
             self.write("on %s:" % name)
             self.print_atl(block)
