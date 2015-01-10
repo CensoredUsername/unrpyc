@@ -418,10 +418,13 @@ class Decompiler(DecompilerBase):
         statement = First("if %s:", "elif %s:")
 
         for i, (condition, block) in enumerate(ast.entries):
-            self.indent()
-            if (i + 1) == len(ast.entries) and condition.strip() == "True":
+            # The non-Unicode string "True" is the condition for else:.
+            if (i + 1) == len(ast.entries) and isinstance(condition, str):
+                self.indent()
                 self.write("else:")
             else:
+                self.advance_to_line(condition.linenumber)
+                self.indent()
                 self.write(statement() % condition)
 
             self.print_nodes(block, 1)
