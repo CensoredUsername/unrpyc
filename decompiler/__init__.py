@@ -505,11 +505,13 @@ class Decompiler(DecompilerBase):
             self.write("set %s" % ast.set)
 
         for label, condition, block in ast.items:
+            if isinstance(condition, unicode):
+                self.advance_to_line(condition.linenumber)
             self.indent()
             self.write('"%s"' % string_escape(label))
 
             if block is not None:
-                if condition != 'True':
+                if isinstance(condition, unicode):
                     self.write(" if %s" % condition)
 
                 self.write(":")
