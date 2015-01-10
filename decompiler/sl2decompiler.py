@@ -31,10 +31,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           force_multiline_kwargs=True, decompile_screencode=True,
+           decompile_screencode=True,
            comparable=False, skip_indent_until_write=False):
     return SL2Decompiler(out_file,
-                  force_multiline_kwargs=force_multiline_kwargs,
                   decompile_screencode=decompile_screencode, comparable=comparable).dump(
                       ast, indent_level, linenumber, skip_indent_until_write)
 
@@ -51,9 +50,8 @@ class SL2Decompiler(DecompilerBase):
 
     displayable_names = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True, indentation='    ', comparable=False):
+    def __init__(self, out_file=None, decompile_screencode=True, indentation='    ', comparable=False):
         super(SL2Decompiler, self).__init__(out_file, indentation, comparable)
-        self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
 
     def print_node(self, ast):
@@ -77,19 +75,14 @@ class SL2Decompiler(DecompilerBase):
         # Print any keywords
         if ast.tag:
             self.write(" tag %s" % ast.tag)
-        for key, value in ast.keyword:
-            self.write(" %s %s" % (key, value))
-        self.write(":")
-        self.indent_level += 1
-
         # If we're decompiling screencode, print it. Else, insert a pass statement
-        if self.decompile_screencode:
-            self.print_nodes(ast.children)
-        else:
+        self.print_keywords_and_children(ast.keyword,
+            self.decompile_screencode and ast.children)
+        if not self.decompile_screencode:
+            self.indent_level += 1
             self.indent()
             self.write("pass # Screen code not decompiled")
-
-        self.indent_level -= 1
+            self.indent_level -= 1
     dispatch[sl2.slast.SLScreen] = print_screen
 
     def print_if(self, ast):
@@ -126,18 +119,7 @@ class SL2Decompiler(DecompilerBase):
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
         # this is the reason if doesn't keep a list of children but special Blocks
-        self.indent_level += 1
-
-        if self.force_multiline_kwargs and not self.comparable:
-            for key, value in ast.keyword:
-                self.indent()
-                self.write("%s %s" % (key, value))
-        elif ast.keyword:
-            self.indent()
-            self.write(" ".join(("%s %s" % (key, value)) for key, value in ast.keyword))
-
-        self.print_nodes(ast.children)
-        self.indent_level -= 1
+        self.print_keywords_and_children(ast.keyword, ast.children, True)
     dispatch[sl2.slast.SLBlock] = print_block
 
     def print_for(self, ast):
@@ -204,8 +186,9 @@ class SL2Decompiler(DecompilerBase):
         else:
             self.indent()
             self.write(name)
-            self.print_arguments(ast.positional, ast.keyword, ast.children)
-            self.print_nodes(ast.children, 1)
+            if ast.positional:
+                self.write(" " + " ".join(ast.positional))
+            self.print_keywords_and_children(ast.keyword, ast.children)
     dispatch[sl2.slast.SLDisplayable] = print_displayable
 
     displayable_names[(behavior.OnEvent, None)]          = "on"
@@ -239,21 +222,17 @@ class SL2Decompiler(DecompilerBase):
     displayable_names[(layout.MultiBox, "vbox")]         = "vbox"
     displayable_names[(layout.MultiBox, "hbox")]         = "hbox"
 
-    def print_arguments(self, args, kwargs, multiline=True):
-        # This function prints the arguments and keyword arguments
+    def print_keywords_and_children(self, keywords, children, block_already_started=False):
+        # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
-        if args:
-            self.write(" " + " ".join(args))
-
-        if self.force_multiline_kwargs and not self.comparable and kwargs:
-            self.write(":")
-            self.indent_level += 1
-            for key, value in kwargs:
-                self.indent()
-                self.write("%s %s" % (key, value))
-            self.indent_level -= 1
-        else:
-            for key, value in kwargs:
+        if not block_already_started:
+            for key, value in keywords:
                 self.write(" %s %s" % (key, value))
-            if multiline:
+            if children:
                 self.write(":")
+        elif keywords:
+            self.indent_level += 1
+            self.indent()
+            self.write(" ".join(("%s %s" % (key, value)) for key, value in keywords))
+            self.indent_level -= 1
+        self.print_nodes(children, 1)

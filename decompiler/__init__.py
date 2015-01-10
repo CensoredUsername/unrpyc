@@ -35,10 +35,9 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           force_multiline_kwargs=True, decompile_screencode=True,
+           decompile_screencode=True,
            decompile_python=True, comparable=False):
     Decompiler(out_file,
-               force_multiline_kwargs=force_multiline_kwargs,
                decompile_screencode=decompile_screencode,
                decompile_python=decompile_python,
                comparable=comparable).dump(ast, indent_level)
@@ -54,10 +53,9 @@ class Decompiler(DecompilerBase):
     # what method to call for which ast class
     dispatch = {}
 
-    def __init__(self, out_file=None, force_multiline_kwargs=True, decompile_screencode=True,
+    def __init__(self, out_file=None, decompile_screencode=True,
                  decompile_python=True, indentation = '    ', comparable=False):
         super(Decompiler, self).__init__(out_file, indentation, comparable)
-        self.force_multiline_kwargs = force_multiline_kwargs
         self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
 
@@ -675,7 +673,7 @@ class Decompiler(DecompilerBase):
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
-                                    self.linenumber, self.force_multiline_kwargs,
+                                    self.linenumber,
                                     self.decompile_screencode, self.comparable,
                                     self.skip_indent_until_write)
             self.skip_indent_until_write = False
