@@ -329,12 +329,14 @@ class SLDecompiler(DecompilerBase):
             body = code[0].body
         self.print_nodes(body, 1)
         if code[0].orelse:
-            self.indent()
             if self.is_renpy_if(code[0].orelse):
+                self.advance_to_line(code[0].orelse[0].test.lineno)
+                self.indent()
                 self.write("el") # beginning of "elif"
                 self.skip_indent_until_write = True
                 self.print_if(header, code[0].orelse)
             else:
+                self.indent()
                 self.write("else:")
                 if (len(code[0].orelse) >= 2 and
                     self.parse_header(code[0].orelse[0]) and
