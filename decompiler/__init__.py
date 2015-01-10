@@ -21,6 +21,8 @@
 from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
 
+from operator import itemgetter
+
 import magic
 magic.fake_package(b"renpy")
 import renpy
@@ -593,32 +595,43 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.UserStatement] = print_userstatement
 
     def print_style(self, ast):
+        keywords = {ast.linenumber: WordConcatenator(False)}
+
+        # These don't store a line number, so just put them on the first line
+        if ast.parent is not None:
+            keywords[ast.linenumber].append("is %s" % ast.parent)
+        if ast.clear:
+            keywords[ast.linenumber].append("clear")
+        if ast.take is not None:
+            keywords[ast.linenumber].append("take %s" % ast.take)
+        for delname in ast.delattr:
+            keywords[ast.linenumber].append("del %s" % delname)
+
+        # These do store a line number
+        if ast.variant is not None:
+            if ast.variant.linenumber not in keywords:
+                keywords[ast.variant.linenumber] = WordConcatenator(False)
+            keywords[ast.variant.linenumber].append("variant")
+            keywords[ast.variant.linenumber].append(ast.variant)
+        for key, value in ast.properties.iteritems():
+            if value.linenumber not in keywords:
+                keywords[value.linenumber] = WordConcatenator(False)
+            keywords[value.linenumber].append(key)
+            keywords[value.linenumber].append(value)
+
+        keywords = sorted([(k, v.join()) for k, v in keywords.items()],
+                          key=itemgetter(0))
         self.indent()
         self.write("style %s" % ast.style_name)
-        kwargs = []
-
-        if ast.parent is not None:
-            kwargs.append("is %s" % ast.parent)
-        if ast.clear:
-            kwargs.append("clear")
-        if ast.take is not None:
-            kwargs.append("take %s" % ast.take)
-        for delname in ast.delattr:
-            kwargs.append("del %s" % delname)
-        if ast.variant is not None:
-            kwargs.append("variant %s" % ast.variant)
-
-        for key, value in ast.properties.iteritems():
-            kwargs.append("%s %s" % (key, value))
-
-        if self.comparable:
-            self.write(" %s" % " ".join(kwargs))
-        else:
+        if keywords[0][1]:
+            self.write(" %s" % keywords[0][1])
+        if len(keywords) > 1:
             self.write(":")
             self.indent_level += 1
-            for i in kwargs:
+            for i in keywords[1:]:
+                self.advance_to_line(i[0])
                 self.indent()
-                self.write(i)
+                self.write(i[1])
             self.indent_level -= 1
     dispatch[renpy.ast.Style] = print_style
 
