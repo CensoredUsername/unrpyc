@@ -24,14 +24,11 @@ Options:
   --no-codegen   Only dumping and for decompiling screen language 1 screens.
                  Don't decompile the screen python ast back to python.
                  This implies --no-screenlang
-  --single-line-screen-kwargs
-                 Only for decompiling, don't force all keyword arguments
-                 from screencode to different lines
   --comparable   Modify the output to make comparing ast dumps easier.
                  When decompiling, this causes extra lines to be used
                  to make line numbers match. When dumping the ast, this
                  omits properties such as file paths and modification
-                 times. This implies --single-line-screen-kwargs
+                 times.
   --no-file-metadata
                  Only for dumping, don't output any file metadata (such
                  as line numbers). This allows comparing of dumps even
