@@ -77,7 +77,7 @@ class SL2Decompiler(DecompilerBase):
             self.write(" tag %s" % ast.tag)
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
-            self.decompile_screencode and ast.children)
+            self.decompile_screencode and ast.children, ast.location[1])
         if not self.decompile_screencode:
             self.indent_level += 1
             self.indent()
@@ -119,7 +119,7 @@ class SL2Decompiler(DecompilerBase):
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
         # this is the reason if doesn't keep a list of children but special Blocks
-        self.print_keywords_and_children(ast.keyword, ast.children, True)
+        self.print_keywords_and_children(ast.keyword, ast.children, None)
     dispatch[sl2.slast.SLBlock] = print_block
 
     def print_for(self, ast):
@@ -188,7 +188,8 @@ class SL2Decompiler(DecompilerBase):
             self.write(name)
             if ast.positional:
                 self.write(" " + " ".join(ast.positional))
-            self.print_keywords_and_children(ast.keyword, ast.children)
+            self.print_keywords_and_children(ast.keyword, ast.children,
+                                             ast.location[1])
     dispatch[sl2.slast.SLDisplayable] = print_displayable
 
     displayable_names[(behavior.OnEvent, None)]          = "on"
@@ -222,10 +223,13 @@ class SL2Decompiler(DecompilerBase):
     displayable_names[(layout.MultiBox, "vbox")]         = "vbox"
     displayable_names[(layout.MultiBox, "hbox")]         = "hbox"
 
-    def print_keywords_and_children(self, keywords, children, block_already_started=False):
+    def print_keywords_and_children(self, keywords, children, lineno):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
-        if not block_already_started:
+
+        # If lineno is None, we're already inside of a block.
+        # Otherwise, we're on the line that could start a block.
+        if lineno is not None:
             for key, value in keywords:
                 self.write(" %s %s" % (key, value))
             if children:
