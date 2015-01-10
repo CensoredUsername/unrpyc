@@ -181,11 +181,14 @@ class SLDecompiler(DecompilerBase):
         # Keywords and child nodes can be mixed with each other, so they need
         # to be printed at the same time. This function takes each list and
         # combines them into one, then prints it.
+        outdent_at = None
         if keywords:
             if keywords[0][1]:
                 self.write(" %s" % keywords[0][1])
-            if len(keywords) != 1 and not has_block:
+            if len(keywords) != 1:
                 needs_colon = True
+                if has_block:
+                    outdent_at = keywords[-1][0]
         if nodes:
             nodelists = [(self.get_first_line(i[1:]), i)
                          for i in self.split_nodes_at_headers(nodes)]
@@ -196,9 +199,12 @@ class SLDecompiler(DecompilerBase):
         if needs_colon:
             self.write(":")
         stuff_to_print = sorted(keywords[1:] + nodelists, key=itemgetter(0))
-        if not has_block:
+        if not has_block or outdent_at is not None:
             self.indent_level += 1
         for i in stuff_to_print:
+            if outdent_at is not None and i[0] > outdent_at:
+                self.indent_level -= 1
+                outdent_at = None
             # Nodes are lists. Keywords are ready-to-print strings.
             if type(i[1]) == list:
                 self.print_node(i[1][0], i[1][1:])
@@ -206,7 +212,7 @@ class SLDecompiler(DecompilerBase):
                 self.advance_to_line(i[0])
                 self.indent()
                 self.write(i[1])
-        if not has_block:
+        if not has_block or outdent_at is not None:
             self.indent_level -= 1
 
     def get_dispatch_key(self, node):
