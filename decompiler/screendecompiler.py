@@ -81,42 +81,29 @@ class SLDecompiler(DecompilerBase):
         if ast.tag:
             self.write(" tag %s" % ast.tag)
 
-        # If the value for a simple_expression has a space after it (even the
-        # space separating it from the next key), it will end up in the AST. We
-        # need to pack as many as possible onto the screen line so that line
-        # numbers can match up, without putting a space after a value that
-        # wasn't there originally.
-        kwargs_for_screen_line = WordConcatenator(True)
-        kwargs_for_separate_lines = []
+        keywords = {ast.code.location[1]: WordConcatenator(False)}
         for key in ('modal', 'zorder', 'variant', 'predict'):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
             if isinstance(value, unicode):
-                guarded_value = simple_expression_guard(value)
-                if value[-1] != " " or guarded_value != value.strip():
-                    kwargs_for_separate_lines.append("%s %s" % (key, guarded_value))
-                else:
-                    kwargs_for_screen_line.append(key, value)
-        # One value without a space can go on the end of the screen line, since
-        # no space goes between the last value and the colon.
-        if kwargs_for_separate_lines:
-            kwargs_for_screen_line.append(kwargs_for_separate_lines.pop(0))
-        self.write("%s:" % kwargs_for_screen_line.join())
-        self.indent_level += 1
-        for i in kwargs_for_separate_lines:
-            self.indent()
-            self.write(i)
-
+                if value.linenumber not in keywords:
+                    keywords[value.linenumber] = WordConcatenator(False)
+                keywords[value.linenumber].append(key)
+                keywords[value.linenumber].append(value)
+        keywords = sorted([(k, v.join()) for k, v in keywords.items()],
+                          key=itemgetter(0)) # so the first one is right
         if not self.decompile_python:
+            self.print_keywords_and_nodes(keywords, None, True, False)
+            self.indent_level += 1
             self.indent()
             self.write("pass # Screen code not extracted")
-        elif self.decompile_screencode:
-            self.print_nodes(ast.code.source.body)
-        else:
+            self.indent_level -= 1
+        elif not self.decompile_screencode:
+            self.print_keywords_and_nodes(keywords, None, True, False)
+            self.indent_level += 1
             self.indent()
             self.write("python:")
-
             self.indent_level += 1
             # The first line is always "_1 = (_name, 0)", which gets included
             # even if the python: block is the only thing in the screen. Don't
@@ -125,9 +112,10 @@ class SLDecompiler(DecompilerBase):
             for line in self.to_source(ast.code.source).splitlines()[1:]:
                 self.indent()
                 self.write(line)
-            self.indent_level -= 1
-
-        self.indent_level -= 1
+            self.indent_level -= 2
+        else:
+            self.print_keywords_and_nodes(keywords, ast.code.source.body,
+                                          False, False)
 
     def split_nodes_at_headers(self, nodes):
         if not nodes:
@@ -189,19 +177,15 @@ class SLDecompiler(DecompilerBase):
         keywords_by_line.append((lineno, ' '.join(current_line)))
         return keywords_by_line
 
-    def print_keywords_and_nodes(self, kwnode, nodes, needs_colon, has_block):
+    def print_keywords_and_nodes(self, keywords, nodes, needs_colon, has_block):
         # Keywords and child nodes can be mixed with each other, so they need
         # to be printed at the same time. This function takes each list and
         # combines them into one, then prints it.
-        if kwnode:
-            keywords = self.make_printable_keywords(kwnode.keywords,
-                                                    kwnode.lineno)
+        if keywords:
             if keywords[0][1]:
                 self.write(" %s" % keywords[0][1])
             if len(keywords) != 1 and not has_block:
                 needs_colon = True
-        else:
-            keywords = []
         if nodes:
             nodelists = [(self.get_first_line(i[1:]), i)
                          for i in self.split_nodes_at_headers(nodes)]
@@ -419,7 +403,10 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_keywords_and_nodes(line.value, None, False, False)
+        self.print_keywords_and_nodes(
+            self.make_printable_keywords(line.value.keywords,
+                                         line.value.lineno),
+            None, False, False)
     dispatch[('ui', 'add')]          = print_nochild
     dispatch[('ui', 'imagebutton')]  = print_nochild
     dispatch[('ui', 'input')]        = print_nochild
@@ -469,7 +456,10 @@ class SLDecompiler(DecompilerBase):
                 self.indent()
                 self.write(name)
                 self.print_args(line.value)
-                self.print_keywords_and_nodes(line.value, None, True, False)
+                self.print_keywords_and_nodes(
+                    self.make_printable_keywords(line.value.keywords,
+                                                 line.value.lineno),
+                    None, True, False)
                 self.indent_level += 1
                 if len(block) > 1 and isinstance(block[1], ast.Expr):
                     # If this isn't true, we'll get a BadHasBlockException
@@ -497,7 +487,10 @@ class SLDecompiler(DecompilerBase):
             self.indent()
             self.write(name)
             self.print_args(line.value)
-            self.print_keywords_and_nodes(line.value, block, False, has_block)
+            self.print_keywords_and_nodes(
+                self.make_printable_keywords(line.value.keywords,
+                                             line.value.lineno),
+                block, False, has_block)
     dispatch[('ui', 'button')]             = print_onechild
     dispatch[('ui', 'frame')]              = print_onechild
     dispatch[('ui', 'transform')]          = print_onechild
@@ -519,7 +512,10 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_keywords_and_nodes(line.value, block, False, has_block)
+        self.print_keywords_and_nodes(
+            self.make_printable_keywords(line.value.keywords,
+                                         line.value.lineno),
+            block, False, has_block)
     dispatch[('ui', 'fixed')]        = print_manychildren
     dispatch[('ui', 'grid')]         = print_manychildren
     dispatch[('ui', 'hbox')]         = print_manychildren
