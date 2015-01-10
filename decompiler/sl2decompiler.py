@@ -20,6 +20,7 @@
 
 from __future__ import unicode_literals
 import sys
+from operator import itemgetter
 
 from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, split_logical_lines
 
@@ -229,14 +230,30 @@ class SL2Decompiler(DecompilerBase):
 
         # If lineno is None, we're already inside of a block.
         # Otherwise, we're on the line that could start a block.
-        if lineno is not None:
-            for key, value in keywords:
-                self.write(" %s %s" % (key, value))
-            if children:
+        keywords_by_line = []
+        current_line = (lineno, [])
+        for key, value in keywords:
+            if current_line[0] is None or value.linenumber > current_line[0]:
+                keywords_by_line.append(current_line)
+                current_line = (value.linenumber, [])
+            current_line[1].extend((key, value))
+        keywords_by_line.append(current_line)
+        children_by_line = [(i.location[1], i) for i in children]
+        # the keywords in keywords_by_line[0] go on the line that starts the
+        # block, not in it
+        block_contents = sorted(keywords_by_line[1:] + children_by_line,
+                                key=itemgetter(0))
+        if keywords_by_line[0][1]: # this never happens if lineno was None
+            self.write(" %s" % ' '.join(keywords_by_line[0][1]))
+        if block_contents:
+            if lineno is not None:
                 self.write(":")
-        elif keywords:
             self.indent_level += 1
-            self.indent()
-            self.write(" ".join(("%s %s" % (key, value)) for key, value in keywords))
+            for i in block_contents:
+                if isinstance(i[1], list):
+                    self.advance_to_line(i[0])
+                    self.indent()
+                    self.write(' '.join(i[1]))
+                else:
+                    self.print_node(i[1])
             self.indent_level -= 1
-        self.print_nodes(children, 1)
