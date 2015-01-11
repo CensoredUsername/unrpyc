@@ -265,6 +265,7 @@ class SLDecompiler(DecompilerBase):
         if needs_colon:
             self.write(":")
         self.indent_level += 1
+        should_advance_to_line = self.should_advance_to_line
         self.should_advance_to_line = False
         while nodes_before_keywords:
             if not remaining_keywords:
@@ -280,12 +281,12 @@ class SLDecompiler(DecompilerBase):
             if lines_to_go >= self.get_lines_used_by_node(next_node):
                 self.print_node(next_node[0], next_node[1:])
                 nodes_before_keywords.pop(0)
-            elif not self.comparable or lines_to_go <= 0:
+            elif not self.comparable or not should_advance_to_line or lines_to_go <= 0:
                 self.indent()
                 self.write(remaining_keywords.pop(0)[1])
             else:
-                self.write("\n")
-        self.should_advance_to_line = True
+                self.write("\n" * lines_to_go)
+        self.should_advance_to_line = should_advance_to_line
         for i in remaining_keywords:
             self.advance_to_line(i[0])
             self.indent()
