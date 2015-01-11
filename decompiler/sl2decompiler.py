@@ -177,11 +177,11 @@ class SL2Decompiler(DecompilerBase):
         self.write("default %s = %s" % (ast.variable, ast.expression))
     dispatch[sl2.slast.SLDefault] = print_default
 
-    def print_displayable(self, ast):
+    def print_displayable(self, ast, has_block=False):
         # slast.SLDisplayable represents a variety of statements. We can figure out
         # what statement it represents by analyzing the called displayable and style
         # attributes.
-        name = self.displayable_names.get((ast.displayable, ast.style))
+        (name, children) = self.displayable_names.get((ast.displayable, ast.style))
         if name is None:
             self.print_unknown(ast)
         else:
@@ -189,42 +189,60 @@ class SL2Decompiler(DecompilerBase):
             self.write(name)
             if ast.positional:
                 self.write(" " + " ".join(ast.positional))
-            self.print_keywords_and_children(ast.keyword, ast.children,
-                                             ast.location[1])
+            # The AST contains no indication of whether or not "has" blocks
+            # were used. We'll use one any time it's possible (except for
+            # directly nesting them, or if they wouldn't contain any children),
+            # since it results in cleaner code.
+            if (not has_block and children == 1 and len(ast.children) == 1 and
+                isinstance(ast.children[0], sl2.slast.SLDisplayable) and
+                ast.children[0].children and (not ast.keyword or
+                    ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
+                self.print_keywords_and_children(ast.keyword, [],
+                    ast.location[1], needs_colon=True)
+                self.advance_to_line(ast.children[0].location[1])
+                self.indent_level += 1
+                self.indent()
+                self.write("has ")
+                self.skip_indent_until_write = True
+                self.print_displayable(ast.children[0], True)
+                self.indent_level -= 1
+            else:
+                self.print_keywords_and_children(ast.keyword, ast.children,
+                     ast.location[1], has_block=has_block)
     dispatch[sl2.slast.SLDisplayable] = print_displayable
 
-    displayable_names[(behavior.OnEvent, None)]          = "on"
-    displayable_names[(behavior.OnEvent, 0)]             = "on"
-    displayable_names[(behavior.MouseArea, 0)]           = "mousearea"
-    displayable_names[(sld.sl2add, None)]                = "add"
-    displayable_names[(ui._hotbar, "hotbar")]            = "hotbar"
-    displayable_names[(sld.sl2vbar, None)]               = "vbar"
-    displayable_names[(sld.sl2bar, None)]                = "bar"
-    displayable_names[(ui._label, "label")]              = "label"
-    displayable_names[(ui._textbutton, 0)]               = "textbutton"
-    displayable_names[(ui._imagebutton, "image_button")] = "imagebutton"
-    displayable_names[(im.image, "default")]             = "image"
-    displayable_names[(behavior.Input, "input")]         = "input"
-    displayable_names[(behavior.Timer, "default")]       = "timer"
-    displayable_names[(ui._key, None)]                   = "key"
-    displayable_names[(text.Text, "text")]               = "text"
-    displayable_names[(layout.Null, "default")]          = "null"
-    displayable_names[(dragdrop.Drag, None)]             = "drag"
-    displayable_names[(motion.Transform, "transform")]   = "transform"
-    displayable_names[(ui._hotspot, "hotspot")]          = "hotspot"
-    displayable_names[(sld.sl2viewport, "viewport")]     = "viewport"
-    displayable_names[(behavior.Button, "button")]       = "button"
-    displayable_names[(layout.Window, "frame")]          = "frame"
-    displayable_names[(layout.Window, "window")]         = "window"
-    displayable_names[(dragdrop.DragGroup, None)]        = "draggroup"
-    displayable_names[(ui._imagemap, "imagemap")]        = "imagemap"
-    displayable_names[(layout.Side, "side")]             = "side"
-    displayable_names[(layout.Grid, "grid")]             = "grid"
-    displayable_names[(layout.MultiBox, "fixed")]        = "fixed"
-    displayable_names[(layout.MultiBox, "vbox")]         = "vbox"
-    displayable_names[(layout.MultiBox, "hbox")]         = "hbox"
+    displayable_names[(behavior.OnEvent, None)]          = ("on", 0)
+    displayable_names[(behavior.OnEvent, 0)]             = ("on", 0)
+    displayable_names[(behavior.MouseArea, 0)]           = ("mousearea", 0)
+    displayable_names[(sld.sl2add, None)]                = ("add", 0)
+    displayable_names[(ui._hotbar, "hotbar")]            = ("hotbar", 0)
+    displayable_names[(sld.sl2vbar, None)]               = ("vbar", 0)
+    displayable_names[(sld.sl2bar, None)]                = ("bar", 0)
+    displayable_names[(ui._label, "label")]              = ("label", 0)
+    displayable_names[(ui._textbutton, 0)]               = ("textbutton", 0)
+    displayable_names[(ui._imagebutton, "image_button")] = ("imagebutton", 0)
+    displayable_names[(im.image, "default")]             = ("image", 0)
+    displayable_names[(behavior.Input, "input")]         = ("input", 0)
+    displayable_names[(behavior.Timer, "default")]       = ("timer", 0)
+    displayable_names[(ui._key, None)]                   = ("key", 0)
+    displayable_names[(text.Text, "text")]               = ("text", 0)
+    displayable_names[(layout.Null, "default")]          = ("null", 0)
+    displayable_names[(dragdrop.Drag, None)]             = ("drag", 1)
+    displayable_names[(motion.Transform, "transform")]   = ("transform", 1)
+    displayable_names[(ui._hotspot, "hotspot")]          = ("hotspot", 1)
+    displayable_names[(sld.sl2viewport, "viewport")]     = ("viewport", 1)
+    displayable_names[(behavior.Button, "button")]       = ("button", 1)
+    displayable_names[(layout.Window, "frame")]          = ("frame", 1)
+    displayable_names[(layout.Window, "window")]         = ("window", 1)
+    displayable_names[(dragdrop.DragGroup, None)]        = ("draggroup", 'many')
+    displayable_names[(ui._imagemap, "imagemap")]        = ("imagemap", 'many')
+    displayable_names[(layout.Side, "side")]             = ("side", 'many')
+    displayable_names[(layout.Grid, "grid")]             = ("grid", 'many')
+    displayable_names[(layout.MultiBox, "fixed")]        = ("fixed", 'many')
+    displayable_names[(layout.MultiBox, "vbox")]         = ("vbox", 'many')
+    displayable_names[(layout.MultiBox, "hbox")]         = ("hbox", 'many')
 
-    def print_keywords_and_children(self, keywords, children, lineno):
+    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
 
@@ -238,14 +256,21 @@ class SL2Decompiler(DecompilerBase):
                 current_line = (value.linenumber, [])
             current_line[1].extend((key, value))
         keywords_by_line.append(current_line)
-        children_by_line = [(i.location[1], i) for i in children]
+        last_keyword_line = keywords_by_line[-1][0]
+        children_with_keywords = []
+        children_after_keywords = []
+        for i in children:
+            if i.location[1] > last_keyword_line:
+                children_after_keywords.append(i)
+            else:
+                children_with_keywords.append((i.location[1], i))
         # the keywords in keywords_by_line[0] go on the line that starts the
         # block, not in it
-        block_contents = sorted(keywords_by_line[1:] + children_by_line,
+        block_contents = sorted(keywords_by_line[1:] + children_with_keywords,
                                 key=itemgetter(0))
         if keywords_by_line[0][1]: # this never happens if lineno was None
             self.write(" %s" % ' '.join(keywords_by_line[0][1]))
-        if block_contents:
+        if block_contents or (not has_block and children_after_keywords):
             if lineno is not None:
                 self.write(":")
             self.indent_level += 1
@@ -257,3 +282,6 @@ class SL2Decompiler(DecompilerBase):
                 else:
                     self.print_node(i[1])
             self.indent_level -= 1
+        elif needs_colon:
+            self.write(":")
+        self.print_nodes(children_after_keywords, 0 if has_block else 1)
