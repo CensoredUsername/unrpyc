@@ -122,6 +122,7 @@ class SourceGenerator(NodeVisitor):
         self.indentation = 0
         self.new_lines = 0
         self.precedence_stack = [0]
+        self.precedence_ltr = [None]
 
     def process(self, node):
         self.visit(node)
@@ -131,12 +132,23 @@ class SourceGenerator(NodeVisitor):
 
     # Precedence management
 
-    def prec_start(self, value):
+    def prec_start(self, value, ltr=None):
         if value < self.precedence_stack[-1]:
             self.write('(')
+        self.precedence_ltr.append(ltr)
+        if ltr == False:
+            value += 1
         self.precedence_stack.append(value)
 
+    def prec_middle(self):
+        if self.precedence_ltr[-1]:
+            self.precedence_stack[-1] += 1
+        elif self.precedence_ltr[-1] is False:
+            self.precedence_stack[-1] -= 1
+
     def prec_end(self):
+        if self.precedence_ltr.pop():
+            self.precedence_stack[-1] -= 1
         if self.precedence_stack.pop() < self.precedence_stack[-1]:
             self.write(')')
 
@@ -546,9 +558,10 @@ class SourceGenerator(NodeVisitor):
 
     def visit_BinOp(self, node):
         symbol, precedence = self.BINOP_SYMBOLS[type(node.op)]
-        self.prec_start(precedence)
+        self.prec_start(precedence, type(node.op) != Pow)
         self.visit(node.left)
         self.write(symbol)
+        self.prec_middle()
         self.visit(node.right)
         self.prec_end()
 
@@ -637,10 +650,11 @@ class SourceGenerator(NodeVisitor):
         self.write('}')
 
     def visit_IfExp(self, node):
-        self.prec_start(2)
+        self.prec_start(2, False)
         self.visit(node.body)
         self.write(' if ')
         self.visit(node.test)
+        self.prec_middle()
         self.write(' else ')
         self.visit(node.orelse)
         self.prec_end()
