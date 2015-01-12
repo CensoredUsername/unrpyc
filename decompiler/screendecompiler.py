@@ -349,10 +349,9 @@ class SLDecompiler(DecompilerBase):
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
         # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
-        lines = []
-        for i in code:
-            lines.append(self.to_source(i))
-        code = '\n'.join(lines)
+        code = self.to_source(ast.Module(body=code,
+                                         lineno=header.lineno,
+                                         col_offset=header.col_offset))
         self.indent()
 
         if '\n' in code.strip():
