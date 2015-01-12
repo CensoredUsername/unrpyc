@@ -18,12 +18,10 @@ Options:
   -d, --dump     Instead of decompiling, pretty print the contents
                  of the AST in a human readable format.
                  This is mainly useful for debugging.
-  --no-screenlang
-                 Only for decompiling, don't decompile back to screen language
-
-  --no-codegen   Only dumping and for decompiling screen language 1 screens.
-                 Don't decompile the screen python ast back to python.
-                 This implies --no-screenlang
+  --sl1-as-python
+                 Only dumping and for decompiling screen language 1
+                 screens. Convert SL1 Python AST to Python code instead
+                 of dumping it or converting it to screenlang.
   --comparable   Modify the output to make comparing ast dumps easier.
                  When decompiling, this causes extra lines to be used
                  to make line numbers match. When dumping the ast, this
