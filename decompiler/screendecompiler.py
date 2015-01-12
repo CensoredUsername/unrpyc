@@ -54,6 +54,7 @@ class SLDecompiler(DecompilerBase):
         super(SLDecompiler, self).__init__(out_file, indentation, comparable)
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
+        self.should_advance_to_line = True
 
     def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         self.indent_level = indent_level
@@ -61,6 +62,21 @@ class SLDecompiler(DecompilerBase):
         self.skip_indent_until_write = skip_indent_until_write
         self.print_screen(ast)
         return self.linenumber
+
+    def advance_to_line(self, linenumber):
+        if self.should_advance_to_line:
+            super(SLDecompiler, self).advance_to_line(linenumber)
+
+    def save_state(self):
+        return (super(SLDecompiler, self).save_state(),
+                self.should_advance_to_line)
+
+    def commit_state(self, state):
+        super(SLDecompiler, self).commit_state(state[0])
+
+    def rollback_state(self, state):
+        self.should_advance_to_line = state[1]
+        super(SLDecompiler, self).rollback_state(state[0])
 
     def to_source(self, node):
         return codegen.to_source(node, self.indentation)
@@ -94,13 +110,13 @@ class SLDecompiler(DecompilerBase):
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0)) # so the first one is right
         if not self.decompile_python:
-            self.print_keywords_and_nodes(keywords, None, True, False)
+            self.print_keywords_and_nodes(keywords, None, True)
             self.indent_level += 1
             self.indent()
             self.write("pass # Screen code not extracted")
             self.indent_level -= 1
         elif not self.decompile_screencode:
-            self.print_keywords_and_nodes(keywords, None, True, False)
+            self.print_keywords_and_nodes(keywords, None, True)
             self.indent_level += 1
             self.indent()
             self.write("python:")
@@ -114,8 +130,7 @@ class SLDecompiler(DecompilerBase):
                 self.write(line)
             self.indent_level -= 2
         else:
-            self.print_keywords_and_nodes(keywords, ast.code.source.body,
-                                          False, False)
+            self.print_keywords_and_nodes(keywords, ast.code.source.body, False)
 
     def split_nodes_at_headers(self, nodes):
         if not nodes:
@@ -177,34 +192,29 @@ class SLDecompiler(DecompilerBase):
         keywords_by_line.append((lineno, ' '.join(current_line)))
         return keywords_by_line
 
-    def print_keywords_and_nodes(self, keywords, nodes, needs_colon, has_block):
+    def print_keywords_and_nodes(self, keywords, nodes, needs_colon):
         # Keywords and child nodes can be mixed with each other, so they need
         # to be printed at the same time. This function takes each list and
         # combines them into one, then prints it.
-        outdent_at = None
+        #
+        # This function assumes line numbers of nodes before keywords are
+        # correct, which is the case for the "screen" statement itself.
         if keywords:
             if keywords[0][1]:
                 self.write(" %s" % keywords[0][1])
             if len(keywords) != 1:
                 needs_colon = True
-                if has_block:
-                    outdent_at = keywords[-1][0]
         if nodes:
             nodelists = [(self.get_first_line(i[1:]), i)
                          for i in self.split_nodes_at_headers(nodes)]
-            if not has_block:
-                needs_colon = True
+            needs_colon = True
         else:
             nodelists = []
         if needs_colon:
             self.write(":")
         stuff_to_print = sorted(keywords[1:] + nodelists, key=itemgetter(0))
-        if not has_block or outdent_at is not None:
-            self.indent_level += 1
+        self.indent_level += 1
         for i in stuff_to_print:
-            if outdent_at is not None and i[0] > outdent_at:
-                self.indent_level -= 1
-                outdent_at = None
             # Nodes are lists. Keywords are ready-to-print strings.
             if type(i[1]) == list:
                 self.print_node(i[1][0], i[1][1:])
@@ -212,7 +222,80 @@ class SLDecompiler(DecompilerBase):
                 self.advance_to_line(i[0])
                 self.indent()
                 self.write(i[1])
-        if not has_block or outdent_at is not None:
+        self.indent_level -= 1
+
+    def get_lines_used_by_node(self, node):
+        state = self.save_state()
+        self.print_node(node[0], node[1:])
+        linenumber = self.linenumber
+        self.rollback_state(state)
+        return linenumber - self.linenumber
+
+    def print_buggy_keywords_and_nodes(self, keywords, nodes, needs_colon, has_block):
+        # Keywords and child nodes can be mixed with each other, so they need
+        # to be printed at the same time. This function takes each list and
+        # combines them into one, then prints it.
+        #
+        # This function assumes line numbers of nodes before keywords are
+        # incorrect, which is the case for everything except the "screen"
+        # statement itself.
+        last_keyword_lineno = None
+        if keywords:
+            if keywords[0][1]:
+                self.write(" %s" % keywords[0][1])
+            remaining_keywords = keywords[1:]
+            if remaining_keywords:
+                needs_colon = True
+                last_keyword_lineno = remaining_keywords[-1][0]
+        if nodes:
+            nodelists = [(self.get_first_line(i[1:]), i)
+                         for i in self.split_nodes_at_headers(nodes)]
+        else:
+            nodelists = []
+        for key, value in enumerate(nodelists):
+            if last_keyword_lineno is None or value[0] > last_keyword_lineno:
+                nodes_before_keywords = nodelists[:key]
+                nodes_after_keywords = nodelists[key:]
+                break
+        else:
+            nodes_before_keywords = nodelists
+            nodes_after_keywords = []
+        if nodes_before_keywords or (not has_block and nodes_after_keywords):
+            needs_colon = True
+        if needs_colon:
+            self.write(":")
+        self.indent_level += 1
+        should_advance_to_line = self.should_advance_to_line
+        self.should_advance_to_line = False
+        while nodes_before_keywords:
+            if not remaining_keywords:
+                # Something went wrong. We already printed the last keyword,
+                # yet there's still nodes left that should have been printed
+                # before the last keyword. Just print them now.
+                for i in nodes_before_keywords:
+                    self.print_node(i[1][0], i[1][1:])
+                break
+            # subtract 1 line since .indent() uses 1
+            lines_to_go = remaining_keywords[0][0] - self.linenumber - 1
+            next_node = nodes_before_keywords[0][1]
+            if lines_to_go >= self.get_lines_used_by_node(next_node):
+                self.print_node(next_node[0], next_node[1:])
+                nodes_before_keywords.pop(0)
+            elif not self.comparable or not should_advance_to_line or lines_to_go <= 0:
+                self.indent()
+                self.write(remaining_keywords.pop(0)[1])
+            else:
+                self.write("\n" * lines_to_go)
+        self.should_advance_to_line = should_advance_to_line
+        for i in remaining_keywords:
+            self.advance_to_line(i[0])
+            self.indent()
+            self.write(i[1])
+        if has_block:
+            self.indent_level -= 1
+        for i in nodes_after_keywords:
+            self.print_node(i[1][0], i[1][1:])
+        if not has_block:
             self.indent_level -= 1
 
     def get_dispatch_key(self, node):
@@ -411,7 +494,7 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_keywords_and_nodes(
+        self.print_buggy_keywords_and_nodes(
             self.make_printable_keywords(line.value.keywords,
                                          line.value.lineno),
             None, False, False)
@@ -464,7 +547,7 @@ class SLDecompiler(DecompilerBase):
                 self.indent()
                 self.write(name)
                 self.print_args(line.value)
-                self.print_keywords_and_nodes(
+                self.print_buggy_keywords_and_nodes(
                     self.make_printable_keywords(line.value.keywords,
                                                  line.value.lineno),
                     None, True, False)
@@ -495,7 +578,7 @@ class SLDecompiler(DecompilerBase):
             self.indent()
             self.write(name)
             self.print_args(line.value)
-            self.print_keywords_and_nodes(
+            self.print_buggy_keywords_and_nodes(
                 self.make_printable_keywords(line.value.keywords,
                                              line.value.lineno),
                 block, False, has_block)
@@ -520,7 +603,7 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_keywords_and_nodes(
+        self.print_buggy_keywords_and_nodes(
             self.make_printable_keywords(line.value.keywords,
                                          line.value.lineno),
             block, False, has_block)
