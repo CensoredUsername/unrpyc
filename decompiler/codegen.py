@@ -249,9 +249,10 @@ class SourceGenerator(NodeVisitor):
 
     def body(self, statements):
         self.force_newline = (any(isinstance(i, self.BLOCK_NODES) for i in statements) or 
-                              any(i.lineno > self.line_number for i in statements))
+                              (any(i.lineno > self.line_number for i in statements) and 
+                              self.correct_line_numbers))
         self.indentation += 1
-        self.after_block = True
+        self.after_block = not self.force_newline
         for stmt in statements:
             self.visit(stmt)
         self.indentation -= 1
@@ -345,10 +346,11 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Import(self, node):
         self.newline(node)
-        for item in node.names:
-            self.write('import ')
+        self.write('import ')
+        for idx, item in enumerate(node.names):
+            if idx:
+                self.write(self.COMMA)
             self.visit(item)
-            self.newline(node)
 
     def visit_Exec(self, node):
         self.newline(node)

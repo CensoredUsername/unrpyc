@@ -484,6 +484,7 @@ class DenseSourceGenerator(SourceGenerator):
     COMMA = ","
     COLON = ":"
     ASSIGN = "="
+    SEMICOLON = ";"
 
     BINOP_SYMBOLS = dict((i, (j.strip(), k)) for i, (j, k)
                          in SourceGenerator.BINOP_SYMBOLS.items())
@@ -494,8 +495,8 @@ class DenseSourceGenerator(SourceGenerator):
                          in SourceGenerator.CMPOP_SYMBOLS.items()
                          )
 
-    def __init__(self, add_line_information=False):
-        SourceGenerator.__init__(self, " ", add_line_information)
+    def __init__(self):
+        SourceGenerator.__init__(self, " ", False, False)
 
     def process(self, node):
         self.new_line = True
@@ -517,26 +518,19 @@ class DenseSourceGenerator(SourceGenerator):
         self.result = []
         return result
 
-    def body(self, statements):
-        self.new_line = True
-        if len(statements) == 1:
-            if not isinstance(statements[0], (ast.If, ast.For,
-                    ast.While, ast.With, ast.TryExcept, ast.TryFinally,
-                    ast.FunctionDef, ast.ClassDef)):
-                self.new_line = False
-        self.indentation += 1
-        for stmt in statements:
-            self.visit(stmt)
-        self.indentation -= 1
+    def visit_Module(self, node):
+        self.generic_visit(node)
 
-    def newline(self, node=None, extra=0):
+    def newline(self, node=None, extra=0, body=None):
         # ignore extra
-        if self.new_line:
-            self.new_lines = max(self.new_lines, 1)
-        else:
-            self.new_lines = 0
-            self.new_line = True
+        if extra:
+            return
 
-        if node is not None and self.add_line_information:
-            self.write('# line: %s' % node.lineno)
+        if self.force_newline or body or node is None:
+            # Before/after/after block of | block giving statement
             self.new_lines = 1
+            self.force_newline = False
+        elif not self.new_lines:
+            if not self.after_block:
+                self.write(self.SEMICOLON)
+            self.after_block = False
