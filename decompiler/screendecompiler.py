@@ -31,12 +31,10 @@ import codegen
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           decompile_python=True,
-           decompile_screencode=True, comparable=False,
+           decompile_python=False, comparable=False,
            skip_indent_until_write=False):
     return SLDecompiler(out_file,
-                 decompile_python=decompile_python,
-                 decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                 decompile_python=decompile_python, comparable=comparable).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
@@ -50,11 +48,10 @@ class SLDecompiler(DecompilerBase):
     # what method to call for which statement
     dispatch = {}
 
-    def __init__(self, out_file=None, decompile_python=True,
-                 decompile_screencode=True, comparable=False, indentation="    "):
+    def __init__(self, out_file=None, decompile_python=False,
+                 comparable=False, indentation="    "):
         super(SLDecompiler, self).__init__(out_file, indentation, comparable)
         self.decompile_python = decompile_python
-        self.decompile_screencode = decompile_screencode
         self.should_advance_to_line = True
         self.is_root = True
 
@@ -128,13 +125,7 @@ class SLDecompiler(DecompilerBase):
                 keywords[value.linenumber].append(value)
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0)) # so the first one is right
-        if not self.decompile_python:
-            self.print_keywords_and_nodes(keywords, None, True)
-            self.indent_level += 1
-            self.indent()
-            self.write("pass # Screen code not extracted")
-            self.indent_level -= 1
-        elif not self.decompile_screencode:
+        if self.decompile_python:
             self.print_keywords_and_nodes(keywords, None, True)
             self.indent_level += 1
             self.indent()

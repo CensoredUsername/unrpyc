@@ -55,8 +55,8 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screencode=True,
-                   decompile_python=True, comparable=False, file_metadata=True):
+def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
+                   comparable=False, file_metadata=True):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -75,8 +75,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           file_metadata=file_metadata)
         else:
-            decompiler.pprint(out_file, ast, decompile_screencode=decompile_screencode,
-                                             decompile_python=decompile_python, comparable=comparable)
+            decompiler.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable)
     return True
 
 def main():
@@ -89,13 +88,9 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('--no-screenlang', dest='decompile_screencode', action='store_false',
-                        help="Only for decompiling, don't decompile back to screen language")
-
-    parser.add_argument('--no-codegen', dest='decompile_python', action='store_false',
+    parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
                         help="Only dumping and for decompiling screen language 1 screens. "
-                        "Don't decompile the screen python ast back to python. "
-                        "This implies --no-screenlang")
+                        "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
 
     parser.add_argument('--comparable', dest='comparable', action='store_true',
                         help="Modify the output to make comparing ast dumps easier. "
@@ -125,8 +120,7 @@ def main():
     good = bad = 0
     for filename in files:
         try:
-            correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
-                                                                  decompile_python=args.decompile_python,
+            correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
                                                                   comparable=args.comparable, file_metadata=args.file_metadata)
         except Exception as e:
             print traceback.format_exc()

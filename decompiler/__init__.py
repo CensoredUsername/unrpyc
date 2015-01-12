@@ -37,10 +37,8 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_screencode=True,
-           decompile_python=True, comparable=False):
+           decompile_python=False, comparable=False):
     Decompiler(out_file,
-               decompile_screencode=decompile_screencode,
                decompile_python=decompile_python,
                comparable=comparable).dump(ast, indent_level)
 
@@ -55,10 +53,9 @@ class Decompiler(DecompilerBase):
     # what method to call for which ast class
     dispatch = {}
 
-    def __init__(self, out_file=None, decompile_screencode=True,
-                 decompile_python=True, indentation = '    ', comparable=False):
+    def __init__(self, out_file=None, decompile_python=False,
+                 indentation = '    ', comparable=False):
         super(Decompiler, self).__init__(out_file, indentation, comparable)
-        self.decompile_screencode = decompile_screencode
         self.decompile_python = decompile_python
 
         self.paired_with = False
@@ -685,15 +682,14 @@ class Decompiler(DecompilerBase):
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
-                                    self.decompile_python, self.decompile_screencode,
+                                    self.decompile_python,
                                     self.comparable, self.skip_indent_until_write)
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
-                                    self.decompile_screencode, self.comparable,
-                                    self.skip_indent_until_write)
+                                    self.comparable, self.skip_indent_until_write)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)

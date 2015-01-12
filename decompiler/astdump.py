@@ -26,7 +26,7 @@ import codegen
 import ast as py_ast
 import renpy
 
-def pprint(out_file, ast, decompile_python=True, comparable=False, file_metadata=True):
+def pprint(out_file, ast, decompile_python=False, comparable=False, file_metadata=True):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
     AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, file_metadata=file_metadata).dump(ast)
@@ -40,7 +40,7 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
-    def __init__(self, out_file=None, decompile_python=True,
+    def __init__(self, out_file=None, decompile_python=False,
                  comparable=False, file_metadata=True, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
