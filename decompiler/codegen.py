@@ -62,7 +62,7 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False, correct_lin
     generator = SourceGenerator(indent_with, add_line_information)
     generator.visit(node)
 
-    return SourceGenerator(indent_with, add_line_information, correct_line_numbers).process(node)
+    return SourceGenerator(indent_with, add_line_information, correct_line_numbers, node.lineno).process(node)
 
 
 class SourceGenerator(NodeVisitor):
@@ -119,7 +119,7 @@ class SourceGenerator(NodeVisitor):
     BLOCK_NODES = (If, For, While, With, TryExcept, TryFinally,
                    FunctionDef, ClassDef)
 
-    def __init__(self, indent_with, add_line_information=False, correct_line_numbers=False):
+    def __init__(self, indent_with, add_line_information=False, correct_line_numbers=False, line_number=1):
         self.result = []
         self.indent_with = indent_with
         self.add_line_information = add_line_information
@@ -130,7 +130,7 @@ class SourceGenerator(NodeVisitor):
         self.precedence_ltr = [None]
 
         self.correct_line_numbers = correct_line_numbers
-        self.line_number = 1
+        self.line_number = line_number
         # Are we in an environment where we can safely newline
         self.can_newline = False
         # After a colon we don't need a semicolon before the first item
