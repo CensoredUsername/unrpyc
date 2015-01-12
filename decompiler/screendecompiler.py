@@ -23,8 +23,9 @@ from __future__ import unicode_literals
 import re
 import ast
 from operator import itemgetter
+from contextlib import contextmanager
 
-from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard
+from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard, split_logical_lines
 import codegen
 
 # Main API
@@ -55,6 +56,7 @@ class SLDecompiler(DecompilerBase):
         self.decompile_python = decompile_python
         self.decompile_screencode = decompile_screencode
         self.should_advance_to_line = True
+        self.is_root = True
 
     def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         self.indent_level = indent_level
@@ -69,17 +71,34 @@ class SLDecompiler(DecompilerBase):
 
     def save_state(self):
         return (super(SLDecompiler, self).save_state(),
-                self.should_advance_to_line)
+                self.should_advance_to_line, self.is_root)
 
     def commit_state(self, state):
         super(SLDecompiler, self).commit_state(state[0])
 
     def rollback_state(self, state):
         self.should_advance_to_line = state[1]
+        self.is_root = state[2]
         super(SLDecompiler, self).rollback_state(state[0])
 
-    def to_source(self, node):
-        return codegen.to_source(node, self.indentation)
+    def to_source(self, node, correct_line_numbers=False):
+        return codegen.to_source(node,
+                                 self.indentation,
+                                 False,
+                                 self.comparable)
+
+    @contextmanager
+    def not_root(self):
+        # Whenever anything except screen itself prints any child nodes, it
+        # should be inside a "with self.not_root()" block. It doesn't matter if
+        # you catch more inside of the with block than you need, as long as you
+        # don't fall back to calling print_python() from inside it.
+        is_root = self.is_root
+        self.is_root = False
+        try:
+            yield
+        finally:
+            self.is_root = is_root
 
     # Entry point functions
 
@@ -170,7 +189,8 @@ class SLDecompiler(DecompilerBase):
         elif self.is_renpy_if(nodes):
             return nodes[0].test.lineno
         else:
-            return nodes[0].lineno # TODO line numbers for Python blocks
+            # We should never get here, but just in case...
+            return nodes[0].lineno
 
     def make_printable_keywords(self, keywords, lineno):
         keywords = [(i.arg, simple_expression_guard(self.to_source(i.value)),
@@ -317,8 +337,6 @@ class SLDecompiler(DecompilerBase):
         # There's 3 categories of things that we can convert to screencode:
         # if statements, for statements, and function calls of the
         # form "first.second(...)". Anything else gets converted to Python.
-        if not has_block:
-            self.advance_to_line(self.get_first_line(code))
         dispatch_key = self.get_dispatch_key(code[0])
         if dispatch_key:
             func = self.dispatch.get(dispatch_key, self.print_python.__func__)
@@ -348,27 +366,50 @@ class SLDecompiler(DecompilerBase):
 
     def print_python(self, header, code):
         # This function handles any statement which is a block but couldn't logically be
-        # Translated to a screen statement. If it only contains one line it should not make a block, just use $.
-        code = self.to_source(ast.Module(body=code,
-                                         lineno=header.lineno,
-                                         col_offset=header.col_offset))
-        self.indent()
-
-        if '\n' in code.strip():
-            lines = code.splitlines()
-            # Find the first not-whitespace line
-            first = next(line for line in lines if line.strip())
-            # the indentation is then equal to
-            code_indent = len(first) - len(first.lstrip())
-
+        # Translated to a screen statement.
+        #
+        # Ren'Py's line numbers are really, really buggy. Here's a summary:
+        # If we're not directly under the root screen, and a keyword for our
+        # parent follows us, then all of our line numbers will be equal to the
+        # line number of that keyword.
+        # If we're not directly under the root screen, and no keywords for our
+        # parent follow us, then header.lineno is the line number of whatever
+        # it is that preceded us (which is completely useless).
+        # If we're directly under the root "screen", then header.lineno is the
+        # line that "$" or "python:" appeared on.
+        # If we're not a child followed by a keyword, and "$" was used, then
+        # code[0].lineno is the line that the code actually starts on, but if
+        # "python:" was used, then all of code's line numbers will be 1 greater
+        # than the line each one should be.
+        source = self.to_source(ast.Module(body=code,
+                                           lineno=code[0].lineno,
+                                           col_offset=0)).rstrip()
+        lines = source.splitlines()
+        if len(split_logical_lines(source)) == 1 and (not self.comparable or
+                not self.is_root or header.lineno >= code[0].lineno):
+            # This is only one logical line, so it's possible that it was $,
+            # and either it's not in the root (so we don't know what the
+            # original source used), or it is in the root and we know it used $.
+            self.advance_to_line(code[0].lineno)
+            self.indent()
+            self.write("$ %s" % lines[0])
+            for line in lines[1:]:
+                self.indent()
+                self.write(line)
+        else:
+            # Either this is more than one logical line, so it has to be a
+            # python block, or it was in the root and we can tell that it was
+            # originally a python block.
+            if self.is_root:
+                self.advance_to_line(header.lineno)
+            self.indent()
             self.write("python:")
+            self.advance_to_line(code[0].lineno - 1)
             self.indent_level += 1
             for line in lines:
                 self.indent()
-                self.write(line[code_indent:])
+                self.write(line)
             self.indent_level -= 1
-        else:
-            self.write("$ %s" % code.strip())
 
     def is_renpy_if(self, nodes):
         return len(nodes) == 1 and isinstance(nodes[0], ast.If) and (
@@ -402,6 +443,7 @@ class SLDecompiler(DecompilerBase):
         # checking for the header that should normally occur within the if statement.
         # The if statement parser might also generate a second header if there's more than one screen
         # statement enclosed in the if/elif/else statements. We'll take care of that too.
+        self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write("if %s:" % self.strip_parens(self.to_source(code[0].test)))
         if (len(code[0].body) >= 2 and self.parse_header(code[0].body[0]) and
@@ -409,31 +451,32 @@ class SLDecompiler(DecompilerBase):
             body = code[0].body[1:]
         else:
             body = code[0].body
-        self.print_nodes(body, 1)
-        if code[0].orelse:
-            if self.is_renpy_if(code[0].orelse):
-                self.advance_to_line(code[0].orelse[0].test.lineno)
-                self.indent()
-                self.write("el") # beginning of "elif"
-                self.skip_indent_until_write = True
-                self.print_if(header, code[0].orelse)
-            else:
-                self.indent()
-                self.write("else:")
-                if (len(code[0].orelse) >= 2 and
-                    self.parse_header(code[0].orelse[0]) and
-                    self.parse_header(code[0].orelse[1])):
-                    orelse = code[0].orelse[1:]
+        with self.not_root():
+            self.print_nodes(body, 1)
+            if code[0].orelse:
+                if self.is_renpy_if(code[0].orelse):
+                    self.advance_to_line(code[0].orelse[0].test.lineno)
+                    self.indent()
+                    self.write("el") # beginning of "elif"
+                    self.skip_indent_until_write = True
+                    self.print_if(header, code[0].orelse)
                 else:
-                    orelse = code[0].orelse
-                self.print_nodes(orelse, 1)
+                    self.indent()
+                    self.write("else:")
+                    if (len(code[0].orelse) >= 2 and
+                        self.parse_header(code[0].orelse[0]) and
+                        self.parse_header(code[0].orelse[1])):
+                        orelse = code[0].orelse[1:]
+                    else:
+                        orelse = code[0].orelse
+                    self.print_nodes(orelse, 1)
 
     def print_for(self, header, code):
         # Here we handle the for statement. Note that the for statement generates some extra python code to
         # Keep track of it's header indices. The first one is ignored by the statement parser,
         # the second line is just ingored here.
         line = code[1]
-
+        self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write("for %s in %s:" % (
             self.strip_parens(self.to_source(line.target)),
@@ -443,8 +486,8 @@ class SLDecompiler(DecompilerBase):
             body = line.body[1:]
         else:
             body = line.body
-        self.print_nodes(body[:-1], 1)
-        return
+        with self.not_root():
+            self.print_nodes(body[:-1], 1)
 
     def print_use(self, header, code):
         # This function handles the use statement, which translates into a python expression "renpy.use_screen".
@@ -457,6 +500,7 @@ class SLDecompiler(DecompilerBase):
         kwargs = [(key, value) for key, value in kwargs if not
                   (key == '_scope' or key == '_name')]
 
+        self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write("use %s" % code[0].value.args[0].s)
         args.pop(0)
@@ -479,6 +523,7 @@ class SLDecompiler(DecompilerBase):
             len(code[0].value.args) != 2 or code[0].value.starargs or
             not isinstance(code[0].value.args[0], ast.Str)):
             return self.print_python(header, code)
+        self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write("default %s = %s" %
             (code[0].value.args[0].s, self.to_source(code[0].value.args[1])))
@@ -490,13 +535,15 @@ class SLDecompiler(DecompilerBase):
             self.print_python(header, code)
             return
         line = code[0]
+        self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_buggy_keywords_and_nodes(
-            self.make_printable_keywords(line.value.keywords,
-                                         line.value.lineno),
-            None, False, False)
+        with self.not_root():
+            self.print_buggy_keywords_and_nodes(
+                self.make_printable_keywords(line.value.keywords,
+                                             line.value.lineno),
+                None, False, False)
     dispatch[('ui', 'add')]          = print_nochild
     dispatch[('ui', 'imagebutton')]  = print_nochild
     dispatch[('ui', 'input')]        = print_nochild
@@ -543,24 +590,26 @@ class SLDecompiler(DecompilerBase):
             block = code[1:]
             state = self.save_state()
             try:
+                self.advance_to_line(self.get_first_line(code))
                 self.indent()
                 self.write(name)
                 self.print_args(line.value)
-                self.print_buggy_keywords_and_nodes(
-                    self.make_printable_keywords(line.value.keywords,
-                                                 line.value.lineno),
-                    None, True, False)
-                self.indent_level += 1
-                if len(block) > 1 and isinstance(block[1], ast.Expr):
-                    # If this isn't true, we'll get a BadHasBlockException
-                    # later anyway. This check is just to keep it from being
-                    # an exception that we can't handle.
-                    self.advance_to_line(block[1].value.lineno)
-                self.indent()
-                self.write("has ")
-                self.indent_level -= 1
-                self.skip_indent_until_write = True
-                self.print_nodes(block, 1, True)
+                with self.not_root():
+                    self.print_buggy_keywords_and_nodes(
+                        self.make_printable_keywords(line.value.keywords,
+                                                     line.value.lineno),
+                        None, True, False)
+                    self.indent_level += 1
+                    if len(block) > 1 and isinstance(block[1], ast.Expr):
+                        # If this isn't true, we'll get a BadHasBlockException
+                        # later anyway. This check is just to keep it from being
+                        # an exception that we can't handle.
+                        self.advance_to_line(block[1].value.lineno)
+                    self.indent()
+                    self.write("has ")
+                    self.indent_level -= 1
+                    self.skip_indent_until_write = True
+                    self.print_nodes(block, 1, True)
             except BadHasBlockException as e:
                 self.rollback_state(state)
                 self.print_python(header, code)
@@ -574,13 +623,16 @@ class SLDecompiler(DecompilerBase):
                     raise BadHasBlockException()
                 self.print_python(header, code)
                 return
+            if not has_block:
+                self.advance_to_line(self.get_first_line(code))
             self.indent()
             self.write(name)
             self.print_args(line.value)
-            self.print_buggy_keywords_and_nodes(
-                self.make_printable_keywords(line.value.keywords,
-                                             line.value.lineno),
-                block, False, has_block)
+            with self.not_root():
+                self.print_buggy_keywords_and_nodes(
+                    self.make_printable_keywords(line.value.keywords,
+                                                 line.value.lineno),
+                    block, False, has_block)
     dispatch[('ui', 'button')]             = print_onechild
     dispatch[('ui', 'frame')]              = print_onechild
     dispatch[('ui', 'transform')]          = print_onechild
@@ -599,13 +651,16 @@ class SLDecompiler(DecompilerBase):
             return
         line = code[0]
         block = code[1:-1]
+        if not has_block:
+            self.advance_to_line(self.get_first_line(code))
         self.indent()
         self.write(line.value.func.attr)
         self.print_args(line.value)
-        self.print_buggy_keywords_and_nodes(
-            self.make_printable_keywords(line.value.keywords,
-                                         line.value.lineno),
-            block, False, has_block)
+        with self.not_root():
+            self.print_buggy_keywords_and_nodes(
+                self.make_printable_keywords(line.value.keywords,
+                                             line.value.lineno),
+                block, False, has_block)
     dispatch[('ui', 'fixed')]        = print_manychildren
     dispatch[('ui', 'grid')]         = print_manychildren
     dispatch[('ui', 'hbox')]         = print_manychildren
