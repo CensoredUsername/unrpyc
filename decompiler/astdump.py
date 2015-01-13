@@ -112,6 +112,8 @@ class AstDumper(object):
             return True
         elif key == 'serial':
             ast.serial = 0
+        elif key == 'col_offset':
+            ast.col_offset = 0 # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
             ast.name = (ast.name[0].split('/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
@@ -125,7 +127,7 @@ class AstDumper(object):
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
-        elif key != 'linenumber':
+        elif key != 'linenumber' and key != 'lineno':
             return True
         return self.file_metadata
 
