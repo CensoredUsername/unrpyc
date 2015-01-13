@@ -4,10 +4,10 @@ import re
 from StringIO import StringIO
 
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation='    ', comparable=False):
+    def __init__(self, out_file=None, indentation='    ', match_line_numbers=False):
         self.out_file = out_file or sys.stdout
         self.indentation = indentation
-        self.comparable = comparable
+        self.match_line_numbers = match_line_numbers
         self.skip_indent_until_write = False
 
         self.linenumber = 0
@@ -61,7 +61,7 @@ class DecompilerBase(object):
             self.block_stack, self.index_stack, self.indent_level) = state
 
     def advance_to_line(self, linenumber):
-        if self.comparable and self.linenumber < linenumber:
+        if self.match_line_numbers and self.linenumber < linenumber:
             # Stop one line short, since the call to indent() will advance the last line.
             # Note that if self.linenumber == linenumber - 1, this will write the empty string.
             # This is to make sure that skip_indent_until_write is cleared in that case.

@@ -22,15 +22,15 @@ Options:
                  Only dumping and for decompiling screen language 1
                  screens. Convert SL1 Python AST to Python code instead
                  of dumping it or converting it to screenlang.
-  --comparable   Modify the output to make comparing ast dumps easier.
-                 When decompiling, this causes extra lines to be used
-                 to make line numbers match. When dumping the ast, this
-                 omits properties such as file paths and modification
-                 times.
-  --no-file-metadata
-                 Only for dumping, don't output any file metadata (such
-                 as line numbers). This allows comparing of dumps even
-                 if --comparable was not used when decompiling.
+  --comparable   Only for dumping, remove several false differences when
+                 comparing dumps. This suppresses attributes that are
+                 different even when the code is identical, such as file
+                 modification times. Line numbers are also suppressed unless
+                 the --line-numbers option is used.
+  --line-numbers Allow line numbers to be compared. When decompiling, this
+                 causes extra lines to be printed to make line numbers
+                 match. When dumping the ast, this causes line numbers to be
+                 printed even when using --comparable.
 
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 

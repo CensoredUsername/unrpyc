@@ -32,8 +32,8 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           comparable=False, skip_indent_until_write=False):
-    return SL2Decompiler(out_file, comparable=comparable).dump(
+           line_numbers=False, skip_indent_until_write=False):
+    return SL2Decompiler(out_file, match_line_numbers=line_numbers).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
