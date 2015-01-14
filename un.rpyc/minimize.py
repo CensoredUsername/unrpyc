@@ -465,6 +465,7 @@ POSSIBLE_WHITESPACE = set([
     " else ",
     "elif ",
     "for ",
+    " for ",
     "while ",
     "raise ",
     "assert ",
@@ -511,7 +512,7 @@ class DenseSourceGenerator(SourceGenerator):
                             self.result[i] = self.result[i].rstrip()
                     if self.result[i-1]:
                         end = self.result[i-1][-1]
-                        if not (end.isalnum() or end == "_"):
+                        if not (end.isalnum() or end == "_") or self.result[i-1].isdigit():
                             self.result[i] = self.result[i].lstrip()
 
         result = ''.join(self.result)
