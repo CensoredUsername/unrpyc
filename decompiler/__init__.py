@@ -37,12 +37,10 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_screencode=True,
-           decompile_python=True, comparable=False):
+           decompile_python=False, line_numbers=False):
     Decompiler(out_file,
-               decompile_screencode=decompile_screencode,
                decompile_python=decompile_python,
-               comparable=comparable).dump(ast, indent_level)
+               match_line_numbers=line_numbers).dump(ast, indent_level)
 
 # Implementation
 
@@ -55,10 +53,9 @@ class Decompiler(DecompilerBase):
     # what method to call for which ast class
     dispatch = {}
 
-    def __init__(self, out_file=None, decompile_screencode=True,
-                 decompile_python=True, indentation = '    ', comparable=False):
-        super(Decompiler, self).__init__(out_file, indentation, comparable)
-        self.decompile_screencode = decompile_screencode
+    def __init__(self, out_file=None, decompile_python=False,
+                 indentation = '    ', match_line_numbers=False):
+        super(Decompiler, self).__init__(out_file, indentation, match_line_numbers)
         self.decompile_python = decompile_python
 
         self.paired_with = False
@@ -66,10 +63,10 @@ class Decompiler(DecompilerBase):
         self.label_inside_menu = None
 
     def dump(self, ast, indent_level=0):
-        if not self.comparable:
-            self.write("# Decompiled by unrpyc (https://github.com/CensoredUsername/unrpyc")
+        if not self.match_line_numbers:
+            self.write("# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc")
         # Avoid an initial blank line if we don't write out the above banner
-        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=self.comparable)
+        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=self.match_line_numbers)
         self.write("\n") # end file with a newline
 
     def print_node(self, ast):
@@ -99,7 +96,7 @@ class Decompiler(DecompilerBase):
         # If a statement ends with a colon but has no block after it, loc will
         # get set to ('', 0). That isn't supposed to be valid syntax, but it's
         # the only thing that can generate that.
-        elif not self.comparable or ast.loc != ('', 0):
+        elif not self.match_line_numbers or ast.loc != ('', 0):
             self.indent()
             self.write("pass")
         self.indent_level -= 1
@@ -443,7 +440,7 @@ class Decompiler(DecompilerBase):
     dispatch[renpy.ast.Pass] = print_pass
 
     def should_come_before(self, first, second):
-        return self.comparable and first.linenumber < second.linenumber
+        return self.match_line_numbers and first.linenumber < second.linenumber
 
     def print_init(self, ast):
         # A bunch of statements can have implicit init blocks
@@ -685,15 +682,14 @@ class Decompiler(DecompilerBase):
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
-                                    self.decompile_python, self.decompile_screencode,
-                                    self.comparable, self.skip_indent_until_write)
+                                    self.decompile_python,
+                                    self.match_line_numbers, self.skip_indent_until_write)
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
-                                    self.decompile_screencode, self.comparable,
-                                    self.skip_indent_until_write)
+                                    self.match_line_numbers, self.skip_indent_until_write)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)

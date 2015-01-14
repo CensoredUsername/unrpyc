@@ -26,10 +26,10 @@ import codegen
 import ast as py_ast
 import renpy
 
-def pprint(out_file, ast, decompile_python=True, comparable=False, file_metadata=True):
+def pprint(out_file, ast, decompile_python=False, comparable=False, line_numbers=False):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, file_metadata=file_metadata).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, print_line_numbers=line_numbers).dump(ast)
 
 class AstDumper(object):
     """
@@ -40,13 +40,13 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
-    def __init__(self, out_file=None, decompile_python=True,
-                 comparable=False, file_metadata=True, indentation=u'    '):
+    def __init__(self, out_file=None, decompile_python=False,
+                 comparable=False, print_line_numbers=False, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
-        self.comparable = comparable or not file_metadata # Essentially, --no-file-metadata is a stricter version of --comparable
-        self.file_metadata = file_metadata
+        self.comparable = comparable
+        self.print_line_numbers = print_line_numbers
 
     def dump(self, ast):
         self.indent = 0
@@ -112,6 +112,8 @@ class AstDumper(object):
             return True
         elif key == 'serial':
             ast.serial = 0
+        elif key == 'col_offset':
+            ast.col_offset = 0 # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
             ast.name = (ast.name[0].split('/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
@@ -125,9 +127,9 @@ class AstDumper(object):
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
-        elif key != 'linenumber':
+        elif key != 'linenumber' and key != 'lineno':
             return True
-        return self.file_metadata
+        return self.print_line_numbers
 
     def print_object(self, ast):
         # handles the printing of anything unknown which inherts from object.
@@ -158,7 +160,7 @@ class AstDumper(object):
         self.p('>')
 
     def print_pyexpr(self, ast):
-        if self.file_metadata:
+        if not self.comparable or self.print_line_numbers:
             self.print_object(ast)
             self.p(' = ')
         self.print_string(ast)

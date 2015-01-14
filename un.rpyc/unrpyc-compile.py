@@ -61,9 +61,7 @@ def decompile_rpyc(file_obj, abspath):
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
-        decompiler.pprint(out_file, ast, decompile_screencode=True,
-                                             decompile_python=True,
-                                             comparable=False)
+        decompiler.pprint(out_file, ast)
     return True
 
 def decompile_game():

@@ -32,11 +32,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           decompile_screencode=True,
-           comparable=False, skip_indent_until_write=False):
-    return SL2Decompiler(out_file,
-                  decompile_screencode=decompile_screencode, comparable=comparable).dump(
-                      ast, indent_level, linenumber, skip_indent_until_write)
+           line_numbers=False, skip_indent_until_write=False):
+    return SL2Decompiler(out_file, match_line_numbers=line_numbers).dump(
+        ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
 
@@ -50,10 +48,6 @@ class SL2Decompiler(DecompilerBase):
     dispatch = {}
 
     displayable_names = {}
-
-    def __init__(self, out_file=None, decompile_screencode=True, indentation='    ', comparable=False):
-        super(SL2Decompiler, self).__init__(out_file, indentation, comparable)
-        self.decompile_screencode = decompile_screencode
 
     def print_node(self, ast):
         self.advance_to_line(ast.location[1])
@@ -78,12 +72,7 @@ class SL2Decompiler(DecompilerBase):
             self.write(" tag %s" % ast.tag)
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
-            self.decompile_screencode and ast.children, ast.location[1])
-        if not self.decompile_screencode:
-            self.indent_level += 1
-            self.indent()
-            self.write("pass # Screen code not decompiled")
-            self.indent_level -= 1
+            ast.children, ast.location[1])
     dispatch[sl2.slast.SLScreen] = print_screen
 
     def print_if(self, ast):

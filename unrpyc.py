@@ -55,8 +55,8 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screencode=True,
-                   decompile_python=True, comparable=False, file_metadata=True):
+def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
+                   comparable=False, line_numbers=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -73,10 +73,9 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_screen
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
-                                          file_metadata=file_metadata)
+                                          line_numbers=line_numbers)
         else:
-            decompiler.pprint(out_file, ast, decompile_screencode=decompile_screencode,
-                                             decompile_python=decompile_python, comparable=comparable)
+            decompiler.pprint(out_file, ast, decompile_python=decompile_python, line_numbers=line_numbers)
     return True
 
 def main():
@@ -89,22 +88,19 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('--no-screenlang', dest='decompile_screencode', action='store_false',
-                        help="Only for decompiling, don't decompile back to screen language")
-
-    parser.add_argument('--no-codegen', dest='decompile_python', action='store_false',
+    parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
                         help="Only dumping and for decompiling screen language 1 screens. "
-                        "Don't decompile the screen python ast back to python. "
-                        "This implies --no-screenlang")
+                        "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
 
     parser.add_argument('--comparable', dest='comparable', action='store_true',
-                        help="Modify the output to make comparing ast dumps easier. "
-                        "When decompiling, this causes extra lines to be used to make line numbers match. "
-                        "When dumping the ast, this omits properties such as file paths and modification times.")
+                        help="Only for dumping, remove several false differences when comparing dumps. "
+                        "This suppresses attributes that are different even when the code is identical, such as file modification times. "
+                        "Line numbers are also suppressed unless the --line-numbers option is used.")
 
-    parser.add_argument('--no-file-metadata', dest='file_metadata', action='store_false',
-                        help="Only for dumping, don't output any file metadata (such as line numbers). "
-                        "This allows comparing of dumps even if --comparable was not used when decompiling.")
+    parser.add_argument('--line-numbers', dest='line_numbers', action='store_true',
+                        help="Allow line numbers to be compared. "
+                        "When decompiling, this causes extra lines to be printed to make line numbers match. "
+                        "When dumping the ast, this causes line numbers to be printed even when using --comparable.")
 
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile")
@@ -125,9 +121,8 @@ def main():
     good = bad = 0
     for filename in files:
         try:
-            correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_screencode=args.decompile_screencode,
-                                                                  decompile_python=args.decompile_python,
-                                                                  comparable=args.comparable, file_metadata=args.file_metadata)
+            correct = decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
+                                                                  comparable=args.comparable, line_numbers=args.line_numbers)
         except Exception as e:
             print traceback.format_exc()
             bad += 1

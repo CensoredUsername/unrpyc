@@ -31,12 +31,10 @@ import codegen
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           decompile_python=True,
-           decompile_screencode=True, comparable=False,
+           decompile_python=False, line_numbers=False,
            skip_indent_until_write=False):
     return SLDecompiler(out_file,
-                 decompile_python=decompile_python,
-                 decompile_screencode=decompile_screencode, comparable=comparable).dump(
+                 decompile_python=decompile_python, match_line_numbers=line_numbers).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
@@ -50,11 +48,10 @@ class SLDecompiler(DecompilerBase):
     # what method to call for which statement
     dispatch = {}
 
-    def __init__(self, out_file=None, decompile_python=True,
-                 decompile_screencode=True, comparable=False, indentation="    "):
-        super(SLDecompiler, self).__init__(out_file, indentation, comparable)
+    def __init__(self, out_file=None, decompile_python=False,
+                 match_line_numbers=False, indentation="    "):
+        super(SLDecompiler, self).__init__(out_file, indentation, match_line_numbers)
         self.decompile_python = decompile_python
-        self.decompile_screencode = decompile_screencode
         self.should_advance_to_line = True
         self.is_root = True
 
@@ -85,7 +82,7 @@ class SLDecompiler(DecompilerBase):
         return codegen.to_source(node,
                                  self.indentation,
                                  False,
-                                 self.comparable)
+                                 self.match_line_numbers)
 
     @contextmanager
     def not_root(self):
@@ -128,13 +125,7 @@ class SLDecompiler(DecompilerBase):
                 keywords[value.linenumber].append(value)
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0)) # so the first one is right
-        if not self.decompile_python:
-            self.print_keywords_and_nodes(keywords, None, True)
-            self.indent_level += 1
-            self.indent()
-            self.write("pass # Screen code not extracted")
-            self.indent_level -= 1
-        elif not self.decompile_screencode:
+        if self.decompile_python:
             self.print_keywords_and_nodes(keywords, None, True)
             self.indent_level += 1
             self.indent()
@@ -301,7 +292,7 @@ class SLDecompiler(DecompilerBase):
             if lines_to_go >= self.get_lines_used_by_node(next_node):
                 self.print_node(next_node[0], next_node[1:])
                 nodes_before_keywords.pop(0)
-            elif not self.comparable or not should_advance_to_line or lines_to_go <= 0:
+            elif not self.match_line_numbers or not should_advance_to_line or lines_to_go <= 0:
                 self.indent()
                 self.write(remaining_keywords.pop(0)[1])
             else:
@@ -385,7 +376,7 @@ class SLDecompiler(DecompilerBase):
                                            lineno=code[0].lineno,
                                            col_offset=0)).rstrip()
         lines = source.splitlines()
-        if len(split_logical_lines(source)) == 1 and (not self.comparable or
+        if len(split_logical_lines(source)) == 1 and (not self.match_line_numbers or
                 not self.is_root or header.lineno >= code[0].lineno):
             # This is only one logical line, so it's possible that it was $,
             # and either it's not in the root (so we don't know what the
