@@ -59,10 +59,13 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False, correct_lin
     of the nodes are added to the output.  This can be used to spot wrong line
     number information of statement nodes.
     """
-    generator = SourceGenerator(indent_with, add_line_information)
-    generator.visit(node)
-
-    return SourceGenerator(indent_with, add_line_information, correct_line_numbers, node.lineno).process(node)
+    if correct_line_numbers:
+        if hasattr(node, "lineno"):
+            return SourceGenerator(indent_with, add_line_information, True, node.lineno).process(node)
+        else:
+            return SourceGenerator(indent_with, add_line_information, True).process(node)
+    else:
+        return SourceGenerator(indent_with, add_line_information).process(node)
 
 
 class SourceGenerator(NodeVisitor):
