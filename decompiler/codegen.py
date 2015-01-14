@@ -740,8 +740,12 @@ class SourceGenerator(NodeVisitor):
             self.visit(item)
 
     def visit_Yield(self, node):
-        self.write('yield ')
-        self.visit(node.value)
+        self.maybe_break(node)
+        if node.value is not None:
+            self.write('yield ')
+            self.visit(node.value)
+        else:
+            self.write('yield')
 
     def visit_Lambda(self, node):
         self.maybe_break(node)
