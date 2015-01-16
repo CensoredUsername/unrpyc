@@ -259,8 +259,8 @@ class SourceGenerator(NodeVisitor):
                 self.new_lines = 0
 
     def body(self, statements):
-        self.force_newline = (any(isinstance(i, self.BLOCK_NODES) for i in statements) or 
-                              (any(i.lineno > self.line_number for i in statements) and 
+        self.force_newline = (any(isinstance(i, self.BLOCK_NODES) for i in statements) or
+                              (any(i.lineno > self.line_number for i in statements) and
                               self.correct_line_numbers))
         self.indentation += 1
         self.after_block = not self.force_newline
