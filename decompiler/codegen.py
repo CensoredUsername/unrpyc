@@ -580,7 +580,9 @@ class SourceGenerator(NodeVisitor):
     # Expressions
 
     def visit_Attribute(self, node):
+        self.prec_start(15)
         self.visit(node.value)
+        self.prec_end()
         self.write('.' + node.attr)
 
     def visit_Call(self, node):
@@ -590,8 +592,9 @@ class SourceGenerator(NodeVisitor):
                 self.write(self.COMMA)
             else:
                 want_comma.append(True)
-
+        self.prec_start(15)
         self.visit(node.func)
+        self.prec_end()
         self.write('(')
         b = self.can_newline
         self.can_newline = True
@@ -717,7 +720,9 @@ class SourceGenerator(NodeVisitor):
 
     def visit_Subscript(self, node):
         self.maybe_break(node)
+        self.prec_start(15)
         self.visit(node.value)
+        self.prec_end()
         self.write('[')
         b = self.can_newline
         self.can_newline = True
