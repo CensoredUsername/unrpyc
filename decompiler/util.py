@@ -400,3 +400,11 @@ class WordConcatenator(object):
 
     def join(self):
         return ''.join(self.words)
+
+# Dict subclass for aesthetic dispatching. use @Dispatcher(data) to dispatch
+class Dispatcher(dict):
+    def __call__(self, name):
+        def closure(func):
+            self[name] = func
+            return func
+        return closure

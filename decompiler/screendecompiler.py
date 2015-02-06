@@ -25,7 +25,8 @@ import ast
 from operator import itemgetter
 from contextlib import contextmanager
 
-from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, simple_expression_guard, split_logical_lines
+from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, \
+                 simple_expression_guard, split_logical_lines, Dispatcher
 import codegen
 
 # Main API
@@ -46,7 +47,7 @@ class SLDecompiler(DecompilerBase):
 
     # This dictionary is a mapping of string: unbound_method, which is used to determine
     # what method to call for which statement
-    dispatch = {}
+    dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
                  match_line_numbers=False, indentation="    "):
@@ -480,6 +481,7 @@ class SLDecompiler(DecompilerBase):
         with self.not_root():
             self.print_nodes(body[:-1], 1)
 
+    @dispatch(('renpy', 'use_screen'))
     def print_use(self, header, code):
         # This function handles the use statement, which translates into a python expression "renpy.use_screen".
         # It would technically be possible for this to be a python statement, but the odds of this are very small.
@@ -507,8 +509,8 @@ class SLDecompiler(DecompilerBase):
                 arglist.append("**%s" % exkwargs)
             self.write(", ".join(arglist))
             self.write(")")
-    dispatch[('renpy', 'use_screen')] = print_use
 
+    @dispatch(('_scope', 'setdefault'))
     def print_default(self, header, code):
         if (len(code) != 1 or code[0].value.keywords or code[0].value.kwargs or
             len(code[0].value.args) != 2 or code[0].value.starargs or
@@ -518,9 +520,23 @@ class SLDecompiler(DecompilerBase):
         self.indent()
         self.write("default %s = %s" %
             (code[0].value.args[0].s, self.to_source(code[0].value.args[1])))
-    dispatch[('_scope', 'setdefault')] = print_default
 
     # These never have a ui.close() at the end
+    @dispatch(('ui', 'add'))
+    @dispatch(('ui', 'imagebutton'))
+    @dispatch(('ui', 'input'))
+    @dispatch(('ui', 'key'))
+    @dispatch(('ui', 'label'))
+    @dispatch(('ui', 'text'))
+    @dispatch(('ui', 'null'))
+    @dispatch(('ui', 'mousearea'))
+    @dispatch(('ui', 'textbutton'))
+    @dispatch(('ui', 'timer'))
+    @dispatch(('ui', 'bar'))
+    @dispatch(('ui', 'vbar'))
+    @dispatch(('ui', 'hotbar'))
+    @dispatch(('ui', 'on'))
+    @dispatch(('ui', 'image'))
     def print_nochild(self, header, code):
         if len(code) != 1:
             self.print_python(header, code)
@@ -535,25 +551,17 @@ class SLDecompiler(DecompilerBase):
                 self.make_printable_keywords(line.value.keywords,
                                              line.value.lineno),
                 None, False, False)
-    dispatch[('ui', 'add')]          = print_nochild
-    dispatch[('ui', 'imagebutton')]  = print_nochild
-    dispatch[('ui', 'input')]        = print_nochild
-    dispatch[('ui', 'key')]          = print_nochild
-    dispatch[('ui', 'label')]        = print_nochild
-    dispatch[('ui', 'text')]         = print_nochild
-    dispatch[('ui', 'null')]         = print_nochild
-    dispatch[('ui', 'mousearea')]    = print_nochild
-    dispatch[('ui', 'textbutton')]   = print_nochild
-    dispatch[('ui', 'timer')]        = print_nochild
-    dispatch[('ui', 'bar')]          = print_nochild
-    dispatch[('ui', 'vbar')]         = print_nochild
-    dispatch[('ui', 'hotbar')]       = print_nochild
-    dispatch[('ui', 'on')]           = print_nochild
-    dispatch[('ui', 'image')]        = print_nochild
 
     # These functions themselves don't have a ui.close() at the end, but
     # they're always immediately followed by one that does (usually
     # ui.child_or_fixed(), but also possibly one set with "has")
+    @dispatch(('ui', 'button'))
+    @dispatch(('ui', 'frame'))
+    @dispatch(('ui', 'transform'))
+    @dispatch(('ui', 'viewport'))
+    @dispatch(('ui', 'window'))
+    @dispatch(('ui', 'drag'))
+    @dispatch(('ui', 'hotspot_with_child'))
     def print_onechild(self, header, code, has_block=False):
         # We expect to have at least ourself, one child, and ui.close()
         if len(code) < 3 or self.get_dispatch_key(code[-1]) != ('ui', 'close'):
@@ -624,15 +632,15 @@ class SLDecompiler(DecompilerBase):
                     self.make_printable_keywords(line.value.keywords,
                                                  line.value.lineno),
                     block, False, has_block)
-    dispatch[('ui', 'button')]             = print_onechild
-    dispatch[('ui', 'frame')]              = print_onechild
-    dispatch[('ui', 'transform')]          = print_onechild
-    dispatch[('ui', 'viewport')]           = print_onechild
-    dispatch[('ui', 'window')]             = print_onechild
-    dispatch[('ui', 'drag')]               = print_onechild
-    dispatch[('ui', 'hotspot_with_child')] = print_onechild
 
     # These always have a ui.close() at the end
+    @dispatch(('ui', 'fixed'))
+    @dispatch(('ui', 'grid'))
+    @dispatch(('ui', 'hbox'))
+    @dispatch(('ui', 'side'))
+    @dispatch(('ui', 'vbox'))
+    @dispatch(('ui', 'imagemap'))
+    @dispatch(('ui', 'draggroup'))
     def print_manychildren(self, header, code, has_block=False):
         if (self.get_dispatch_key(code[-1]) != ('ui', 'close') or
             (len(code) != 2 and not self.parse_header(code[1]))):
@@ -652,13 +660,6 @@ class SLDecompiler(DecompilerBase):
                 self.make_printable_keywords(line.value.keywords,
                                              line.value.lineno),
                 block, False, has_block)
-    dispatch[('ui', 'fixed')]        = print_manychildren
-    dispatch[('ui', 'grid')]         = print_manychildren
-    dispatch[('ui', 'hbox')]         = print_manychildren
-    dispatch[('ui', 'side')]         = print_manychildren
-    dispatch[('ui', 'vbox')]         = print_manychildren
-    dispatch[('ui', 'imagemap')]     = print_manychildren
-    dispatch[('ui', 'draggroup')]    = print_manychildren
 
     # Parsing functions
 

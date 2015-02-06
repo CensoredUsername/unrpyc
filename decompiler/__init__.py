@@ -19,7 +19,8 @@
 # SOFTWARE.
 
 from __future__ import unicode_literals
-from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, reconstruct_arginfo, string_escape, split_logical_lines
+from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
+                 reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
 
 from operator import itemgetter
 
@@ -51,7 +52,7 @@ class Decompiler(DecompilerBase):
 
     # This dictionary is a mapping of Class: unbount_method, which is used to determine
     # what method to call for which ast class
-    dispatch = {}
+    dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
                  indentation = '    ', match_line_numbers=False):
@@ -101,6 +102,7 @@ class Decompiler(DecompilerBase):
             self.write("pass")
         self.indent_level -= 1
 
+    @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
         self.indent()
         words = WordConcatenator(False)
@@ -138,21 +140,21 @@ class Decompiler(DecompilerBase):
                 words.append("with", with_expression)
 
         self.write(words.join())
-    dispatch[renpy.atl.RawMultipurpose] = print_atl_rawmulti
 
+    @dispatch(renpy.atl.RawBlock)
     def print_atl_rawblock(self, ast):
         self.indent()
         self.write("block:")
         self.print_atl(ast)
-    dispatch[renpy.atl.RawBlock] = print_atl_rawblock
 
+    @dispatch(renpy.atl.RawChild)
     def print_atl_rawchild(self, ast):
         for child in ast.children:
             self.indent()
             self.write("contains:")
             self.print_atl(child)
-    dispatch[renpy.atl.RawChild] = print_atl_rawchild
 
+    @dispatch(renpy.atl.RawChoice)
     def print_atl_rawchoice(self, ast):
         for chance, block in ast.choices:
             self.indent()
@@ -165,31 +167,31 @@ class Decompiler(DecompilerBase):
             isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
             self.indent()
             self.write("pass")
-    dispatch[renpy.atl.RawChoice] = print_atl_rawchoice
 
+    @dispatch(renpy.atl.RawContainsExpr)
     def print_atl_rawcontainsexpr(self, ast):
         self.indent()
         self.write("contains %s" % ast.expression)
-    dispatch[renpy.atl.RawContainsExpr] = print_atl_rawcontainsexpr
 
+    @dispatch(renpy.atl.RawEvent)
     def print_atl_rawevent(self, ast):
         self.indent()
         self.write("event %s" % ast.name)
-    dispatch[renpy.atl.RawEvent] = print_atl_rawevent
 
+    @dispatch(renpy.atl.RawFunction)
     def print_atl_rawfunction(self, ast):
         self.indent()
         self.write("function %s" % ast.expr)
-    dispatch[renpy.atl.RawFunction] = print_atl_rawfunction
 
+    @dispatch(renpy.atl.RawOn)
     def print_atl_rawon(self, ast):
         for name, block in sorted(ast.handlers.items(),
                                   key=lambda i: i[1].loc[1]):
             self.indent()
             self.write("on %s:" % name)
             self.print_atl(block)
-    dispatch[renpy.atl.RawOn] = print_atl_rawon
 
+    @dispatch(renpy.atl.RawParallel)
     def print_atl_rawparallel(self, ast):
         for block in ast.blocks:
             self.indent()
@@ -199,19 +201,18 @@ class Decompiler(DecompilerBase):
             isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
             self.indent()
             self.write("pass")
-    dispatch[renpy.atl.RawParallel] = print_atl_rawparallel
 
+    @dispatch(renpy.atl.RawRepeat)
     def print_atl_rawrepeat(self, ast):
         self.indent()
         self.write("repeat")
         if ast.repeats:
             self.write(" %s" % ast.repeats) # not sure if this is even a string
-    dispatch[renpy.atl.RawRepeat] = print_atl_rawrepeat
 
+    @dispatch(renpy.atl.RawTime)
     def print_atl_rawtime(self, ast):
         self.indent()
         self.write("time %s" % ast.time)
-    dispatch[renpy.atl.RawTime] = print_atl_rawtime
 
     # Displayable related functions
 
@@ -240,6 +241,7 @@ class Decompiler(DecompilerBase):
         self.write(words.join())
         return words.needs_space
 
+    @dispatch(renpy.ast.Image)
     def print_image(self, ast):
         self.indent()
         self.write("image %s" % ' '.join(ast.imgname))
@@ -249,8 +251,8 @@ class Decompiler(DecompilerBase):
             if hasattr(ast, "atl") and ast.atl is not None:
                 self.write(":")
                 self.print_atl(ast.atl)
-    dispatch[renpy.ast.Image] = print_image
 
+    @dispatch(renpy.ast.Transform)
     def print_transform(self, ast):
         self.indent()
         self.write("transform %s" % ast.varname)
@@ -260,10 +262,10 @@ class Decompiler(DecompilerBase):
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
-    dispatch[renpy.ast.Transform] = print_transform
 
     # Directing related functions
 
+    @dispatch(renpy.ast.Show)
     def print_show(self, ast):
         self.indent()
         self.write("show ")
@@ -278,8 +280,8 @@ class Decompiler(DecompilerBase):
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
-    dispatch[renpy.ast.Show] = print_show
 
+    @dispatch(renpy.ast.ShowLayer)
     def print_showlayer(self, ast):
         self.indent()
         self.write("show layer %s" % ast.layer)
@@ -290,8 +292,8 @@ class Decompiler(DecompilerBase):
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
-    dispatch[renpy.ast.ShowLayer] = print_showlayer
 
+    @dispatch(renpy.ast.Scene)
     def print_scene(self, ast):
         self.indent()
         self.write("scene")
@@ -313,8 +315,8 @@ class Decompiler(DecompilerBase):
         if hasattr(ast, "atl") and ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
-    dispatch[renpy.ast.Scene] = print_scene
 
+    @dispatch(renpy.ast.Hide)
     def print_hide(self, ast):
         self.indent()
         self.write("hide ")
@@ -324,8 +326,8 @@ class Decompiler(DecompilerBase):
                 self.write(" ")
             self.write("with %s" % self.paired_with)
             self.paired_with = True
-    dispatch[renpy.ast.Hide] = print_hide
 
+    @dispatch(renpy.ast.With)
     def print_with(self, ast):
         # the 'paired' attribute indicates that this with
         # and with node afterwards are part of a postfix
@@ -348,10 +350,10 @@ class Decompiler(DecompilerBase):
             self.indent()
             self.write("with %s" % ast.expr)
             self.paired_with = False
-    dispatch[renpy.ast.With] = print_with
 
     # Flow control
 
+    @dispatch(renpy.ast.Label)
     def print_label(self, ast):
         # If a Call block preceded us, it printed us as "from"
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
@@ -368,8 +370,8 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
         self.print_nodes(ast.block, 1)
-    dispatch[renpy.ast.Label] = print_label
 
+    @dispatch(renpy.ast.Jump)
     def print_jump(self, ast):
         self.indent()
         self.write("jump ")
@@ -377,8 +379,8 @@ class Decompiler(DecompilerBase):
             self.write("expression %s" % ast.target)
         else:
             self.write(ast.target)
-    dispatch[renpy.ast.Jump] = print_jump
 
+    @dispatch(renpy.ast.Call)
     def print_call(self, ast):
         self.indent()
         words = WordConcatenator(False)
@@ -399,16 +401,16 @@ class Decompiler(DecompilerBase):
             words.append("from %s" % next_block.name)
 
         self.write(words.join())
-    dispatch[renpy.ast.Call] = print_call
 
+    @dispatch(renpy.ast.Return)
     def print_return(self, ast):
         self.indent()
         self.write("return")
 
         if ast.expression is not None:
             self.write(" %s" % ast.expression)
-    dispatch[renpy.ast.Return] = print_return
 
+    @dispatch(renpy.ast.If)
     def print_if(self, ast):
         statement = First("if %s:", "elif %s:")
 
@@ -423,25 +425,25 @@ class Decompiler(DecompilerBase):
                 self.write(statement() % condition)
 
             self.print_nodes(block, 1)
-    dispatch[renpy.ast.If] = print_if
 
+    @dispatch(renpy.ast.While)
     def print_while(self, ast):
         self.indent()
         self.write("while %s:" % ast.condition)
 
         self.print_nodes(ast.block, 1)
-    dispatch[renpy.ast.While] = print_while
 
+    @dispatch(renpy.ast.Pass)
     def print_pass(self, ast):
         if not(self.index and
                isinstance(self.block[self.index - 1], renpy.ast.Call)):
             self.indent()
             self.write("pass")
-    dispatch[renpy.ast.Pass] = print_pass
 
     def should_come_before(self, first, second):
         return self.match_line_numbers and first.linenumber < second.linenumber
 
+    @dispatch(renpy.ast.Init)
     def print_init(self, ast):
         # A bunch of statements can have implicit init blocks
         # Define has a default priority of 0, screen of -500 and image of 990
@@ -476,8 +478,7 @@ class Decompiler(DecompilerBase):
                 self.write(":")
                 self.print_nodes(ast.block, 1)
 
-    dispatch[renpy.ast.Init] = print_init
-
+    @dispatch(renpy.ast.Menu)
     def print_menu(self, ast):
         self.indent()
         self.write("menu")
@@ -514,10 +515,10 @@ class Decompiler(DecompilerBase):
                 self.print_nodes(block, 1)
 
         self.indent_level -= 1
-    dispatch[renpy.ast.Menu] = print_menu
 
     # Programming related functions
 
+    @dispatch(renpy.ast.Python)
     def print_python(self, ast, early=False):
         self.indent()
 
@@ -543,19 +544,18 @@ class Decompiler(DecompilerBase):
 
         else:
             self.write("$ %s" % code)
-    dispatch[renpy.ast.Python] = print_python
 
+    @dispatch(renpy.ast.EarlyPython)
     def print_earlypython(self, ast):
         self.print_python(ast, early=True)
-    dispatch[renpy.ast.EarlyPython] = print_earlypython
 
+    @dispatch(renpy.ast.Define)
     def print_define(self, ast):
         self.indent()
         if not hasattr(ast, "store") or ast.store == "store":
             self.write("define %s = %s" % (ast.varname, ast.code.source))
         else:
             self.write("define %s.%s = %s" % (ast.store, ast.varname, ast.code.source))
-    dispatch[renpy.ast.Define] = print_define
 
     # Specials
 
@@ -568,6 +568,7 @@ class Decompiler(DecompilerBase):
             menu.items[0][2] is not None and
             not self.should_come_before(say, menu))
 
+    @dispatch(renpy.ast.Say)
     def print_say(self, ast, inmenu=False):
         if (not inmenu and self.index + 1 < len(self.block) and
             self.say_belongs_to_menu(ast, self.block[self.index + 1])):
@@ -584,13 +585,13 @@ class Decompiler(DecompilerBase):
             self.write(" nointeract")
         if ast.with_ is not None:
             self.write(" with %s" % ast.with_)
-    dispatch[renpy.ast.Say] = print_say
 
+    @dispatch(renpy.ast.UserStatement)
     def print_userstatement(self, ast):
         self.indent()
         self.write(ast.line)
-    dispatch[renpy.ast.UserStatement] = print_userstatement
 
+    @dispatch(renpy.ast.Style)
     def print_style(self, ast):
         keywords = {ast.linenumber: WordConcatenator(False)}
 
@@ -630,22 +631,22 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write(i[1])
             self.indent_level -= 1
-    dispatch[renpy.ast.Style] = print_style
 
     # Translation functions
 
+    @dispatch(renpy.ast.Translate)
     def print_translate(self, ast):
         self.indent()
         self.write("translate %s %s:" % (ast.language or "None", ast.identifier))
 
         self.print_nodes(ast.block, 1)
-    dispatch[renpy.ast.Translate] = print_translate
 
+    @dispatch(renpy.ast.EndTranslate)
     def print_endtranslate(self, ast):
         # an implicitly added node which does nothing...
         pass
-    dispatch[renpy.ast.EndTranslate] = print_endtranslate
 
+    @dispatch(renpy.ast.TranslateString)
     def print_translatestring(self, ast):
         # Was the last node a translatestrings node?
         if not(self.index and
@@ -665,18 +666,18 @@ class Decompiler(DecompilerBase):
         self.write('new "%s"' % string_escape(ast.new))
 
         self.indent_level -= 1
-    dispatch[renpy.ast.TranslateString] = print_translatestring
 
+    @dispatch(renpy.ast.TranslateBlock)
     def print_translateblock(self, ast):
         self.indent()
         self.write("translate %s " % (ast.language or "None"))
 
         self.skip_indent_until_write = True
         self.print_nodes(ast.block)
-    dispatch[renpy.ast.TranslateBlock] = print_translateblock
 
     # Screens
 
+    @dispatch(renpy.ast.Screen)
     def print_screen(self, ast):
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
@@ -693,4 +694,3 @@ class Decompiler(DecompilerBase):
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
-    dispatch[renpy.ast.Screen] = print_screen

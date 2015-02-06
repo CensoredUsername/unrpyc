@@ -22,7 +22,8 @@ from __future__ import unicode_literals
 import sys
 from operator import itemgetter
 
-from util import DecompilerBase, First, reconstruct_paraminfo, reconstruct_arginfo, split_logical_lines
+from util import DecompilerBase, First, reconstruct_paraminfo, \
+                 reconstruct_arginfo, split_logical_lines, Dispatcher
 
 from renpy import ui, sl2
 from renpy.text import text
@@ -45,9 +46,9 @@ class SL2Decompiler(DecompilerBase):
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class
-    dispatch = {}
+    dispatch = Dispatcher()
 
-    displayable_names = {}
+    displayable_names = Dispatcher()
 
     def print_node(self, ast):
         self.advance_to_line(ast.location[1])
@@ -59,6 +60,7 @@ class SL2Decompiler(DecompilerBase):
             # This node type is unknown
             self.print_unknown(ast)
 
+    @dispatch(sl2.slast.SLScreen)
     def print_screen(self, ast):
 
         # Print the screen statement and create the block
@@ -73,17 +75,16 @@ class SL2Decompiler(DecompilerBase):
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
             ast.children, ast.location[1])
-    dispatch[sl2.slast.SLScreen] = print_screen
 
+    @dispatch(sl2.slast.SLIf)
     def print_if(self, ast):
         # if and showif share a lot of the same infrastructure
         self._print_if(ast, "if")
-    dispatch[sl2.slast.SLIf] = print_if
 
+    @dispatch(sl2.slast.SLShowIf)
     def print_showif(self, ast):
         # so for if and showif we just call an underlying function with an extra argument
         self._print_if(ast, "showif")
-    dispatch[sl2.slast.SLShowIf] = print_showif
 
     def _print_if(self, ast, keyword):
         # the first condition is named if or showif, the rest elif
@@ -106,12 +107,13 @@ class SL2Decompiler(DecompilerBase):
                 self.write("pass")
                 self.indent_level -= 1
 
+    @dispatch(sl2.slast.SLBlock)
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
         # this is the reason if doesn't keep a list of children but special Blocks
         self.print_keywords_and_children(ast.keyword, ast.children, None)
-    dispatch[sl2.slast.SLBlock] = print_block
 
+    @dispatch(sl2.slast.SLFor)
     def print_for(self, ast):
         # Since tuple unpickling is hard, renpy just gives up and inserts a
         # $ a,b,c = _sl2_i after the for statement if any tuple unpacking was
@@ -128,8 +130,8 @@ class SL2Decompiler(DecompilerBase):
 
         # Interestingly, for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
-    dispatch[sl2.slast.SLFor] = print_for
 
+    @dispatch(sl2.slast.SLPython)
     def print_python(self, ast):
         self.indent()
 
@@ -146,26 +148,26 @@ class SL2Decompiler(DecompilerBase):
             self.indent_level -= 1
         else:
             self.write("$ %s" % code)
-    dispatch[sl2.slast.SLPython] = print_python
 
+    @dispatch(sl2.slast.SLPass)
     def print_pass(self, ast):
         # A pass statement
         self.indent()
         self.write("pass")
-    dispatch[sl2.slast.SLPass] = print_pass
 
+    @dispatch(sl2.slast.SLUse)
     def print_use(self, ast):
         # A use statement requires reconstructing the arguments it wants to pass
         self.indent()
         self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
-    dispatch[sl2.slast.SLUse] = print_use
 
+    @dispatch(sl2.slast.SLDefault)
     def print_default(self, ast):
         # A default statement
         self.indent()
         self.write("default %s = %s" % (ast.variable, ast.expression))
-    dispatch[sl2.slast.SLDefault] = print_default
 
+    @dispatch(sl2.slast.SLDisplayable)
     def print_displayable(self, ast, has_block=False):
         # slast.SLDisplayable represents a variety of statements. We can figure out
         # what statement it represents by analyzing the called displayable and style
@@ -198,7 +200,7 @@ class SL2Decompiler(DecompilerBase):
             else:
                 self.print_keywords_and_children(ast.keyword, ast.children,
                      ast.location[1], has_block=has_block)
-    dispatch[sl2.slast.SLDisplayable] = print_displayable
+
 
     displayable_names[(behavior.OnEvent, None)]          = ("on", 0)
     displayable_names[(behavior.OnEvent, 0)]             = ("on", 0)
