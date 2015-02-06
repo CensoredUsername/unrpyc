@@ -306,6 +306,7 @@ class SourceGenerator(NodeVisitor):
 
     def decorators(self, node):
         for decorator in node.decorator_list:
+            self.force_newline = True
             self.newline(decorator)
             self.write('@')
             self.visit(decorator)

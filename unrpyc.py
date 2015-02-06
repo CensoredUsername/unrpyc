@@ -30,22 +30,23 @@ import traceback
 import decompiler
 from decompiler import magic, astdump
 
-# special new and setstate methods for special classes
+# special definitions for special classes
 
-def PyExprNew(cls, s, filename, linenumber):
-    self = unicode.__new__(cls, s)
-    self.filename = filename
-    self.linenumber = linenumber
-    return self
+class PyExpr(unicode, magic.FakeClassTemplate):
+    __module__ = "renpy.ast"
+    def __new__(cls, s, filename, linenumber):
+        self = unicode.__new__(cls, s)
+        self.filename = filename
+        self.linenumber = linenumber
+        return self
 
-def PyCodeSetstate(self, state):
-    (_, self.source, self.location, self.mode) = state
-    self.bytecode = None
+class PyCode(object, magic.FakeClassTemplate):
+    __module__ = "renpy.ast"
+    def __setstate__(self, state):
+        (_, self.source, self.location, self.mode) = state
+        self.bytecode = None
 
-class_factory = magic.FakeClassFactory({
-    "renpy.ast.PyExpr": ((unicode,), {"__new__": PyExprNew}),
-    "renpy.ast.PyCode": ((object,), {"__setstate__": PyCodeSetstate})
-})
+class_factory = magic.FakeClassFactory((PyExpr, PyCode))
 
 # API
 

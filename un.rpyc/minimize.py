@@ -297,6 +297,13 @@ class ScopeAnalyzer(ast.NodeTransformer):
         return node
 
     def scoped_visit(self, node, type, protect=False):
+        # decorators, although they are a part of this node
+        # reside in the enclosing scope. so we parse them before and then temporarily
+        # empty the decorator_list
+        decorators = []
+        for decorator in node.decorator_list:
+            decorators.append(self.visit(decorator))
+        node.decorator_list = []
         if self.stage == self.ANALYZE:
             self.scope = self.scope.child(type, protect)
             node._scope = self.scope
@@ -307,6 +314,7 @@ class ScopeAnalyzer(ast.NodeTransformer):
             node = self.generic_visit(node)
             self.scope = self.scope.parent
             del node._scope
+        node.decorator_list = decorators
         return node
 
     def new_name(self, name):

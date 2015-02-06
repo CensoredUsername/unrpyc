@@ -28,18 +28,21 @@ import magic
 
 # special new and setstate methods for special classes
 
-def PyExprNew(cls, s, filename, linenumber):
-    self = unicode.__new__(cls, s)
-    self.filename = filename
-    self.linenumber = linenumber
-    return self
+class PyExpr(unicode, magic.FakeClassTemplate):
+    __module__ = "renpy.ast"
+    def __new__(cls, s, filename, linenumber):
+        self = unicode.__new__(cls, s)
+        self.filename = filename
+        self.linenumber = linenumber
+        return self
 
-def PyCodeSetstate(self, state):
-    (_, self.source, self.location, self.mode) = state
-    self.bytecode = None
+class PyCode(object, magic.FakeClassTemplate):
+    __module__ = "renpy.ast"
+    def __setstate__(self, state):
+        (_, self.source, self.location, self.mode) = state
+        self.bytecode = None
 
-factory = magic.FakeClassFactory({"renpy.ast.PyExpr": ((unicode,), {"__new__": PyExprNew}),
-                                  "renpy.ast.PyCode": ((object,), {"__setstate__": PyCodeSetstate})})
+factory = magic.FakeClassFactory((PyExpr, PyCode))
 
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file

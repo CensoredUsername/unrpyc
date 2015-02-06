@@ -223,80 +223,125 @@ class FakeClassType(type):
 
 
 # Default FakeClass instance methods
+class FakeClassTemplateMeta(type):
+    def __new__(cls, name, bases, attributes, module=None):
+        # don't need this
+        attributes.pop("__qualname__", None)
 
-def _strict_new(cls, *args, **kwargs):
-    self = cls.__bases__[0].__new__(cls)
-    if args:
-        raise FakeUnpicklingError("{0} was instantiated with unexpected arguments {1}, {2}".format(cls, args, kwargs))
-    return self
+        # find bases
+        actbases = []
+        for base in bases:
+            if isinstance(base, FakeClassTemplateMeta):
+                actbases.extend(base.bases)
+            else:
+                actbases.append(base)
 
-def _warning_new(cls, *args, **kwargs):
-    self = cls.__bases__[0].__new__(cls)
-    if args:
-        print("{0} was instantiated with unexpected arguments {1}, {2}".format(cls, args, kwargs))
-        self._new_args = args
-    return self
-
-def _ignore_new(cls, *args, **kwargs):
-    self = cls.__bases__[0].__new__(cls)
-    if args:
-        self._new_args = args
-    return self
-
-def _strict_setstate(self, state):
-    slotstate = None
-
-    if (isinstance(state, tuple) and len(state) == 2 and
-        (state[0] is None or isinstance(state[0], dict)) and
-        (state[1] is None or isinstance(state[1], dict))):
-        state, slotstate = state
-
-    if state:
-        # Don't have to check for slotstate here since it's either None or a dict
-        if not isinstance(state, dict):
-            raise FakeUnpicklingError("{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state))
+        # and module
+        # note that if no module is explicitly passed, the current module will be chosen
+        if module is None:
+            module = attributes.pop("__module__", None)
+            if module is None:
+                raise TypeError("No module has been specified for FakeClassTemplate {0}".format(name))
         else:
-            self.__dict__.update(state)
+            attributes.pop("__module__", None)
 
-    if slotstate:
-        self.__dict__.update(slotstate)
+        # assemble instance
+        self = type.__new__(cls, name, (object,), {"bases": tuple(actbases), "attributes": attributes, "__module__": module})
 
-def _warning_setstate(self, state):
-    slotstate = None
+        return self
 
-    if (isinstance(state, tuple) and len(state) == 2 and
-        (state[0] is None or isinstance(state[0], dict)) and
-        (state[1] is None or isinstance(state[1], dict))):
-        state, slotstate = state
+    def __init__(self, name, bases, attributes, module=None):
+        pass
 
-    if state:
-        # Don't have to check for slotstate here since it's either None or a dict
-        if not isinstance(state, dict):
-            print("{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state))
-            self._setstate_args = state
-        else:
-            self.__dict__.update(state)
+    def __call__(self):
+        # instantiating these things makes rather little sense
+        return NotImplementedError("Cannot instantiate a fake class template")
 
-    if slotstate:
-        self.__dict__.update(slotstate)
+    def __repr__(self):
+        return "<FakeClassTemplate '{0}.{1}'>".format(self.__module__, self.__name__)
 
-def _ignore_setstate(self, state):
-    slotstate = None
+# PY2 doesn't like the PY3 way of metaclasses and PY3 doesn't support the PY2 way
+# so we call the metaclass directly
+FakeClassTemplate = FakeClassTemplateMeta("fake_class_template", (), {"__module__": __name__})
 
-    if (isinstance(state, tuple) and len(state) == 2 and
-        (state[0] is None or isinstance(state[0], dict)) and
-        (state[1] is None or isinstance(state[1], dict))):
-        state, slotstate = state
+class _strict(FakeClassTemplate):
+    def __new__(cls, *args, **kwargs):
+        self = super(cls, cls).__new__(cls)
+        if args or kwargs:
+            raise FakeUnpicklingError("{0} was instantiated with unexpected arguments {1}, {2}".format(cls, args, kwargs))
+        return self
 
-    if state:
-        # Don't have to check for slotstate here since it's either None or a dict
-        if not isinstance(state, dict):
-            self._setstate_args = state
-        else:
-            self.__dict__.update(state)
+    def __setstate__(self, state):
+        slotstate = None
 
-    if slotstate:
-        self.__dict__.update(slotstate)
+        if (isinstance(state, tuple) and len(state) == 2 and
+            (state[0] is None or isinstance(state[0], dict)) and
+            (state[1] is None or isinstance(state[1], dict))):
+            state, slotstate = state
+
+        if state:
+            # Don't have to check for slotstate here since it's either None or a dict
+            if not isinstance(state, dict):
+                raise FakeUnpicklingError("{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state))
+            else:
+                self.__dict__.update(state)
+
+        if slotstate:
+            self.__dict__.update(slotstate)
+
+class _warning(FakeClassTemplate):
+    def __new__(cls, *args, **kwargs):
+        self = super(cls, cls).__new__(cls)
+        if args or kwargs:
+            print("{0} was instantiated with unexpected arguments {1}, {2}".format(cls, args, kwargs))
+            self._new_args = args
+        return self
+
+    def __setstate__(self, state):
+        slotstate = None
+
+        if (isinstance(state, tuple) and len(state) == 2 and
+            (state[0] is None or isinstance(state[0], dict)) and
+            (state[1] is None or isinstance(state[1], dict))):
+            state, slotstate = state
+
+        if state:
+            # Don't have to check for slotstate here since it's either None or a dict
+            if not isinstance(state, dict):
+                print("{0}.__setstate__() got unexpected arguments {1}".format(self.__class__, state))
+                self._setstate_args = state
+            else:
+                self.__dict__.update(state)
+
+        if slotstate:
+            self.__dict__.update(slotstate)
+
+class _ignore(FakeClassTemplate):
+    def __new__(cls, *args, **kwargs):
+        self = super(cls, cls).__new__(cls)
+        if args:
+            self._new_args = args
+        if kwargs:
+            self._new_kwargs = kwargs
+        return self
+
+    def __setstate__(self, state):
+        slotstate = None
+
+        if (isinstance(state, tuple) and len(state) == 2 and
+            (state[0] is None or isinstance(state[0], dict)) and
+            (state[1] is None or isinstance(state[1], dict))):
+            state, slotstate = state
+
+        if state:
+            # Don't have to check for slotstate here since it's either None or a dict
+            if not isinstance(state, dict):
+                self._setstate_args = state
+            else:
+                self.__dict__.update(state)
+
+        if slotstate:
+            self.__dict__.update(slotstate)
 
 class FakeClassFactory(object):
     """
@@ -329,31 +374,34 @@ class FakeClassFactory(object):
         but if old-style classes are desired in Python 2, it can be set to an empty tuple.
 
         both the default methods and default bases can be overridden using *special_cases*,
-        which should follow this syntax: ``special_cases = {"module.name": (bases, methods)``
-        in which bases is a tuple of classes to inherit from and methods is a dictionary of
-        attribute name to value. In case value is a function, it will be used as a bound method.
+        which should be a list of :class:`FakeClassTemplate` instances. The methods and bases defined
+        on the :class:`FakeClassTemplate` instances will then be used to instantiate fake classes with
+        matching name and module.
 
         As an example, we can define the fake class generated for definition bar in module foo,
-        which has a :meth:`__str__` method which returns ``"baz"``:
+        which has a :meth:`__str__` method which returns ``"baz"``::
 
-        ``special_cases = {"foo.bar": ((object, ), {"__str__": (lambda self: "baz")})}``
+           class bar(object, fake_class_template):
+               def __str__(self): return "baz"
 
-        Finally it can be noted that the equivalent of another class can be generated using:
+           special_cases = [bar]
 
-        ``special_cases = {cls.__module__ + "." + cls.__name__: (cls.__bases__, cls.__dict__)}``
+        Alternatively they can also be instantiated programmatically like in:
+
+        ``special_cases = [FakeClassTemplate(c.__name__, c.__bases__, c.__dict__, c.__module__)]``
         """
-        self.special_cases = special_cases
+        self.special_cases = dict(((i.__module__, i.__name__), i) for i in special_cases)
         self.metaclass = fake_metaclass
         self.default_bases = default_bases
 
         self.class_cache = {}
 
         if errors == 'strict':
-            self.default_attributes = {"__new__": _strict_new, "__setstate__": _strict_setstate}
+            self.default_attributes = _strict.attributes
         elif errors == 'warning':
-            self.default_attributes = {"__new__": _warning_new, "__setstate__": _warning_setstate}
+            self.default_attributes = _strict.attributes
         elif errors == 'ignore':
-            self.default_attributes = {"__new__": _ignore_new, "__setstate__": _ignore_setstate}
+            self.default_attributes = _strict.attributes
         else:
             raise ValueError("Unknown error handling directive '{0}' given".format(errors))
 
@@ -372,11 +420,11 @@ class FakeClassFactory(object):
         if klass is not None:
             return klass
 
-        special = self.special_cases.get(module + "." + name, None)
+        special = self.special_cases.get((module, name), None)
 
         attributes = self.default_attributes.copy()
         if special:
-            bases, new_attributes = special
+            bases, new_attributes = special.bases, special.attributes
             attributes.update(new_attributes)
         else:
             bases = self.default_bases

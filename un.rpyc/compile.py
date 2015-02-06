@@ -52,12 +52,12 @@ try:
 except ImportError:
     exit("Could not import pickleast. Are you sure it's in pythons module search path?")
 
-def Module(name, filename):
+def Module(name, filename, munge_globals=True):
     with open(filename, "rb" if p.PY2 else "r") as f:
         code = f.read()
     if args.minimize:
         # in modules only locals are worth optimizing
-        code = minimize.minimize(code, True, args.obfuscate, args.obfuscate, args.obfuscate)
+        code = minimize.minimize(code, True, args.obfuscate and munge_globals, args.obfuscate, args.obfuscate)
     return p.Module(name, code, False)
 
 def Exec(code):
@@ -94,7 +94,7 @@ for (dir, fn) in files:
             sys.files.append((abspath, fn, dir, fobj))
 """),
                     Module("util", path.join(base_folder, "decompiler/util.py")),
-                    Module("magic", path.join(base_folder, "decompiler/magic.py")),
+                    Module("magic", path.join(base_folder, "decompiler/magic.py"), False),
                     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
                     p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
                     Exec("""
