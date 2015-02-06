@@ -378,10 +378,15 @@ class SLDecompiler(DecompilerBase):
                                            col_offset=0)).rstrip()
         lines = source.splitlines()
         if len(split_logical_lines(source)) == 1 and (not self.match_line_numbers or
-                not self.is_root or header.lineno >= code[0].lineno):
+                (not self.is_root and code[0].lineno < self.linenumber + 3) or
+                header.lineno >= code[0].lineno):
             # This is only one logical line, so it's possible that it was $,
             # and either it's not in the root (so we don't know what the
             # original source used), or it is in the root and we know it used $.
+            # Also, if we don't know for sure what was used, but we have enough
+            # room to use a "python" block, then use it instead, since it'll
+            # result in everything taking up one fewer line (since it'll use
+            # one more, but start two sooner).
             self.advance_to_line(code[0].lineno)
             self.indent()
             self.write("$ %s" % lines[0])

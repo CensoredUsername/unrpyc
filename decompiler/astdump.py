@@ -115,7 +115,7 @@ class AstDumper(object):
         elif key == 'col_offset':
             ast.col_offset = 0 # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
-            ast.name = (ast.name[0].split('/')[-1], 0, 0)
+            ast.name = (ast.name[0].split(b'/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
             if len(ast.location) == 4:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
@@ -174,8 +174,8 @@ class AstDumper(object):
     def print_string(self, ast):
         # prints the representation of a string. If there are newlines in this string,
         # it will print it as a docstring.
-        if '\n' in ast:
-            astlist = ast.split('\n')
+        if b'\n' in ast:
+            astlist = ast.split(b'\n')
             if isinstance(ast, unicode):
                 self.p('u')
             self.p('"""')
