@@ -32,7 +32,7 @@ from decompiler import magic, astdump
 
 # special definitions for special classes
 
-class PyExpr(unicode, magic.FakeClassTemplate):
+class PyExpr(magic.FakeStrict, unicode):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber):
         self = unicode.__new__(cls, s)
@@ -40,13 +40,13 @@ class PyExpr(unicode, magic.FakeClassTemplate):
         self.linenumber = linenumber
         return self
 
-class PyCode(object, magic.FakeClassTemplate):
+class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode))
+class_factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
 
 # API
 
