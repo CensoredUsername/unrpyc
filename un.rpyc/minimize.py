@@ -494,6 +494,7 @@ class DenseSourceGenerator(SourceGenerator):
     COLON = ":"
     ASSIGN = "="
     SEMICOLON = ";"
+    ARROW = '->'
 
     BINOP_SYMBOLS = dict((i, (j.strip(), k)) for i, (j, k)
                          in SourceGenerator.BINOP_SYMBOLS.items())
@@ -513,33 +514,60 @@ class DenseSourceGenerator(SourceGenerator):
 
         if len(self.result) > 2:
             for i in range(1, len(self.result)-1):
-                if self.result[i] in POSSIBLE_WHITESPACE:
-                    if self.result[i+1]:
-                        begin = self.result[i+1][0]
-                        if not(begin.isalnum() or begin == "_"):
-                            self.result[i] = self.result[i].rstrip()
-                    if self.result[i-1]:
-                        end = self.result[i-1][-1]
-                        if not (end.isalnum() or end == "_") or self.result[i-1].isdigit():
-                            self.result[i] = self.result[i].lstrip()
+                first = self.result[i]
+                last  = self.result[i + 1]
+                if (first[-1] == " ") ^ (last[0] == " "):
+                    b = int(last[0] == " ")
+                    a = b - 2
+                    try:
+                        if (first[a].isspace() or last[b].isspace()):
+                            continue
+                    except IndexError:
+                        continue
+
+                    if (first[a].isalnum() or first[a] == "_") ^ (last[b].isalnum() or last[b] == "_"):
+                        if b == 0:
+                            self.result[i] = first[:-1]
+                        else:
+                            self.result[i+1] = last[1:]
 
         result = ''.join(self.result)
         self.result = []
         return result
 
+    def write(self, x):
+        if not x:
+            return
+
+        if not self.indented:
+            if self.force_newline:
+                self.after_colon = 0
+                self.force_newline = False
+                self.result.append('\n' + self.indent_with * self.indentation)
+            elif self.after_colon == 1:
+                self.after_colon = 2
+            elif self.result:
+                self.result.append(self.SEMICOLON)
+            self.indented = True
+
+        self.result.append(x)
+
+    def visit_Str(self, node, frombytes=False):
+        self.write(repr(node.s))
+
     def visit_Module(self, node):
         self.generic_visit(node)
 
-    def newline(self, node=None, extra=0, body=None):
+    def newline(self, node=None, extra=0, force=False):
         # ignore extra
         if extra:
             return
 
-        if self.force_newline or body or node is None:
-            # Before/after/after block of | block giving statement
-            self.new_lines = 1
-            self.force_newline = False
-        elif not self.new_lines:
-            if not self.after_block:
-                self.write(self.SEMICOLON)
-            self.after_block = False
+        self.indented = False
+
+        if node is None or force:
+            self.force_newline = True
+
+
+    def maybe_break(self, node):
+        pass
