@@ -552,9 +552,7 @@ class Decompiler(DecompilerBase):
             self.write(":")
 
             self.indent_level += 1
-            for line in split_logical_lines(code):
-                self.indent()
-                self.write(line)
+            self.write_lines(split_logical_lines(code))
             self.indent_level -= 1
 
         else:
