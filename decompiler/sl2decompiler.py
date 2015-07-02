@@ -217,6 +217,7 @@ class SL2Decompiler(DecompilerBase):
     displayable_names[(text.Text, "text")]               = ("text", 0)
     displayable_names[(layout.Null, "default")]          = ("null", 0)
     displayable_names[(dragdrop.Drag, None)]             = ("drag", 1)
+    displayable_names[(dragdrop.Drag, "drag")]           = ("drag", 1)
     displayable_names[(motion.Transform, "transform")]   = ("transform", 1)
     displayable_names[(ui._hotspot, "hotspot")]          = ("hotspot", 1)
     displayable_names[(sld.sl2viewport, "viewport")]     = ("viewport", 1)
