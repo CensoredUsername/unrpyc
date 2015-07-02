@@ -442,10 +442,18 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Pass)
     def print_pass(self, ast):
-        if not(self.index and
-               isinstance(self.block[self.index - 1], renpy.ast.Call)):
-            self.indent()
-            self.write("pass")
+        if (self.index and
+            isinstance(self.block[self.index - 1], renpy.ast.Call)):
+            return
+
+        if (self.index > 1 and
+            isinstance(self.block[self.index - 2], renpy.ast.Call) and
+            isinstance(self.block[self.index - 1], renpy.ast.Label) and
+            self.block[self.index - 2].linenumber == ast.linenumber):
+            return
+
+        self.indent()
+        self.write("pass")
 
     def should_come_before(self, first, second):
         return self.match_line_numbers and first.linenumber < second.linenumber
