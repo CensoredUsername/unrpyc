@@ -136,9 +136,7 @@ class SLDecompiler(DecompilerBase):
             # even if the python: block is the only thing in the screen. Don't
             # include ours, since if we do, it'll be included twice when
             # recompiled.
-            for line in self.to_source(ast.code.source).splitlines()[1:]:
-                self.indent()
-                self.write(line)
+            self.write_lines(self.to_source(ast.code.source).splitlines()[1:])
             self.indent_level -= 2
         else:
             self.print_keywords_and_nodes(keywords, ast.code.source.body, False)
@@ -390,9 +388,7 @@ class SLDecompiler(DecompilerBase):
             self.advance_to_line(code[0].lineno)
             self.indent()
             self.write("$ %s" % lines[0])
-            for line in lines[1:]:
-                self.indent()
-                self.write(line)
+            self.write_lines(lines[1:])
         else:
             # Either this is more than one logical line, so it has to be a
             # python block, or it was in the root and we can tell that it was
@@ -403,9 +399,7 @@ class SLDecompiler(DecompilerBase):
             self.write("python:")
             self.advance_to_line(code[0].lineno - 1)
             self.indent_level += 1
-            for line in lines:
-                self.indent()
-                self.write(line)
+            self.write_lines(lines)
             self.indent_level -= 1
 
     def is_renpy_if(self, nodes):
