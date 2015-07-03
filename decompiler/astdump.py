@@ -150,6 +150,10 @@ class AstDumper(object):
             # Old versions of Ren'Py didn't have this attribute, and it's not
             # controllable from the source.
             return False
+        elif key == 'hotspot' and isinstance(ast, renpy.sl2.slast.SLDisplayable):
+            # Old versions of Ren'Py didn't have this attribute, and it's not
+            # controllable from the source.
+            return False
         elif key != 'linenumber' and key != 'lineno':
             return True
         return self.print_line_numbers
