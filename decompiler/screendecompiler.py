@@ -114,16 +114,15 @@ class SLDecompiler(DecompilerBase):
         if ast.tag:
             self.write(" tag %s" % ast.tag)
 
-        keywords = {ast.code.location[1]: WordConcatenator(False)}
+        keywords = {ast.code.location[1]: WordConcatenator(False, True)}
         for key in ('modal', 'zorder', 'variant', 'predict'):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
             if isinstance(value, unicode):
                 if value.linenumber not in keywords:
-                    keywords[value.linenumber] = WordConcatenator(False)
-                keywords[value.linenumber].append(key)
-                keywords[value.linenumber].append(value)
+                    keywords[value.linenumber] = WordConcatenator(False, True)
+                keywords[value.linenumber].append("%s %s" % (key, value))
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0)) # so the first one is right
         if self.decompile_python:

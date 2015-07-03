@@ -105,7 +105,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
         self.indent()
-        words = WordConcatenator(False)
+        words = WordConcatenator(False) # TODO: Make this allow reordering too
 
         # warpers
         if ast.warp_function:
@@ -217,12 +217,12 @@ class Decompiler(DecompilerBase):
     # Displayable related functions
 
     def print_imspec(self, imspec):
-        words = WordConcatenator(False)
         if imspec[1] is not None:
-            words.append("expression %s" % imspec[1])
+            begin = "expression %s" % imspec[1]
         else:
-            words.append(" ".join(imspec[0]))
+            begin = " ".join(imspec[0])
 
+        words = WordConcatenator(begin and begin[-1] != ' ', True)
         if imspec[2] is not None:
             words.append("as %s" % imspec[2])
 
@@ -238,7 +238,7 @@ class Decompiler(DecompilerBase):
         if len(imspec[3]) > 0:
             words.append("at %s" % ', '.join(imspec[3]))
 
-        self.write(words.join())
+        self.write(begin + words.join())
         return words.needs_space
 
     @dispatch(renpy.ast.Image)
@@ -606,7 +606,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Style)
     def print_style(self, ast):
-        keywords = {ast.linenumber: WordConcatenator(False)}
+        keywords = {ast.linenumber: WordConcatenator(False, True)}
 
         # These don't store a line number, so just put them on the first line
         if ast.parent is not None:
@@ -622,13 +622,11 @@ class Decompiler(DecompilerBase):
         if ast.variant is not None:
             if ast.variant.linenumber not in keywords:
                 keywords[ast.variant.linenumber] = WordConcatenator(False)
-            keywords[ast.variant.linenumber].append("variant")
-            keywords[ast.variant.linenumber].append(ast.variant)
+            keywords[ast.variant.linenumber].append("variant %s" % ast.variant)
         for key, value in ast.properties.iteritems():
             if value.linenumber not in keywords:
                 keywords[value.linenumber] = WordConcatenator(False)
-            keywords[value.linenumber].append(key)
-            keywords[value.linenumber].append(value)
+            keywords[value.linenumber].append("%s %s" % (key, value))
 
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0))
