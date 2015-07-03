@@ -568,7 +568,7 @@ class Decompiler(DecompilerBase):
         if not hasattr(ast, "store") or ast.store == "store":
             self.write("define %s = %s" % (ast.varname, ast.code.source))
         else:
-            self.write("define %s.%s = %s" % (ast.store, ast.varname, ast.code.source))
+            self.write("define %s.%s = %s" % (ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
