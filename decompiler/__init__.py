@@ -368,7 +368,10 @@ class Decompiler(DecompilerBase):
                 self.label_inside_menu = ast
                 return
         self.indent()
-        self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
+        self.write("label %s%s%s:" % (
+            ast.name,
+            reconstruct_paraminfo(ast.parameters),
+            " hide" if ast.hide else ""))
         self.print_nodes(ast.block, 1)
 
     @dispatch(renpy.ast.Jump)
@@ -568,7 +571,7 @@ class Decompiler(DecompilerBase):
         if not hasattr(ast, "store") or ast.store == "store":
             self.write("define %s = %s" % (ast.varname, ast.code.source))
         else:
-            self.write("define %s.%s = %s" % (ast.store, ast.varname, ast.code.source))
+            self.write("define %s.%s = %s" % (ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
