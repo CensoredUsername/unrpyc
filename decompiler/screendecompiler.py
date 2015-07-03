@@ -372,7 +372,7 @@ class SLDecompiler(DecompilerBase):
         # than the line each one should be.
         source = self.to_source(ast.Module(body=code,
                                            lineno=code[0].lineno,
-                                           col_offset=0)).rstrip()
+                                           col_offset=0)).rstrip().lstrip('\n')
         lines = source.splitlines()
         if len(split_logical_lines(source)) == 1 and (not self.match_line_numbers or
                 (not self.is_root and code[0].lineno < self.linenumber + 3) or
