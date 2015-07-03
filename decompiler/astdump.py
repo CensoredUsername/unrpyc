@@ -115,7 +115,10 @@ class AstDumper(object):
         elif key == 'col_offset':
             ast.col_offset = 0 # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
-            ast.name = (ast.name[0].split(b'/')[-1], 0, 0)
+            name = ast.name[0]
+            if isinstance(name, unicode):
+                name = name.encode('utf-8')
+            ast.name = (name.split(b'/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
             if len(ast.location) == 4:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
@@ -127,6 +130,26 @@ class AstDumper(object):
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
+        elif (key == 'parameters' and ast.parameters is None and
+            isinstance(ast, renpy.screenlang.ScreenLangScreen)):
+            # When no parameters exist, some versions of Ren'Py set parameters
+            # to None and some don't set it at all.
+            return False
+        elif (key == 'hide' and ast.hide == False and
+            (isinstance(ast, renpy.ast.Python) or
+            isinstance(ast, renpy.ast.Label))):
+            # When hide isn't set, some versions of Ren'Py set it to False and
+            # some don't set it at all.
+            return False
+        elif (key == 'store' and ast.store == 'store' and
+            isinstance(ast, renpy.ast.Python)):
+            # When a store isn't specified, some versions of Ren'Py set it to
+            # "store" and some don't set it at all.
+            return False
+        elif key == 'translatable' and isinstance(ast, renpy.ast.UserStatement):
+            # Old versions of Ren'Py didn't have this attribute, and it's not
+            # controllable from the source.
+            return False
         elif key != 'linenumber' and key != 'lineno':
             return True
         return self.print_line_numbers
