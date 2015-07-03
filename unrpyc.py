@@ -26,7 +26,7 @@ import codecs
 import glob
 import itertools
 import traceback
-from multiprocessing import Pool, Lock
+from multiprocessing import Pool, Lock, cpu_count
 from operator import itemgetter
 
 import decompiler
@@ -108,7 +108,7 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('-p', '--processes', dest='processes', action='store', default=1,
+    parser.add_argument('-p', '--processes', dest='processes', action='store', default=cpu_count(),
                         help="use the specified number of processes to decompile")
 
     parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
