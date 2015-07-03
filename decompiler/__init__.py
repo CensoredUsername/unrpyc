@@ -368,7 +368,10 @@ class Decompiler(DecompilerBase):
                 self.label_inside_menu = ast
                 return
         self.indent()
-        self.write("label %s%s:" % (ast.name, reconstruct_paraminfo(ast.parameters)))
+        self.write("label %s%s%s:" % (
+            ast.name,
+            reconstruct_paraminfo(ast.parameters),
+            " hide" if ast.hide else ""))
         self.print_nodes(ast.block, 1)
 
     @dispatch(renpy.ast.Jump)
