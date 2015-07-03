@@ -371,7 +371,7 @@ class Decompiler(DecompilerBase):
         self.write("label %s%s%s:" % (
             ast.name,
             reconstruct_paraminfo(ast.parameters),
-            " hide" if ast.hide else ""))
+            " hide" if hasattr(ast, 'hide') and ast.hide else ""))
         self.print_nodes(ast.block, 1)
 
     @dispatch(renpy.ast.Jump)
