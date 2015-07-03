@@ -159,6 +159,11 @@ class SL2Decompiler(DecompilerBase):
         self.indent()
         self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
 
+    @dispatch(sl2.slast.SLTransclude)
+    def print_transclude(self, ast):
+        self.indent()
+        self.write("transclude")
+
     @dispatch(sl2.slast.SLDefault)
     def print_default(self, ast):
         # A default statement
