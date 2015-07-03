@@ -18,6 +18,8 @@ Options:
   -d, --dump     Instead of decompiling, pretty print the contents
                  of the AST in a human readable format.
                  This is mainly useful for debugging.
+  -p, --processes
+                 use the specified number of processes to decompile
   --sl1-as-python
                  Only dumping and for decompiling screen language 1
                  screens. Convert SL1 Python AST to Python code instead

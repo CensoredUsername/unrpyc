@@ -4,11 +4,12 @@ import re
 from StringIO import StringIO
 
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation='    ', match_line_numbers=False):
+    def __init__(self, out_file=None, indentation='    ', match_line_numbers=False, printlock=None):
         self.out_file = out_file or sys.stdout
         self.indentation = indentation
         self.match_line_numbers = match_line_numbers
         self.skip_indent_until_write = False
+        self.printlock = printlock
 
         self.linenumber = 0
 
@@ -120,7 +121,11 @@ class DecompilerBase(object):
 
     def print_unknown(self, ast):
         # If we encounter a placeholder note, print a warning and insert a placeholder
+        if self.printlock:
+            self.printlock.acquire()
         print "Unknown AST node: %s" % str(type(ast))
+        if self.printlock:
+            self.printlock.release()
         self.indent()
         self.write("<<<UNKNOWN NODE %s>>>" % str(type(ast)))
 

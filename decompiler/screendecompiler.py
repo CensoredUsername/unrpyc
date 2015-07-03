@@ -33,8 +33,8 @@ import codegen
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
            decompile_python=False, line_numbers=False,
-           skip_indent_until_write=False):
-    return SLDecompiler(out_file,
+           skip_indent_until_write=False, printlock=None):
+    return SLDecompiler(out_file, printlock=printlock,
                  decompile_python=decompile_python, match_line_numbers=line_numbers).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
 
@@ -50,8 +50,8 @@ class SLDecompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 match_line_numbers=False, indentation="    "):
-        super(SLDecompiler, self).__init__(out_file, indentation, match_line_numbers)
+                 match_line_numbers=False, indentation="    ", printlock=None):
+        super(SLDecompiler, self).__init__(out_file, indentation, match_line_numbers, printlock)
         self.decompile_python = decompile_python
         self.should_advance_to_line = True
         self.is_root = True

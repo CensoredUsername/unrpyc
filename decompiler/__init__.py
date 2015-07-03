@@ -38,8 +38,8 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, line_numbers=False):
-    Decompiler(out_file,
+           decompile_python=False, line_numbers=False, printlock=None):
+    Decompiler(out_file, printlock=printlock,
                decompile_python=decompile_python,
                match_line_numbers=line_numbers).dump(ast, indent_level)
 
@@ -55,8 +55,8 @@ class Decompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 indentation = '    ', match_line_numbers=False):
-        super(Decompiler, self).__init__(out_file, indentation, match_line_numbers)
+                 indentation = '    ', match_line_numbers=False, printlock=None):
+        super(Decompiler, self).__init__(out_file, indentation, match_line_numbers, printlock)
         self.decompile_python = decompile_python
 
         self.paired_with = False
