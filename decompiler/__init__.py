@@ -468,6 +468,7 @@ class Decompiler(DecompilerBase):
         if len(ast.block) == 1 and (
             (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
             (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
+                                                             renpy.ast.Default,
                                                              renpy.ast.Transform,
                                                              renpy.ast.Style))) or
             (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
@@ -566,12 +567,17 @@ class Decompiler(DecompilerBase):
         self.print_python(ast, early=True)
 
     @dispatch(renpy.ast.Define)
+    @dispatch(renpy.ast.Default)
     def print_define(self, ast):
         self.indent()
-        if not hasattr(ast, "store") or ast.store == "store":
-            self.write("define %s = %s" % (ast.varname, ast.code.source))
+        if isinstance(ast, renpy.ast.Default):
+            name = "default"
         else:
-            self.write("define %s.%s = %s" % (ast.store[6:], ast.varname, ast.code.source))
+            name = "define"
+        if not hasattr(ast, "store") or ast.store == "store":
+            self.write("%s %s = %s" % (name, ast.varname, ast.code.source))
+        else:
+            self.write("%s %s.%s = %s" % (name, ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
