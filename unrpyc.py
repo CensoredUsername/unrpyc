@@ -98,6 +98,10 @@ def worker(t):
         printlock.release()
         return False
 
+def sharelock(lock):
+    global printlock
+    printlock = lock
+
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
     parser = argparse.ArgumentParser(description="Decompile .rpyc files")
@@ -147,7 +151,7 @@ def main():
         # only one thread running, which is inefficient. Avoid this by starting
         # big files first.
         files = sorted(files, key=itemgetter(2), reverse=True)
-        results = Pool(int(args.processes)).map(worker, files, 1)
+        results = Pool(int(args.processes), sharelock, [printlock]).map(worker, files, 1)
     else:
         results = map(worker, files)
 
