@@ -105,15 +105,18 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
         self.indent()
-        words = WordConcatenator(False) # TODO: Make this allow reordering too
+        warp_words = WordConcatenator(False)
 
         # warpers
         if ast.warp_function:
-            words.append("warp", ast.warp_function, ast.duration)
+            warp_words.append("warp", ast.warp_function, ast.duration)
         elif ast.warper:
-            words.append(ast.warper, ast.duration)
+            warp_words.append(ast.warper, ast.duration)
         elif ast.duration != "0":
-            words.append("pause", ast.duration)
+            warp_words.append("pause", ast.duration)
+
+        warp = warp_words.join()
+        words = WordConcatenator(warp and warp[-1] != ' ', True)
 
         # revolution
         if ast.revolution:
@@ -121,25 +124,36 @@ class Decompiler(DecompilerBase):
 
         # circles
         if ast.circles != "0":
-            words.append("circles", ast.circles)
+            words.append("circles %s" % ast.circles)
 
         # splines
         for name, expressions in ast.splines:
-            words.append(name)
+            spline_words = WordConcatenator(False)
+            spline_words.append(name)
             for expression in expressions:
-                words.append("knot", expression)
+                spline_words.append("knot", expression)
+            words.append(spline_words.join())
 
         # properties
         for key, value in ast.properties:
-            words.append(key, value)
+            words.append("%s %s" % (key, value))
 
         # with
+        # TODO There's a lot of cases where pass isn't needed, since we could
+        # reorder stuff so there's never 2 expressions in a row. (And it's never
+        # necessary for the last one, but we don't know what the last one is
+        # since it could get reordered.)
+        needs_pass = len(ast.expressions) > 1
         for (expression, with_expression) in ast.expressions:
-            words.append(expression)
+            expression_words = WordConcatenator(False)
+            expression_words.append(expression)
             if with_expression:
-                words.append("with", with_expression)
+                expression_words.append("with", with_expression)
+            if needs_pass:
+                expression_words.append("pass")
+            words.append(expression_words.join())
 
-        self.write(words.join())
+        self.write(warp + words.join())
 
     @dispatch(renpy.atl.RawBlock)
     def print_atl_rawblock(self, ast):
