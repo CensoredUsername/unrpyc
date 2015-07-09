@@ -362,9 +362,10 @@ class Decompiler(DecompilerBase):
         # See if we're the label for a menu, rather than a standalone label.
         if remaining_blocks > 1 and not ast.block and ast.parameters is None:
             next_ast = self.block[self.index + 1]
-            if isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
+            if (hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+                (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
                 isinstance(next_ast, renpy.ast.Say) and
-                self.say_belongs_to_menu(next_ast, self.block[self.index + 2])):
+                self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
                 self.label_inside_menu = ast
                 return
         self.indent()
