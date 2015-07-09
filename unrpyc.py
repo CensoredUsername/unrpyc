@@ -61,7 +61,7 @@ def read_ast_from_file(in_file):
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, line_numbers=False):
+                   comparable=False, line_numbers=False, no_pyexpr=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -82,7 +82,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
-                                          line_numbers=line_numbers)
+                                          line_numbers=line_numbers, no_pyexpr=no_pyexpr)
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, line_numbers=line_numbers, printlock=printlock)
     return True
@@ -90,7 +90,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
 def worker(t):
     (args, filename, filesize) = t
     try:
-        return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
+        return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
                                                                 comparable=args.comparable, line_numbers=args.line_numbers)
     except Exception as e:
         printlock.acquire()
@@ -128,6 +128,11 @@ def main():
                         help="Allow line numbers to be compared. "
                         "When decompiling, this causes extra lines to be printed to make line numbers match. "
                         "When dumping the ast, this causes line numbers to be printed even when using --comparable.")
+
+    parser.add_argument('--no-pyexpr', dest='no_pyexpr', action='store_true',
+                        help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
+                        "This is useful when comparing dumps from different versions of Ren'Py. "
+                        "It should only be used if necessary, since it will cause loss of information such as line numbers.")
 
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile")

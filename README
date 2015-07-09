@@ -33,6 +33,11 @@ Options:
                  causes extra lines to be printed to make line numbers
                  match. When dumping the ast, this causes line numbers to be
                  printed even when using --comparable.
+  --no-pyexpr    Only for dumping, disable special handling of PyExpr objects,
+                 instead printing them as strings. This is useful when comparing
+                 dumps from different versions of Ren'Py. It should only be used
+                 if necessary, since it will cause loss of information such as
+                 line numbers.
 
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 

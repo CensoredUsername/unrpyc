@@ -26,10 +26,10 @@ import codegen
 import ast as py_ast
 import renpy
 
-def pprint(out_file, ast, decompile_python=False, comparable=False, line_numbers=False):
+def pprint(out_file, ast, decompile_python=False, comparable=False, line_numbers=False, no_pyexpr=False):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, print_line_numbers=line_numbers).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, print_line_numbers=line_numbers, no_pyexpr=no_pyexpr).dump(ast)
 
 class AstDumper(object):
     """
@@ -40,13 +40,14 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
-    def __init__(self, out_file=None, decompile_python=False,
+    def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
                  comparable=False, print_line_numbers=False, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
         self.comparable = comparable
         self.print_line_numbers = print_line_numbers
+        self.no_pyexpr = no_pyexpr
 
     def dump(self, ast):
         self.indent = 0
@@ -141,6 +142,16 @@ class AstDumper(object):
             # When hide isn't set, some versions of Ren'Py set it to False and
             # some don't set it at all.
             return False
+        elif (key == 'attributes' and ast.attributes is None and
+            isinstance(ast, renpy.ast.Say)):
+            # When no attributes are set, some versions of Ren'Py set it to None
+            # and some don't set it at all.
+            return False
+        elif (key == 'block' and ast.block == [] and
+            isinstance(ast, renpy.ast.UserStatement)):
+            # When there's no block, some versions of Ren'Py set it to None
+            # and some don't set it at all.
+            return False
         elif (key == 'store' and ast.store == 'store' and
             isinstance(ast, renpy.ast.Python)):
             # When a store isn't specified, some versions of Ren'Py set it to
@@ -187,7 +198,7 @@ class AstDumper(object):
         self.p('>')
 
     def print_pyexpr(self, ast):
-        if not self.comparable or self.print_line_numbers:
+        if not self.no_pyexpr and (not self.comparable or self.print_line_numbers):
             self.print_object(ast)
             self.p(' = ')
         self.print_string(ast)
