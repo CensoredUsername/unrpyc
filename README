@@ -27,12 +27,7 @@ Options:
   --comparable   Only for dumping, remove several false differences when
                  comparing dumps. This suppresses attributes that are
                  different even when the code is identical, such as file
-                 modification times. Line numbers are also suppressed unless
-                 the --line-numbers option is used.
-  --line-numbers Allow line numbers to be compared. When decompiling, this
-                 causes extra lines to be printed to make line numbers
-                 match. When dumping the ast, this causes line numbers to be
-                 printed even when using --comparable.
+                 modification times.
   --no-pyexpr    Only for dumping, disable special handling of PyExpr objects,
                  instead printing them as strings. This is useful when comparing
                  dumps from different versions of Ren'Py. It should only be used

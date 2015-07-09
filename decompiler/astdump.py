@@ -26,10 +26,10 @@ import codegen
 import ast as py_ast
 import renpy
 
-def pprint(out_file, ast, decompile_python=False, comparable=False, line_numbers=False, no_pyexpr=False):
+def pprint(out_file, ast, decompile_python=False, comparable=False, no_pyexpr=False):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, print_line_numbers=line_numbers, no_pyexpr=no_pyexpr).dump(ast)
+    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, no_pyexpr=no_pyexpr).dump(ast)
 
 class AstDumper(object):
     """
@@ -41,12 +41,11 @@ class AstDumper(object):
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
-                 comparable=False, print_line_numbers=False, indentation=u'    '):
+                 comparable=False, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
         self.comparable = comparable
-        self.print_line_numbers = print_line_numbers
         self.no_pyexpr = no_pyexpr
 
     def dump(self, ast):
@@ -165,9 +164,7 @@ class AstDumper(object):
             # Old versions of Ren'Py didn't have this attribute, and it's not
             # controllable from the source.
             return False
-        elif key != 'linenumber' and key != 'lineno':
-            return True
-        return self.print_line_numbers
+        return True
 
     def print_object(self, ast):
         # handles the printing of anything unknown which inherts from object.
@@ -198,7 +195,7 @@ class AstDumper(object):
         self.p('>')
 
     def print_pyexpr(self, ast):
-        if not self.no_pyexpr and (not self.comparable or self.print_line_numbers):
+        if not self.no_pyexpr:
             self.print_object(ast)
             self.p(' = ')
         self.print_string(ast)

@@ -61,7 +61,7 @@ def read_ast_from_file(in_file):
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, line_numbers=False, no_pyexpr=False):
+                   comparable=False, no_pyexpr=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -82,16 +82,16 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
-                                          line_numbers=line_numbers, no_pyexpr=no_pyexpr)
+                                          no_pyexpr=no_pyexpr)
         else:
-            decompiler.pprint(out_file, ast, decompile_python=decompile_python, line_numbers=line_numbers, printlock=printlock)
+            decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock)
     return True
 
 def worker(t):
     (args, filename, filesize) = t
     try:
         return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
-                                                                comparable=args.comparable, line_numbers=args.line_numbers)
+                                                                comparable=args.comparable)
     except Exception as e:
         printlock.acquire()
         print traceback.format_exc()
@@ -121,13 +121,7 @@ def main():
 
     parser.add_argument('--comparable', dest='comparable', action='store_true',
                         help="Only for dumping, remove several false differences when comparing dumps. "
-                        "This suppresses attributes that are different even when the code is identical, such as file modification times. "
-                        "Line numbers are also suppressed unless the --line-numbers option is used.")
-
-    parser.add_argument('--line-numbers', dest='line_numbers', action='store_true',
-                        help="Allow line numbers to be compared. "
-                        "When decompiling, this causes extra lines to be printed to make line numbers match. "
-                        "When dumping the ast, this causes line numbers to be printed even when using --comparable.")
+                        "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
 
     parser.add_argument('--no-pyexpr', dest='no_pyexpr', action='store_true',
                         help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "

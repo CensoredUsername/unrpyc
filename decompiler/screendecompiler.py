@@ -35,7 +35,7 @@ def pprint(out_file, ast, indent_level=0, linenumber=1,
            decompile_python=False, line_numbers=False,
            skip_indent_until_write=False, printlock=None):
     return SLDecompiler(out_file, printlock=printlock,
-                 decompile_python=decompile_python, match_line_numbers=line_numbers).dump(
+                 decompile_python=decompile_python).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
@@ -50,8 +50,8 @@ class SLDecompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 match_line_numbers=False, indentation="    ", printlock=None):
-        super(SLDecompiler, self).__init__(out_file, indentation, match_line_numbers, printlock)
+                 indentation="    ", printlock=None):
+        super(SLDecompiler, self).__init__(out_file, indentation, printlock)
         self.decompile_python = decompile_python
         self.should_advance_to_line = True
         self.is_root = True
@@ -79,11 +79,8 @@ class SLDecompiler(DecompilerBase):
         self.is_root = state[2]
         super(SLDecompiler, self).rollback_state(state[0])
 
-    def to_source(self, node, correct_line_numbers=False):
-        return codegen.to_source(node,
-                                 self.indentation,
-                                 False,
-                                 self.match_line_numbers)
+    def to_source(self, node):
+        return codegen.to_source(node, self.indentation, False, True)
 
     @contextmanager
     def not_root(self):
@@ -290,7 +287,7 @@ class SLDecompiler(DecompilerBase):
             if lines_to_go >= self.get_lines_used_by_node(next_node):
                 self.print_node(next_node[0], next_node[1:])
                 nodes_before_keywords.pop(0)
-            elif not self.match_line_numbers or not should_advance_to_line or lines_to_go <= 0:
+            elif not should_advance_to_line or lines_to_go <= 0:
                 self.indent()
                 self.write(remaining_keywords.pop(0)[1])
             else:
@@ -374,7 +371,7 @@ class SLDecompiler(DecompilerBase):
                                            lineno=code[0].lineno,
                                            col_offset=0)).rstrip().lstrip('\n')
         lines = source.splitlines()
-        if len(split_logical_lines(source)) == 1 and (not self.match_line_numbers or
+        if len(split_logical_lines(source)) == 1 and (
                 (not self.is_root and code[0].lineno < self.linenumber + 3) or
                 header.lineno >= code[0].lineno):
             # This is only one logical line, so it's possible that it was $,

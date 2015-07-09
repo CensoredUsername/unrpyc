@@ -38,10 +38,9 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, line_numbers=False, printlock=None):
+           decompile_python=False, printlock=None):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python,
-               match_line_numbers=line_numbers).dump(ast, indent_level)
+               decompile_python=decompile_python).dump(ast, indent_level)
 
 # Implementation
 
@@ -55,8 +54,8 @@ class Decompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 indentation = '    ', match_line_numbers=False, printlock=None):
-        super(Decompiler, self).__init__(out_file, indentation, match_line_numbers, printlock)
+                 indentation = '    ', printlock=None):
+        super(Decompiler, self).__init__(out_file, indentation, printlock)
         self.decompile_python = decompile_python
 
         self.paired_with = False
@@ -64,11 +63,9 @@ class Decompiler(DecompilerBase):
         self.label_inside_menu = None
 
     def dump(self, ast, indent_level=0):
-        if not self.match_line_numbers:
-            self.write("# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc")
-        # Avoid an initial blank line if we don't write out the above banner
-        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=self.match_line_numbers)
-        self.write("\n") # end file with a newline
+        # skip_indent_until_write avoids an initial blank line
+        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
+        self.write("\n# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc\n")
 
     def print_node(self, ast):
         # We special-case line advancement for TranslateString in its print
@@ -97,7 +94,7 @@ class Decompiler(DecompilerBase):
         # If a statement ends with a colon but has no block after it, loc will
         # get set to ('', 0). That isn't supposed to be valid syntax, but it's
         # the only thing that can generate that.
-        elif not self.match_line_numbers or ast.loc != ('', 0):
+        elif ast.loc != ('', 0):
             self.indent()
             self.write("pass")
         self.indent_level -= 1
@@ -476,7 +473,7 @@ class Decompiler(DecompilerBase):
         self.write("pass")
 
     def should_come_before(self, first, second):
-        return self.match_line_numbers and first.linenumber < second.linenumber
+        return first.linenumber < second.linenumber
 
     @dispatch(renpy.ast.Init)
     def print_init(self, ast):
@@ -722,13 +719,13 @@ class Decompiler(DecompilerBase):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
                                     self.decompile_python,
-                                    self.match_line_numbers, self.skip_indent_until_write)
+                                    self.skip_indent_until_write)
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
-                                    self.match_line_numbers, self.skip_indent_until_write)
+                                    self.skip_indent_until_write)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
