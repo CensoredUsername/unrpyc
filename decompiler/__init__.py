@@ -127,31 +127,33 @@ class Decompiler(DecompilerBase):
             words.append("circles %s" % ast.circles)
 
         # splines
+        spline_words = WordConcatenator(False)
         for name, expressions in ast.splines:
-            spline_words = WordConcatenator(False)
             spline_words.append(name)
             for expression in expressions:
                 spline_words.append("knot", expression)
-            words.append(spline_words.join())
+        words.append(spline_words.join())
 
         # properties
+        property_words = WordConcatenator(False)
         for key, value in ast.properties:
-            words.append("%s %s" % (key, value))
+            property_words.append(key, value)
+        words.append(property_words.join())
 
         # with
+        expression_words = WordConcatenator(False)
         # TODO There's a lot of cases where pass isn't needed, since we could
         # reorder stuff so there's never 2 expressions in a row. (And it's never
         # necessary for the last one, but we don't know what the last one is
         # since it could get reordered.)
         needs_pass = len(ast.expressions) > 1
         for (expression, with_expression) in ast.expressions:
-            expression_words = WordConcatenator(False)
             expression_words.append(expression)
             if with_expression:
                 expression_words.append("with", with_expression)
             if needs_pass:
                 expression_words.append("pass")
-            words.append(expression_words.join())
+        words.append(expression_words.join())
 
         self.write(warp + words.join())
 
