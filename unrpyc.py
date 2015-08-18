@@ -70,14 +70,10 @@ def read_ast_from_file(in_file):
 
             chunks[slot] = raw_contents[start: start + length]
 
-        for slot in chunks:
-            data = chunks[slot].decode('zlib')
-            chunks[slot] = magic.safe_loads(data, class_factory, {"_ast"})
-        return chunks
+        raw_contents = chunks[1]
 
-    else:
-        raw_contents = raw_contents.decode('zlib')
-        data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
+    raw_contents = raw_contents.decode('zlib')
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
