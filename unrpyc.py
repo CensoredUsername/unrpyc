@@ -26,6 +26,7 @@ import codecs
 import glob
 import itertools
 import traceback
+import struct
 from multiprocessing import Pool, Lock, cpu_count
 from operator import itemgetter
 
@@ -56,8 +57,27 @@ printlock = Lock()
 
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
-    raw_contents = in_file.read().decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
+    raw_contents = in_file.read()
+    if raw_contents.startswith("RENPY RPC2"):
+        # parse the archive structure
+        position = 10
+        chunks = {}
+        while True:
+            slot, start, length = struct.unpack("III", raw_contents[position: position + 12])
+            if slot == 0:
+                break
+            position += 12
+
+            chunks[slot] = raw_contents[start: start + length]
+
+        for slot in chunks:
+            data = chunks[slot].decode('zlib')
+            chunks[slot] = magic.safe_loads(data, class_factory, {"_ast"})
+        return chunks
+
+    else:
+        raw_contents = raw_contents.decode('zlib')
+        data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
