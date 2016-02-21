@@ -119,14 +119,14 @@ class SL2Decompiler(DecompilerBase):
         # $ a,b,c = _sl2_i after the for statement if any tuple unpacking was
         # attempted in the for statement. Detect this and ignore this slast.SLPython entry
         if ast.variable == "_sl2_i":
-            variable = ast.children[0].code.source[:-9].strip()
+            variable = ast.children[0].code.source[:-9]
             children = ast.children[1:]
         else:
-            variable = ast.variable.strip()
+            variable = ast.variable.strip() + " "
             children = ast.children
 
         self.indent()
-        self.write("for %s in %s:" % (variable, ast.expression))
+        self.write("for %sin %s:" % (variable, ast.expression))
 
         # Interestingly, for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
