@@ -32,7 +32,7 @@ import codegen
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           decompile_python=False, line_numbers=False,
+           decompile_python=False,
            skip_indent_until_write=False, printlock=None):
     return SLDecompiler(out_file, printlock=printlock,
                  decompile_python=decompile_python).dump(
