@@ -242,7 +242,7 @@ class Decompiler(DecompilerBase):
         if len(imspec[6]) > 0:
             words.append("behind %s" % ', '.join(imspec[6]))
 
-        if imspec[4] is not None and imspec[4] != "master":
+        if isinstance(imspec[4], unicode):
             words.append("onlayer %s" % imspec[4])
 
         if imspec[5] is not None:
@@ -312,7 +312,7 @@ class Decompiler(DecompilerBase):
         self.write("scene")
 
         if ast.imspec is None:
-            if ast.layer is not None and ast.layer != "master":
+            if isinstance(ast.layer, unicode):
                 self.write(" onlayer %s" % ast.layer)
             needs_space = True
         else:
