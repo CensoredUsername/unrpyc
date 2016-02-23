@@ -294,9 +294,9 @@ class SLDecompiler(DecompilerBase):
                 self.advance_to_line(i[0])
                 self.indent()
                 self.write(i[1])
-            with self.increase_indent(-1 if has_block else 0):
-                for i in nodes_after_keywords:
-                    self.print_node(i[1][0], i[1][1:])
+        with self.increase_indent(1 if not has_block else 0):
+            for i in nodes_after_keywords:
+                self.print_node(i[1][0], i[1][1:])
 
     def get_dispatch_key(self, node):
         if (isinstance(node, ast.Expr) and
