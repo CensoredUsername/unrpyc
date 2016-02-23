@@ -82,15 +82,12 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
 
-    printlock.acquire()
-    print "Decompiling %s to %s..." % (input_filename, out_filename)
+    with printlock:
+        print "Decompiling %s to %s..." % (input_filename, out_filename)
 
-    if not overwrite and path.exists(out_filename):
-        print "Output file already exists. Pass --clobber to overwrite."
-        printlock.release()
-        return False # Don't stop decompiling if one file already exists
-
-    printlock.release()
+        if not overwrite and path.exists(out_filename):
+            print "Output file already exists. Pass --clobber to overwrite."
+            return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
         ast = read_ast_from_file(in_file)
@@ -109,9 +106,8 @@ def worker(t):
         return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
                                                                 comparable=args.comparable)
     except Exception as e:
-        printlock.acquire()
-        print traceback.format_exc()
-        printlock.release()
+        with printlock:
+            print traceback.format_exc()
         return False
 
 def sharelock(lock):

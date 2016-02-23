@@ -128,9 +128,11 @@ class DecompilerBase(object):
         # If we encounter a placeholder note, print a warning and insert a placeholder
         if self.printlock:
             self.printlock.acquire()
-        print "Unknown AST node: %s" % str(type(ast))
-        if self.printlock:
-            self.printlock.release()
+        try:
+            print "Unknown AST node: %s" % str(type(ast))
+        finally:
+            if self.printlock:
+                self.printlock.release()
         self.indent()
         self.write("<<<UNKNOWN NODE %s>>>" % str(type(ast)))
 
