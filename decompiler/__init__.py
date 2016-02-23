@@ -413,11 +413,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast):
         self.indent()
-        self.write("jump ")
-        if ast.expression:
-            self.write("expression %s" % ast.target)
-        else:
-            self.write(ast.target)
+        self.write("jump %s%s" % ("expression " if ast.expression else "", ast.target))
 
     @dispatch(renpy.ast.Call)
     def print_call(self, ast):
@@ -462,7 +458,7 @@ class Decompiler(DecompilerBase):
 
         for i, (condition, block) in enumerate(ast.entries):
             # The non-Unicode string "True" is the condition for else:.
-            if (i + 1) == len(ast.entries) and isinstance(condition, str):
+            if (i + 1) == len(ast.entries) and not isinstance(condition, unicode):
                 self.indent()
                 self.write("else:")
             else:
@@ -517,7 +513,7 @@ class Decompiler(DecompilerBase):
                 (ast.priority == 0 and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
                 self.should_come_before(ast, ast.block[0])):
-                # If they fulfil this criteria we just print the contained statement
+                # If they fulfill this criteria we just print the contained statement
                 self.print_nodes(ast.block)
 
             # translatestring statements are split apart and put in an init block.
@@ -533,7 +529,7 @@ class Decompiler(DecompilerBase):
                 if ast.priority:
                     self.write(" %d" % ast.priority)
 
-                if len(ast.block) == 1 and ast.linenumber >= ast.block[0].linenumber:
+                if len(ast.block) == 1 and not should_come_before(ast, ast.block[0]):
                     self.write(" ")
                     self.skip_indent_until_write = True
                     self.print_nodes(ast.block)
@@ -573,9 +569,7 @@ class Decompiler(DecompilerBase):
                 if block is not None:
                     if isinstance(condition, unicode):
                         self.write(" if %s" % condition)
-
                     self.write(":")
-
                     self.print_nodes(block, 1)
 
     # Programming related functions
