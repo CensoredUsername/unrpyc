@@ -274,7 +274,14 @@ class Decompiler(DecompilerBase):
     def print_transform(self, ast):
         self.require_init()
         self.indent()
-        self.write("transform %s" % ast.varname)
+
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != 0 and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % init.priority
+        self.write("transform%s %s" % (priority, ast.varname))
         if ast.parameters is not None:
             self.write(reconstruct_paraminfo(ast.parameters))
 
@@ -509,11 +516,11 @@ class Decompiler(DecompilerBase):
             # Define has a default priority of 0, screen of -500 and image of 990
             # TODO merge this and require_init into another decorator or something
             if len(ast.block) == 1 and (
+                isinstance(ast.block[0], (renpy.ast.Define,
+                                          renpy.ast.Default,
+                                          renpy.ast.Transform)) or
                 (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
-                (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
-                                                                renpy.ast.Default,
-                                                                renpy.ast.Transform,
-                                                                renpy.ast.Style))) or
+                (ast.priority == 0 and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
                 self.should_come_before(ast, ast.block[0])):
                 # If they fulfil this criteria we just print the contained statement
@@ -620,10 +627,17 @@ class Decompiler(DecompilerBase):
             name = "default"
         else:
             name = "define"
+
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != 0 and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % init.priority
         if not hasattr(ast, "store") or ast.store == "store":
-            self.write("%s %s = %s" % (name, ast.varname, ast.code.source))
+            self.write("%s%s %s = %s" % (name, priority, ast.varname, ast.code.source))
         else:
-            self.write("%s %s.%s = %s" % (name, ast.store[6:], ast.varname, ast.code.source))
+            self.write("%s%s %s.%s = %s" % (name, priority, ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
