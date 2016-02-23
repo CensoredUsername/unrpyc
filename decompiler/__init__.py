@@ -529,7 +529,7 @@ class Decompiler(DecompilerBase):
                 if ast.priority:
                     self.write(" %d" % ast.priority)
 
-                if len(ast.block) == 1 and not should_come_before(ast, ast.block[0]):
+                if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
                     self.write(" ")
                     self.skip_indent_until_write = True
                     self.print_nodes(ast.block)
