@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 import sys
 import re
 from StringIO import StringIO
+from contextlib import contextmanager
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation='    ', printlock=None):
@@ -26,6 +27,14 @@ class DecompilerBase(object):
             ast = [ast]
         self.print_nodes(ast)
         return self.linenumber
+
+    @contextmanager
+    def increase_indent(self, amount=1):
+        self.indent_level += amount
+        try:
+            yield
+        finally:
+            self.indent_level -= amount
 
     def write(self, string):
         """
@@ -90,19 +99,16 @@ class DecompilerBase(object):
     def print_nodes(self, ast, extra_indent=0):
         # This node is a list of nodes
         # Print every node
-        self.indent_level += extra_indent
+        with self.increase_indent(extra_indent):
+            self.block_stack.append(ast)
+            self.index_stack.append(0)
 
-        self.block_stack.append(ast)
-        self.index_stack.append(0)
+            for i, node in enumerate(ast):
+                self.index_stack[-1] = i
+                self.print_node(node)
 
-        for i, node in enumerate(ast):
-            self.index_stack[-1] = i
-            self.print_node(node)
-
-        self.block_stack.pop()
-        self.index_stack.pop()
-
-        self.indent_level -= extra_indent
+            self.block_stack.pop()
+            self.index_stack.pop()
 
     @property
     def block(self):

@@ -124,16 +124,15 @@ class SLDecompiler(DecompilerBase):
                           key=itemgetter(0)) # so the first one is right
         if self.decompile_python:
             self.print_keywords_and_nodes(keywords, None, True)
-            self.indent_level += 1
-            self.indent()
-            self.write("python:")
-            self.indent_level += 1
-            # The first line is always "_1 = (_name, 0)", which gets included
-            # even if the python: block is the only thing in the screen. Don't
-            # include ours, since if we do, it'll be included twice when
-            # recompiled.
-            self.write_lines(self.to_source(ast.code.source).splitlines()[1:])
-            self.indent_level -= 2
+            with self.increase_indent():
+                self.indent()
+                self.write("python:")
+                with self.increase_indent():
+                    # The first line is always "_1 = (_name, 0)", which gets included
+                    # even if the python: block is the only thing in the screen. Don't
+                    # include ours, since if we do, it'll be included twice when
+                    # recompiled.
+                    self.write_lines(self.to_source(ast.code.source).splitlines()[1:])
         else:
             self.print_keywords_and_nodes(keywords, ast.code.source.body, False)
 
@@ -162,10 +161,9 @@ class SLDecompiler(DecompilerBase):
         if has_block and not nodes:
             raise BadHasBlockException()
         split = self.split_nodes_at_headers(nodes)
-        self.indent_level += extra_indent
-        for i in split:
-            self.print_node(i[0], i[1:], has_block)
-        self.indent_level -= extra_indent
+        with self.increase_indent(extra_indent):
+            for i in split:
+                self.print_node(i[0], i[1:], has_block)
 
     def get_first_line(self, nodes):
         if self.get_dispatch_key(nodes[0]):
@@ -219,16 +217,15 @@ class SLDecompiler(DecompilerBase):
         if needs_colon:
             self.write(":")
         stuff_to_print = sorted(keywords[1:] + nodelists, key=itemgetter(0))
-        self.indent_level += 1
-        for i in stuff_to_print:
-            # Nodes are lists. Keywords are ready-to-print strings.
-            if type(i[1]) == list:
-                self.print_node(i[1][0], i[1][1:])
-            else:
-                self.advance_to_line(i[0])
-                self.indent()
-                self.write(i[1])
-        self.indent_level -= 1
+        with self.increase_indent():
+            for i in stuff_to_print:
+                # Nodes are lists. Keywords are ready-to-print strings.
+                if type(i[1]) == list:
+                    self.print_node(i[1][0], i[1][1:])
+                else:
+                    self.advance_to_line(i[0])
+                    self.indent()
+                    self.write(i[1])
 
     def get_lines_used_by_node(self, node):
         state = self.save_state()
@@ -270,39 +267,36 @@ class SLDecompiler(DecompilerBase):
             needs_colon = True
         if needs_colon:
             self.write(":")
-        self.indent_level += 1
-        should_advance_to_line = self.should_advance_to_line
-        self.should_advance_to_line = False
-        while nodes_before_keywords:
-            if not remaining_keywords:
-                # Something went wrong. We already printed the last keyword,
-                # yet there's still nodes left that should have been printed
-                # before the last keyword. Just print them now.
-                for i in nodes_before_keywords:
-                    self.print_node(i[1][0], i[1][1:])
-                break
-            # subtract 1 line since .indent() uses 1
-            lines_to_go = remaining_keywords[0][0] - self.linenumber - 1
-            next_node = nodes_before_keywords[0][1]
-            if lines_to_go >= self.get_lines_used_by_node(next_node):
-                self.print_node(next_node[0], next_node[1:])
-                nodes_before_keywords.pop(0)
-            elif not should_advance_to_line or lines_to_go <= 0:
+        with self.increase_indent():
+            should_advance_to_line = self.should_advance_to_line
+            self.should_advance_to_line = False
+            while nodes_before_keywords:
+                if not remaining_keywords:
+                    # Something went wrong. We already printed the last keyword,
+                    # yet there's still nodes left that should have been printed
+                    # before the last keyword. Just print them now.
+                    for i in nodes_before_keywords:
+                        self.print_node(i[1][0], i[1][1:])
+                    break
+                # subtract 1 line since .indent() uses 1
+                lines_to_go = remaining_keywords[0][0] - self.linenumber - 1
+                next_node = nodes_before_keywords[0][1]
+                if lines_to_go >= self.get_lines_used_by_node(next_node):
+                    self.print_node(next_node[0], next_node[1:])
+                    nodes_before_keywords.pop(0)
+                elif not should_advance_to_line or lines_to_go <= 0:
+                    self.indent()
+                    self.write(remaining_keywords.pop(0)[1])
+                else:
+                    self.write("\n" * lines_to_go)
+            self.should_advance_to_line = should_advance_to_line
+            for i in remaining_keywords:
+                self.advance_to_line(i[0])
                 self.indent()
-                self.write(remaining_keywords.pop(0)[1])
-            else:
-                self.write("\n" * lines_to_go)
-        self.should_advance_to_line = should_advance_to_line
-        for i in remaining_keywords:
-            self.advance_to_line(i[0])
-            self.indent()
-            self.write(i[1])
-        if has_block:
-            self.indent_level -= 1
-        for i in nodes_after_keywords:
-            self.print_node(i[1][0], i[1][1:])
-        if not has_block:
-            self.indent_level -= 1
+                self.write(i[1])
+            with self.increase_indent(-1 if has_block else 0):
+                for i in nodes_after_keywords:
+                    self.print_node(i[1][0], i[1][1:])
 
     def get_dispatch_key(self, node):
         if (isinstance(node, ast.Expr) and
@@ -394,9 +388,8 @@ class SLDecompiler(DecompilerBase):
             self.indent()
             self.write("python:")
             self.advance_to_line(code[0].lineno - 1)
-            self.indent_level += 1
-            self.write_lines(lines)
-            self.indent_level -= 1
+            with self.increase_indent():
+                self.write_lines(lines)
 
     def is_renpy_if(self, nodes):
         return len(nodes) == 1 and isinstance(nodes[0], ast.If) and (
@@ -593,15 +586,14 @@ class SLDecompiler(DecompilerBase):
                         self.make_printable_keywords(line.value.keywords,
                                                      line.value.lineno),
                         None, True, False)
-                    self.indent_level += 1
-                    if len(block) > 1 and isinstance(block[1], ast.Expr):
-                        # If this isn't true, we'll get a BadHasBlockException
-                        # later anyway. This check is just to keep it from being
-                        # an exception that we can't handle.
-                        self.advance_to_line(block[1].value.lineno)
-                    self.indent()
-                    self.write("has ")
-                    self.indent_level -= 1
+                    with self.increase_indent():
+                        if len(block) > 1 and isinstance(block[1], ast.Expr):
+                            # If this isn't true, we'll get a BadHasBlockException
+                            # later anyway. This check is just to keep it from being
+                            # an exception that we can't handle.
+                            self.advance_to_line(block[1].value.lineno)
+                        self.indent()
+                        self.write("has ")
                     self.skip_indent_until_write = True
                     self.print_nodes(block, 1, True)
             except BadHasBlockException as e:

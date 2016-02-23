@@ -102,10 +102,9 @@ class SL2Decompiler(DecompilerBase):
             if block.keyword or block.children:
                 self.print_block(block)
             else:
-                self.indent_level += 1
-                self.indent()
-                self.write("pass")
-                self.indent_level -= 1
+                with self.increase_indent():
+                    self.indent()
+                    self.write("pass")
 
     @dispatch(sl2.slast.SLBlock)
     def print_block(self, ast):
@@ -141,9 +140,8 @@ class SL2Decompiler(DecompilerBase):
         if code[0] == "\n":
             code = code[1:]
             self.write("python:")
-            self.indent_level += 1
-            self.write_lines(split_logical_lines(code))
-            self.indent_level -= 1
+            with self.increase_indent():
+                self.write_lines(split_logical_lines(code))
         else:
             self.write("$ %s" % code)
 
@@ -200,12 +198,11 @@ class SL2Decompiler(DecompilerBase):
                 self.print_keywords_and_children(ast.keyword, [],
                     ast.location[1], needs_colon=True)
                 self.advance_to_line(ast.children[0].location[1])
-                self.indent_level += 1
-                self.indent()
-                self.write("has ")
-                self.skip_indent_until_write = True
-                self.print_displayable(ast.children[0], True)
-                self.indent_level -= 1
+                with self.increase_indent():
+                    self.indent()
+                    self.write("has ")
+                    self.skip_indent_until_write = True
+                    self.print_displayable(ast.children[0], True)
             else:
                 self.print_keywords_and_children(ast.keyword, ast.children,
                      ast.location[1], has_block=has_block)
@@ -274,15 +271,14 @@ class SL2Decompiler(DecompilerBase):
         if block_contents or (not has_block and children_after_keywords):
             if lineno is not None:
                 self.write(":")
-            self.indent_level += 1
-            for i in block_contents:
-                if isinstance(i[1], list):
-                    self.advance_to_line(i[0])
-                    self.indent()
-                    self.write(' '.join(i[1]))
-                else:
-                    self.print_node(i[1])
-            self.indent_level -= 1
+            with self.increase_indent():
+                for i in block_contents:
+                    if isinstance(i[1], list):
+                        self.advance_to_line(i[0])
+                        self.indent()
+                        self.write(' '.join(i[1]))
+                    else:
+                        self.print_node(i[1])
         elif needs_colon:
             self.write(":")
         self.print_nodes(children_after_keywords, 0 if has_block else 1)

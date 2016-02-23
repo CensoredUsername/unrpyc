@@ -87,16 +87,15 @@ class Decompiler(DecompilerBase):
 
     def print_atl(self, ast):
         self.advance_to_line(ast.loc[1])
-        self.indent_level += 1
-        if ast.statements:
-            self.print_nodes(ast.statements)
-        # If a statement ends with a colon but has no block after it, loc will
-        # get set to ('', 0). That isn't supposed to be valid syntax, but it's
-        # the only thing that can generate that.
-        elif ast.loc != ('', 0):
-            self.indent()
-            self.write("pass")
-        self.indent_level -= 1
+        with self.increase_indent():
+            if ast.statements:
+                self.print_nodes(ast.statements)
+            # If a statement ends with a colon but has no block after it, loc will
+            # get set to ('', 0). That isn't supposed to be valid syntax, but it's
+            # the only thing that can generate that.
+            elif ast.loc != ('', 0):
+                self.indent()
+                self.write("pass")
 
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
@@ -552,35 +551,32 @@ class Decompiler(DecompilerBase):
             self.write(" %s" % self.label_inside_menu.name)
             self.label_inside_menu = None
         self.write(":")
-        self.indent_level += 1
+        with self.increase_indent():
+            if self.say_inside_menu is not None:
+                self.print_say(self.say_inside_menu, inmenu=True)
+                self.say_inside_menu = None
 
-        if self.say_inside_menu is not None:
-            self.print_say(self.say_inside_menu, inmenu=True)
-            self.say_inside_menu = None
+            if ast.with_ is not None:
+                self.indent()
+                self.write("with %s" % ast.with_)
 
-        if ast.with_ is not None:
-            self.indent()
-            self.write("with %s" % ast.with_)
+            if ast.set is not None:
+                self.indent()
+                self.write("set %s" % ast.set)
 
-        if ast.set is not None:
-            self.indent()
-            self.write("set %s" % ast.set)
-
-        for label, condition, block in ast.items:
-            if isinstance(condition, unicode):
-                self.advance_to_line(condition.linenumber)
-            self.indent()
-            self.write('"%s"' % string_escape(label))
-
-            if block is not None:
+            for label, condition, block in ast.items:
                 if isinstance(condition, unicode):
-                    self.write(" if %s" % condition)
+                    self.advance_to_line(condition.linenumber)
+                self.indent()
+                self.write('"%s"' % string_escape(label))
 
-                self.write(":")
+                if block is not None:
+                    if isinstance(condition, unicode):
+                        self.write(" if %s" % condition)
 
-                self.print_nodes(block, 1)
+                    self.write(":")
 
-        self.indent_level -= 1
+                    self.print_nodes(block, 1)
 
     # Programming related functions
 
@@ -602,9 +598,8 @@ class Decompiler(DecompilerBase):
                 self.write(ast.store[6:])
             self.write(":")
 
-            self.indent_level += 1
-            self.write_lines(split_logical_lines(code))
-            self.indent_level -= 1
+            with self.increase_indent():
+                self.write_lines(split_logical_lines(code))
 
         else:
             self.write("$ %s" % code)
@@ -702,12 +697,11 @@ class Decompiler(DecompilerBase):
             self.write(" %s" % keywords[0][1])
         if len(keywords) > 1:
             self.write(":")
-            self.indent_level += 1
-            for i in keywords[1:]:
-                self.advance_to_line(i[0])
-                self.indent()
-                self.write(i[1])
-            self.indent_level -= 1
+            with self.increase_indent():
+                for i in keywords[1:]:
+                    self.advance_to_line(i[0])
+                    self.indent()
+                    self.write(i[1])
 
     # Translation functions
 
@@ -736,14 +730,11 @@ class Decompiler(DecompilerBase):
         # TranslateString's linenumber refers to the line with "old", not to the
         # line with "translate %s strings:"
         self.advance_to_line(ast.linenumber)
-        self.indent_level += 1
-
-        self.indent()
-        self.write('old "%s"' % string_escape(ast.old))
-        self.indent()
-        self.write('new "%s"' % string_escape(ast.new))
-
-        self.indent_level -= 1
+        with self.increase_indent():
+            self.indent()
+            self.write('old "%s"' % string_escape(ast.old))
+            self.indent()
+            self.write('new "%s"' % string_escape(ast.new))
 
     @dispatch(renpy.ast.TranslateBlock)
     def print_translateblock(self, ast):
