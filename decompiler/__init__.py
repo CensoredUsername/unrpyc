@@ -81,12 +81,7 @@ class Decompiler(DecompilerBase):
         # to from print_atl.
         elif hasattr(ast, 'loc') and not isinstance(ast, renpy.atl.RawBlock):
             self.advance_to_line(ast.loc[1])
-        func = self.dispatch.get(type(ast), None)
-        if func:
-            func(self, ast)
-        else:
-            # This node type is unknown
-            self.print_unknown(ast)
+        self.dispatch.get(type(ast), type(self).print_unknown)(self, ast)
 
     # ATL printing functions
 
