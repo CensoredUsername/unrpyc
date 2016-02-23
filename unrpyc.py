@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 import argparse
-import os.path as path
+from os import path, walk
 import codecs
 import glob
 import itertools
@@ -142,14 +142,24 @@ def main():
                         "It should only be used if necessary, since it will cause loss of information such as line numbers.")
 
     parser.add_argument('file', type=str, nargs='+',
-                        help="The filenames to decompile")
+                        help="The filenames to decompile. "
+                        "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
 
     args = parser.parse_args()
 
     # Expand wildcards
-    files = map(glob.glob, args.file)
+    filesAndDirs = map(glob.glob, args.file)
     # Concatenate lists
-    files = list(itertools.chain(*files))
+    filesAndDirs = list(itertools.chain(*filesAndDirs))
+
+    # Recursively add .rpyc files from any directories passed
+    files = []
+    for i in filesAndDirs:
+        if path.isdir(i):
+            for dirpath, dirnames, filenames in walk(i):
+                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j[-5:] == '.rpyc')
+        else:
+            files.append(i)
 
     # Check if we actually have files
     if len(files) == 0:

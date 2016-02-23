@@ -37,8 +37,10 @@ Options:
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
 You can give several .rpyc files on the command line. Each script will be
-decompiled to a corresponding .rpy on the same directory. By default, the
-program will not overwrite existing files, use -c to do that.
+decompiled to a corresponding .rpy on the same directory. Additionally, you can
+pass directories. All .rpyc files in these directories or their subdirectories
+will be decompiled. By default, the program will not overwrite existing files,
+use -c to do that.
 
 This script will try to disassemble all AST nodes. In the case it encounters an
 unknown node type, which may be caused by an update to Ren'Py somewhere in the
