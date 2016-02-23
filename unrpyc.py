@@ -107,6 +107,7 @@ def worker(t):
                                                                 comparable=args.comparable)
     except Exception as e:
         with printlock:
+            print "Error while decompiling %s:" % filename
             print traceback.format_exc()
         return False
 
