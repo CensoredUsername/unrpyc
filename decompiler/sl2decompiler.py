@@ -48,8 +48,6 @@ class SL2Decompiler(DecompilerBase):
     # what method to call for which slast class
     dispatch = Dispatcher()
 
-    displayable_names = Dispatcher()
-
     def print_node(self, ast):
         self.advance_to_line(ast.location[1])
         # Find the function which can decompile this node
@@ -207,38 +205,39 @@ class SL2Decompiler(DecompilerBase):
                 self.print_keywords_and_children(ast.keyword, ast.children,
                      ast.location[1], has_block=has_block)
 
-
-    displayable_names[(behavior.OnEvent, None)]          = ("on", 0)
-    displayable_names[(behavior.OnEvent, 0)]             = ("on", 0)
-    displayable_names[(behavior.MouseArea, 0)]           = ("mousearea", 0)
-    displayable_names[(sld.sl2add, None)]                = ("add", 0)
-    displayable_names[(ui._hotbar, "hotbar")]            = ("hotbar", 0)
-    displayable_names[(sld.sl2vbar, None)]               = ("vbar", 0)
-    displayable_names[(sld.sl2bar, None)]                = ("bar", 0)
-    displayable_names[(ui._label, "label")]              = ("label", 0)
-    displayable_names[(ui._textbutton, 0)]               = ("textbutton", 0)
-    displayable_names[(ui._imagebutton, "image_button")] = ("imagebutton", 0)
-    displayable_names[(im.image, "default")]             = ("image", 0)
-    displayable_names[(behavior.Input, "input")]         = ("input", 0)
-    displayable_names[(behavior.Timer, "default")]       = ("timer", 0)
-    displayable_names[(ui._key, None)]                   = ("key", 0)
-    displayable_names[(text.Text, "text")]               = ("text", 0)
-    displayable_names[(layout.Null, "default")]          = ("null", 0)
-    displayable_names[(dragdrop.Drag, None)]             = ("drag", 1)
-    displayable_names[(dragdrop.Drag, "drag")]           = ("drag", 1)
-    displayable_names[(motion.Transform, "transform")]   = ("transform", 1)
-    displayable_names[(ui._hotspot, "hotspot")]          = ("hotspot", 1)
-    displayable_names[(sld.sl2viewport, "viewport")]     = ("viewport", 1)
-    displayable_names[(behavior.Button, "button")]       = ("button", 1)
-    displayable_names[(layout.Window, "frame")]          = ("frame", 1)
-    displayable_names[(layout.Window, "window")]         = ("window", 1)
-    displayable_names[(dragdrop.DragGroup, None)]        = ("draggroup", 'many')
-    displayable_names[(ui._imagemap, "imagemap")]        = ("imagemap", 'many')
-    displayable_names[(layout.Side, "side")]             = ("side", 'many')
-    displayable_names[(layout.Grid, "grid")]             = ("grid", 'many')
-    displayable_names[(layout.MultiBox, "fixed")]        = ("fixed", 'many')
-    displayable_names[(layout.MultiBox, "vbox")]         = ("vbox", 'many')
-    displayable_names[(layout.MultiBox, "hbox")]         = ("hbox", 'many')
+    displayable_names = {
+        (behavior.OnEvent, None):          ("on", 0),
+        (behavior.OnEvent, 0):             ("on", 0),
+        (behavior.MouseArea, 0):           ("mousearea", 0),
+        (sld.sl2add, None):                ("add", 0),
+        (ui._hotbar, "hotbar"):            ("hotbar", 0),
+        (sld.sl2vbar, None):               ("vbar", 0),
+        (sld.sl2bar, None):                ("bar", 0),
+        (ui._label, "label"):              ("label", 0),
+        (ui._textbutton, 0):               ("textbutton", 0),
+        (ui._imagebutton, "image_button"): ("imagebutton", 0),
+        (im.image, "default"):             ("image", 0),
+        (behavior.Input, "input"):         ("input", 0),
+        (behavior.Timer, "default"):       ("timer", 0),
+        (ui._key, None):                   ("key", 0),
+        (text.Text, "text"):               ("text", 0),
+        (layout.Null, "default"):          ("null", 0),
+        (dragdrop.Drag, None):             ("drag", 1),
+        (dragdrop.Drag, "drag"):           ("drag", 1),
+        (motion.Transform, "transform"):   ("transform", 1),
+        (ui._hotspot, "hotspot"):          ("hotspot", 1),
+        (sld.sl2viewport, "viewport"):     ("viewport", 1),
+        (behavior.Button, "button"):       ("button", 1),
+        (layout.Window, "frame"):          ("frame", 1),
+        (layout.Window, "window"):         ("window", 1),
+        (dragdrop.DragGroup, None):        ("draggroup", 'many'),
+        (ui._imagemap, "imagemap"):        ("imagemap", 'many'),
+        (layout.Side, "side"):             ("side", 'many'),
+        (layout.Grid, "grid"):             ("grid", 'many'),
+        (layout.MultiBox, "fixed"):        ("fixed", 'many'),
+        (layout.MultiBox, "vbox"):         ("vbox", 'many'),
+        (layout.MultiBox, "hbox"):         ("hbox", 'many')
+    }
 
     def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False):
         # This function prints the keyword arguments and child nodes
