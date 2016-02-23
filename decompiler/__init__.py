@@ -23,6 +23,7 @@ from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo,
                  reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
 
 from operator import itemgetter
+from StringIO import StringIO
 
 import magic
 magic.fake_package(b"renpy")
@@ -61,11 +62,14 @@ class Decompiler(DecompilerBase):
         self.paired_with = False
         self.say_inside_menu = None
         self.label_inside_menu = None
+        self.in_init = False
+        self.missing_init = False
 
     def dump(self, ast, indent_level=0):
         # skip_indent_until_write avoids an initial blank line
         super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
         self.write("\n# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc\n")
+        assert not self.missing_init, "A required init or init label block was missing"
 
     def print_node(self, ast):
         # We special-case line advancement for TranslateString in its print
@@ -256,6 +260,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Image)
     def print_image(self, ast):
+        self.require_init()
         self.indent()
         self.write("image %s" % ' '.join(ast.imgname))
         if ast.code is not None:
@@ -267,6 +272,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Transform)
     def print_transform(self, ast):
+        self.require_init()
         self.indent()
         self.write("transform %s" % ast.varname)
         if ast.parameters is not None:
@@ -382,11 +388,26 @@ class Decompiler(DecompilerBase):
                 self.label_inside_menu = ast
                 return
         self.indent()
-        self.write("label %s%s%s:" % (
-            ast.name,
-            reconstruct_paraminfo(ast.parameters),
-            " hide" if hasattr(ast, 'hide') and ast.hide else ""))
-        self.print_nodes(ast.block, 1)
+
+        # It's possible that we're an "init label", not a regular label. There's no way to know
+        # if we are until we parse our children, so temporarily redirect all of our output until
+        # that's done, so that we can squeeze in an "init " if we are.
+        out_file = self.out_file
+        self.out_file = StringIO()
+        missing_init = self.missing_init
+        self.missing_init = False
+        try:
+            self.write("label %s%s%s:" % (
+                ast.name,
+                reconstruct_paraminfo(ast.parameters),
+                " hide" if hasattr(ast, 'hide') and ast.hide else ""))
+            self.print_nodes(ast.block, 1)
+        finally:
+            if self.missing_init:
+                out_file.write("init ")
+            self.missing_init = missing_init
+            out_file.write(self.out_file.getvalue())
+            self.out_file = out_file
 
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast):
@@ -475,41 +496,51 @@ class Decompiler(DecompilerBase):
     def should_come_before(self, first, second):
         return first.linenumber < second.linenumber
 
+    def require_init(self):
+        if not self.in_init:
+            self.missing_init = True
+
     @dispatch(renpy.ast.Init)
     def print_init(self, ast):
-        # A bunch of statements can have implicit init blocks
-        # Define has a default priority of 0, screen of -500 and image of 990
-        if len(ast.block) == 1 and (
-            (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
-            (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
-                                                             renpy.ast.Default,
-                                                             renpy.ast.Transform,
-                                                             renpy.ast.Style))) or
-            (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
-            self.should_come_before(ast, ast.block[0])):
-            # If they fulfil this criteria we just print the contained statement
-            self.print_nodes(ast.block)
-
-        # translatestring statements are split apart and put in an init block.
-        elif (len(ast.block) > 0 and
-                ast.priority == 0 and
-                all(isinstance(i, renpy.ast.TranslateString) for i in ast.block) and
-                all(i.language == ast.block[0].language for i in ast.block[1:])):
-            self.print_nodes(ast.block)
-
-        else:
-            self.indent()
-            self.write("init")
-            if ast.priority:
-                self.write(" %d" % ast.priority)
-
-            if len(ast.block) == 1 and ast.linenumber >= ast.block[0].linenumber:
-                self.write(" ")
-                self.skip_indent_until_write = True
+        in_init = self.in_init
+        self.in_init = True
+        try:
+            # A bunch of statements can have implicit init blocks
+            # Define has a default priority of 0, screen of -500 and image of 990
+            # TODO merge this and require_init into another decorator or something
+            if len(ast.block) == 1 and (
+                (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
+                (ast.priority == 0 and isinstance(ast.block[0], (renpy.ast.Define,
+                                                                renpy.ast.Default,
+                                                                renpy.ast.Transform,
+                                                                renpy.ast.Style))) or
+                (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
+                self.should_come_before(ast, ast.block[0])):
+                # If they fulfil this criteria we just print the contained statement
                 self.print_nodes(ast.block)
+
+            # translatestring statements are split apart and put in an init block.
+            elif (len(ast.block) > 0 and
+                    ast.priority == 0 and
+                    all(isinstance(i, renpy.ast.TranslateString) for i in ast.block) and
+                    all(i.language == ast.block[0].language for i in ast.block[1:])):
+                self.print_nodes(ast.block)
+
             else:
-                self.write(":")
-                self.print_nodes(ast.block, 1)
+                self.indent()
+                self.write("init")
+                if ast.priority:
+                    self.write(" %d" % ast.priority)
+
+                if len(ast.block) == 1 and ast.linenumber >= ast.block[0].linenumber:
+                    self.write(" ")
+                    self.skip_indent_until_write = True
+                    self.print_nodes(ast.block)
+                else:
+                    self.write(":")
+                    self.print_nodes(ast.block, 1)
+        finally:
+            self.in_init = in_init
 
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast):
@@ -583,6 +614,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Define)
     @dispatch(renpy.ast.Default)
     def print_define(self, ast):
+        self.require_init()
         self.indent()
         if isinstance(ast, renpy.ast.Default):
             name = "default"
@@ -630,6 +662,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Style)
     def print_style(self, ast):
+        self.require_init()
         keywords = {ast.linenumber: WordConcatenator(False, True)}
 
         # These don't store a line number, so just put them on the first line
@@ -683,6 +716,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.TranslateString)
     def print_translatestring(self, ast):
+        self.require_init()
         # Was the last node a translatestrings node?
         if not(self.index and
                isinstance(self.block[self.index - 1], renpy.ast.TranslateString) and
@@ -714,6 +748,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Screen)
     def print_screen(self, ast):
+        self.require_init()
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
             self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
