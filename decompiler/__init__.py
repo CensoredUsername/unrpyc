@@ -69,7 +69,7 @@ class Decompiler(DecompilerBase):
         # skip_indent_until_write avoids an initial blank line
         super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
         self.write("\n# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc\n")
-        assert not self.missing_init, "A required init or init label block was missing"
+        assert not self.missing_init, "A required init, init label, or translate block was missing"
 
     def print_node(self, ast):
         # We special-case line advancement for TranslateString in its print
@@ -756,7 +756,15 @@ class Decompiler(DecompilerBase):
         self.write("translate %s " % (ast.language or "None"))
 
         self.skip_indent_until_write = True
-        self.print_nodes(ast.block)
+
+        in_init = self.in_init
+        if len(ast.block) == 1 and isinstance(ast.block[0], (renpy.ast.Python, renpy.ast.Style)):
+            # Ren'Py counts the TranslateBlock from "translate python" and "translate style" as an Init.
+            self.in_init = True
+        try:
+            self.print_nodes(ast.block)
+        finally:
+            self.in_init = in_init
 
     # Screens
 
