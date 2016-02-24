@@ -50,13 +50,7 @@ class SL2Decompiler(DecompilerBase):
 
     def print_node(self, ast):
         self.advance_to_line(ast.location[1])
-        # Find the function which can decompile this node
-        func = self.dispatch.get(type(ast), None)
-        if func:
-            func(self, ast)
-        else:
-            # This node type is unknown
-            self.print_unknown(ast)
+        self.dispatch.get(type(ast), type(self).print_unknown)(self, ast)
 
     @dispatch(sl2.slast.SLScreen)
     def print_screen(self, ast):
