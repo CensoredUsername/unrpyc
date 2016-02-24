@@ -124,17 +124,20 @@ class DecompilerBase(object):
             return None
         return self.block_stack[-2][self.index_stack[-2]]
 
-    def print_unknown(self, ast):
-        # If we encounter a placeholder note, print a warning and insert a placeholder
+    def write_failure(self, message):
         if self.printlock:
             self.printlock.acquire()
         try:
-            print "Unknown AST node: %s" % str(type(ast))
+            print message
         finally:
             if self.printlock:
                 self.printlock.release()
         self.indent()
-        self.write("<<<UNKNOWN NODE %s>>>" % str(type(ast)))
+        self.write("pass # <<<COULD NOT DECOMPILE: %s>>>" % message)
+
+    def print_unknown(self, ast):
+        # If we encounter a placeholder note, print a warning and insert a placeholder
+        self.write_failure("Unknown AST node: %s" % str(type(ast)))
 
     def print_node(self, ast):
         raise NotImplementedError()

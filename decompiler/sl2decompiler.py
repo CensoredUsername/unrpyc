@@ -177,10 +177,12 @@ class SL2Decompiler(DecompilerBase):
         # slast.SLDisplayable represents a variety of statements. We can figure out
         # what statement it represents by analyzing the called displayable and style
         # attributes.
-        (name, children) = self.displayable_names.get((ast.displayable, ast.style))
-        if name is None:
-            self.print_unknown(ast)
+        key = (ast.displayable, ast.style)
+        nameAndChildren = self.displayable_names.get(key)
+        if nameAndChildren is None:
+            self.write_failure("Unknown SL2 displayable: %s" % str(key))
         else:
+            (name, children) = nameAndChildren
             self.indent()
             self.write(name)
             if ast.positional:
