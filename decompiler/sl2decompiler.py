@@ -154,7 +154,7 @@ class SL2Decompiler(DecompilerBase):
         # A use statement requires reconstructing the arguments it wants to pass
         self.indent()
         self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
-        if ast.id is not None:
+        if hasattr(ast, 'id') and ast.id is not None:
             self.write(" id %s" % ast.id)
 
         if hasattr(ast, 'block') and ast.block:
