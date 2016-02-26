@@ -29,9 +29,10 @@ import traceback
 import struct
 from multiprocessing import Pool, Lock, cpu_count
 from operator import itemgetter
+import cPickle as pickle
 
 import decompiler
-from decompiler import magic, astdump
+from decompiler import magic, astdump, translate
 
 # special definitions for special classes
 
@@ -73,11 +74,11 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "renpy.ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False):
+                   comparable=False, no_pyexpr=False, translator=None):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -97,14 +98,33 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
         else:
-            decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock)
+            decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
+                                             translator=translator)
     return True
+
+def extract_translations(input_filename, language):
+    with printlock:
+        print "Extracting translations from %s..." % input_filename
+
+    with open(input_filename, 'rb') as in_file:
+        ast = read_ast_from_file(in_file)
+
+    translator = translate.Translator(language, True)
+    translator.translate_dialogue(ast)
+    # we pickle and unpickle this manually because the regular unpickler will choke on it
+    return pickle.dumps(translator.dialogue), translator.strings
 
 def worker(t):
     (args, filename, filesize) = t
     try:
-        return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
-                                                                comparable=args.comparable)
+        if args.write_translation_file:
+            return extract_translations(filename, args.language)
+        else:
+            if args.translation_file is not None:
+                translator = translate.Translator(None)
+                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, class_factory)
+            return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
+                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator)
     except Exception as e:
         with printlock:
             print "Error while decompiling %s:" % filename
@@ -128,6 +148,15 @@ def main():
     parser.add_argument('-p', '--processes', dest='processes', action='store', default=cpu_count(),
                         help="use the specified number of processes to decompile")
 
+    parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
+                        help="use the specified file to translate during decompilation")
+
+    parser.add_argument('-T', '--write-translation-file', dest='write_translation_file', action='store', default=None,
+                        help="store translations in the specified file instead of decompiling")
+
+    parser.add_argument('-l', '--language', dest='language', action='store', default='english',
+                        help="if writing a translation file, the language of the translations to write")
+
     parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
                         help="Only dumping and for decompiling screen language 1 screens. "
                         "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
@@ -146,6 +175,15 @@ def main():
                         "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
 
     args = parser.parse_args()
+
+    if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
+        # Fail early to avoid wasting time going through the files
+        print "Output translation file already exists. Pass --clobber to overwrite."
+        return
+
+    if args.translation_file:
+        with open(args.translation_file, 'rb') as in_file:
+            args.translations = in_file.read()
 
     # Expand wildcards
     filesAndDirs = map(glob.glob, args.file)
@@ -177,9 +215,26 @@ def main():
     else:
         results = map(worker, files)
 
-    # Check per file if everything went well and report back
-    good = results.count(True)
-    bad = results.count(False)
+    if args.write_translation_file:
+        print "Writing translations to %s..." % args.write_translation_file
+        translated_dialogue = {}
+        translated_strings = {}
+        good = 0
+        bad = 0
+        for result in results:
+            if not result:
+                bad += 1
+                continue
+            good += 1
+            translated_dialogue.update(magic.loads(result[0], class_factory))
+            translated_strings.update(result[1])
+        with open(args.write_translation_file, 'wb') as out_file:
+            pickle.dump((args.language, translated_dialogue, translated_strings), out_file)
+
+    else:
+        # Check per file if everything went well and report back
+        good = results.count(True)
+        bad = results.count(False)
 
     if bad == 0:
         print "Decompilation of %d script file%s successful" % (good, 's' if good>1 else '')

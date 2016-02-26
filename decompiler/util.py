@@ -214,7 +214,7 @@ def reconstruct_arginfo(arginfo):
 
     return "".join(rv)
 
-def string_escape(s):
+def string_escape(s): # TODO see if this needs to work like encode_say_string elsewhere
     s = s.replace('\\', '\\\\')
     s = s.replace('"', '\\"')
     s = s.replace('\n', '\\n')
