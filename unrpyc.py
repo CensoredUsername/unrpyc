@@ -74,7 +74,7 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "renpy.ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"}, {"renpy.ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,

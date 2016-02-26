@@ -487,19 +487,36 @@ class SafeUnpickler(FakeUnpickler):
 
     This inherits from :class:`FakeUnpickler`
     """
-    def __init__(self, file, class_factory=None, safe_modules=(),
+    def __init__(self, file, class_factory=None, safe_modules=(), fake_modules=(),
                  use_copyreg=False, encoding="bytes", errors="strict"):
         FakeUnpickler.__init__(self, file, class_factory, encoding=encoding, errors=errors)
         # A set of modules which are safe to load
         self.safe_modules = set(safe_modules)
+        self.fake_modules = set(fake_modules)
         self.use_copyreg = use_copyreg
 
     def find_class(self, module, name):
         if module in self.safe_modules:
-            return FakeUnpickler.find_class(self, module, name)
+            __import__(module)
+            mod = sys.modules[module]
+            klass = getattr(mod, name)
+            return klass
 
-        else:
-            return self.class_factory(name, module)
+        if module in self.fake_modules:
+            mod = sys.modules.get(module, None)
+            if mod is None:
+                mod = FakeModule(module)
+                print("Created module {0}".format(str(mod)))
+
+            if isinstance(mod, FakeModule):
+                klass = getattr(mod, name, None)
+                if klass is None or isinstance(klass, FakeModule):
+                    klass = self.class_factory(name, module)
+                    setattr(mod, name, klass)
+
+                return klass
+
+        return self.class_factory(name, module)
 
     def get_extension(self, code):
         if self.use_copyreg:
