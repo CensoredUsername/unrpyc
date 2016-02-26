@@ -94,7 +94,7 @@ class FakeClassType(type):
         return self.__subclasscheck__(instance.__class__)
 
     def __subclasscheck__(self, subclass):
-        return (self.__eq__(subclass) or
+        return (self == subclass or
                 (bool(subclass.__bases__) and
                  any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 
@@ -341,7 +341,7 @@ class FakeModule(types.ModuleType):
         return self.__subclasscheck__(instance.__class__)
 
     def __subclasscheck__(self, subclass):
-        return (self.__eq__(subclass) or
+        return (self == subclass or
                 (bool(subclass.__bases__) and
                  any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 

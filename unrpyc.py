@@ -56,7 +56,7 @@ printlock = Lock()
 
 # API
 
-def read_ast_from_file(in_file, dumping=False):
+def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
     if raw_contents.startswith("RENPY RPC2"):
@@ -74,7 +74,7 @@ def read_ast_from_file(in_file, dumping=False):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"} if dumping else {"_ast", "renpy.ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "renpy.ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
@@ -91,7 +91,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
-        ast = read_ast_from_file(in_file, dump)
+        ast = read_ast_from_file(in_file)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
