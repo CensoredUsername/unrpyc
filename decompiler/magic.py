@@ -555,7 +555,7 @@ def loads(string, class_factory=None, encoding="bytes", errors="errors"):
     return FakeUnpickler(StringIO(string), class_factory,
                          encoding=encoding, errors=errors).load()
 
-def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
+def safe_load(file, class_factory=None, safe_modules=(), fake_modules=(), use_copyreg=False,
               encoding="bytes", errors="errors"):
     """
     Read a pickled object representation from the open binary :term:`file object` *file*
@@ -582,7 +582,7 @@ def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
     This function can be used to unpickle untrusted data safely with the default
     class_factory when *safe_modules* is empty and *use_copyreg* is False.
     """
-    return SafeUnpickler(file, class_factory, safe_modules, use_copyreg,
+    return SafeUnpickler(file, class_factory, safe_modules, fake_modules, use_copyreg,
                          encoding=encoding, errors=errors).load()
 
 def safe_loads(string, class_factory=None, safe_modules=(), use_copyreg=False,
