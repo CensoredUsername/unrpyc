@@ -212,9 +212,11 @@ def main():
         # If a big file starts near the end, there could be a long time with
         # only one thread running, which is inefficient. Avoid this by starting
         # big files first.
-        files = sorted(files, key=itemgetter(2), reverse=True)
+        files.sort(key=itemgetter(2), reverse=True)
         results = Pool(int(args.processes), sharelock, [printlock]).map(worker, files, 1)
     else:
+        # Decompile in the order Ren'Py loads in
+        files.sort(key=itemgetter(1))
         results = map(worker, files)
 
     if args.write_translation_file:
