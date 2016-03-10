@@ -31,10 +31,11 @@ import renpy
 
 import screendecompiler
 import sl2decompiler
+import testcasedecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "util", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "util", "pprint", "Decompiler"]
 
 # Main API
 
@@ -511,6 +512,7 @@ class Decompiler(DecompilerBase):
                                           renpy.ast.Transform)) or
                 (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
                 (ast.priority == 0 and isinstance(ast.block[0], renpy.ast.Style)) or
+                (ast.priority == 500 and isinstance(ast.block[0], renpy.ast.Testcase)) or
                 (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
                 self.should_come_before(ast, ast.block[0])):
                 # If they fulfill this criteria we just print the contained statement
@@ -768,3 +770,16 @@ class Decompiler(DecompilerBase):
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
+
+    # Testcases
+
+    @dispatch(renpy.ast.Testcase)
+    def print_testcase(self, ast):
+        self.require_init()
+        self.indent()
+        self.write('testcase %s:' % ast.label)
+        self.linenumber = testcasedecompiler.pprint(self.out_file, ast.test.block, self.indent_level + 1,
+                                self.linenumber,
+                                self.skip_indent_until_write,
+                                self.printlock)
+        self.skip_indent_until_write = False
