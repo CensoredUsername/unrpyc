@@ -36,7 +36,7 @@ import testcasedecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "util", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
 
 # Main API
 
