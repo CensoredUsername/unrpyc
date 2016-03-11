@@ -65,8 +65,17 @@ class Decompiler(DecompilerBase):
         self.label_inside_menu = None
         self.in_init = False
         self.missing_init = False
+        self.is_356c6e34_or_later = False
 
     def dump(self, ast, indent_level=0):
+        if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
+            isinstance(ast[-1], renpy.ast.Return) and
+            ast[-1].expression is None and
+            ast[-1].linenumber == ast[-2].linenumber):
+            # A very crude version check, but currently the best we can do.
+            # Note that this commit first appears in the 6.99 release.
+            self.is_356c6e34_or_later = True
+
         # skip_indent_until_write avoids an initial blank line
         super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
         self.write("\n# Decompiled by unrpyc: https://github.com/CensoredUsername/unrpyc\n")
@@ -513,7 +522,12 @@ class Decompiler(DecompilerBase):
                 (ast.priority == -500 and isinstance(ast.block[0], renpy.ast.Screen)) or
                 (ast.priority == 0 and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 500 and isinstance(ast.block[0], renpy.ast.Testcase)) or
-                (ast.priority == 990 and isinstance(ast.block[0], renpy.ast.Image))) and not (
+                # Images had their default init priority changed in commit 679f9e31 (Ren'Py 6.99.10).
+                # We don't have any way of detecting this commit, though. The closest one we can
+                # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
+                # an unnecessary "init 990 " before image statements, but this doesn't affect the AST,
+                # and any other solution would result in incorrect code being generated in some cases.
+                (ast.priority == (500 if self.is_356c6e34_or_later else 990) and isinstance(ast.block[0], renpy.ast.Image))) and not (
                 self.should_come_before(ast, ast.block[0])):
                 # If they fulfill this criteria we just print the contained statement
                 self.print_nodes(ast.block)
