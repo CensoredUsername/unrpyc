@@ -66,11 +66,12 @@ the un.rpyc file into the "game" directory inside the game files and everything
 will be decompiled.
 
 Supported:
-renpy version 6 up to 6.99.8
+renpy version 6
 Windows, OSX and Linux
 
-Unrpyc support for versions above 6.99.8 is untested. If you find an error due
-to a new ren'py version being incompatible, please open an issue.
+Unrpyc has only been tested on versions up to 6.99.9, though newer versions are
+expected to mostly work. If you find an error due to a new ren'py version being
+incompatible, please open an issue.
 
 Requirements:
 Python version 2.7
