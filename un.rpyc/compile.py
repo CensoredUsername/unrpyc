@@ -112,6 +112,7 @@ for i in sys.modules.copy():
                     p.Imports("magic", "FakeModule")("astdump"),
                     #turns out we don't actually need astdump in here
                     #Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
+                    Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
                     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
                     Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
                     Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
