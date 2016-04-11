@@ -29,7 +29,6 @@ import traceback
 import struct
 from multiprocessing import Pool, Lock, cpu_count
 from operator import itemgetter
-import cPickle as pickle
 
 import decompiler
 from decompiler import magic, astdump, translate
@@ -43,6 +42,9 @@ class PyExpr(magic.FakeStrict, unicode):
         self.filename = filename
         self.linenumber = linenumber
         return self
+
+    def __getnewargs__(self):
+        return unicode(self), self.filename, self.linenumber
 
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
@@ -74,7 +76,7 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"}, {"renpy.ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
@@ -112,7 +114,7 @@ def extract_translations(input_filename, language):
     translator = translate.Translator(language, True)
     translator.translate_dialogue(ast)
     # we pickle and unpickle this manually because the regular unpickler will choke on it
-    return pickle.dumps(translator.dialogue), translator.strings
+    return magic.safe_dumps(translator.dialogue), translator.strings
 
 def worker(t):
     (args, filename, filesize) = t
@@ -233,7 +235,7 @@ def main():
             translated_dialogue.update(magic.loads(result[0], class_factory))
             translated_strings.update(result[1])
         with open(args.write_translation_file, 'wb') as out_file:
-            pickle.dump((args.language, translated_dialogue, translated_strings), out_file)
+            magic.safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
     else:
         # Check per file if everything went well and report back

@@ -9,6 +9,7 @@ PY2 = not PY3
 
 import types
 import pickle
+import struct
 
 if PY3:
     from io import BytesIO as StringIO
@@ -16,12 +17,13 @@ else:
     from cStringIO import StringIO
 
 __all__ = [
-    "load", "loads", "safe_load", "safe_loads",
+    "load", "loads", "safe_load", "safe_loads", "safe_dump", "safe_dumps",
     "fake_package", "remove_fake_package",
     "FakeModule", "FakePackage", "FakePackageLoader",
     "FakeClassType", "FakeClassFactory",
     "FakeClass", "FakeStrict", "FakeWarning", "FakeIgnore",
-    "FakeUnpicklingError", "FakeUnpickler", "SafeUnpickler"
+    "FakeUnpicklingError", "FakeUnpickler", "SafeUnpickler",
+    "SafePickler"
 ]
 
 # Fake class implementation
@@ -85,7 +87,7 @@ class FakeClassType(type):
             return self.__module__ + "." + self.__name__ == other.__name__
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        return not self == other
 
     def __hash__(self):
         return hash(self.__module__ + "." + self.__name__)
@@ -332,7 +334,7 @@ class FakeModule(types.ModuleType):
         return self.__name__ == othername
 
     def __ne__(self, other):
-        return not self.__eq__(other)
+        return not self == other
 
     def __hash__(self):
         return hash(self.__name__)
@@ -442,7 +444,6 @@ class FakeUnpickler(pickle.Unpickler if PY2 else pickle._Unpickler):
                 __import__(module)
             except:
                 mod = FakeModule(module)
-                print("Created module {0}".format(str(mod)))
             else:
                 mod = sys.modules[module]
 
@@ -487,12 +488,11 @@ class SafeUnpickler(FakeUnpickler):
 
     This inherits from :class:`FakeUnpickler`
     """
-    def __init__(self, file, class_factory=None, safe_modules=(), fake_modules=(),
+    def __init__(self, file, class_factory=None, safe_modules=(),
                  use_copyreg=False, encoding="bytes", errors="strict"):
         FakeUnpickler.__init__(self, file, class_factory, encoding=encoding, errors=errors)
         # A set of modules which are safe to load
         self.safe_modules = set(safe_modules)
-        self.fake_modules = set(fake_modules)
         self.use_copyreg = use_copyreg
 
     def find_class(self, module, name):
@@ -502,27 +502,31 @@ class SafeUnpickler(FakeUnpickler):
             klass = getattr(mod, name)
             return klass
 
-        if module in self.fake_modules:
-            mod = sys.modules.get(module, None)
-            if mod is None:
-                mod = FakeModule(module)
-                print("Created module {0}".format(str(mod)))
-
-            if isinstance(mod, FakeModule):
-                klass = getattr(mod, name, None)
-                if klass is None or isinstance(klass, FakeModule):
-                    klass = self.class_factory(name, module)
-                    setattr(mod, name, klass)
-
-                return klass
-
-        return self.class_factory(name, module)
+        else:
+            return self.class_factory(name, module)
 
     def get_extension(self, code):
         if self.use_copyreg:
             return FakeUnpickler.get_extension(self, code)
         else:
             return self.class_factory("extension_code_{0}".format(code), "copyreg")
+
+class SafePickler(pickle.Pickler if PY2 else pickle._Pickler):
+    """
+    A pickler which can repickle object hierarchies containing objects created by SafeUnpickler.
+    Due to reasons unknown, pythons pickle implementation will normally check if a given class
+    actually matches with the object specified at the __module__ and __name__ of the class. Since
+    this check is performed with object identity instead of object equality we cannot fake this from
+    the classes themselves, and we need to override the method used for normally saving classes.
+    """
+
+    def save_global(self, obj, name=None, pack=struct.pack):
+        if isinstance(obj, FakeClassType):
+            self.write(pickle.GLOBAL + obj.__module__ + '\n' + obj.__name__ + '\n')
+            self.memoize(obj)
+            return
+
+        pickle.Pickler.save_global(self, obj, name, pack)
 
 # the main API
 
@@ -555,7 +559,7 @@ def loads(string, class_factory=None, encoding="bytes", errors="errors"):
     return FakeUnpickler(StringIO(string), class_factory,
                          encoding=encoding, errors=errors).load()
 
-def safe_load(file, class_factory=None, safe_modules=(), fake_modules=(), use_copyreg=False,
+def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
               encoding="bytes", errors="errors"):
     """
     Read a pickled object representation from the open binary :term:`file object` *file*
@@ -582,7 +586,7 @@ def safe_load(file, class_factory=None, safe_modules=(), fake_modules=(), use_co
     This function can be used to unpickle untrusted data safely with the default
     class_factory when *safe_modules* is empty and *use_copyreg* is False.
     """
-    return SafeUnpickler(file, class_factory, safe_modules, fake_modules, use_copyreg,
+    return SafeUnpickler(file, class_factory, safe_modules, use_copyreg,
                          encoding=encoding, errors=errors).load()
 
 def safe_loads(string, class_factory=None, safe_modules=(), use_copyreg=False,
@@ -593,6 +597,20 @@ def safe_loads(string, class_factory=None, safe_modules=(), use_copyreg=False,
     """
     return SafeUnpickler(StringIO(string), class_factory, safe_modules, use_copyreg,
                          encoding=encoding, errors=errors).load()
+
+def safe_dump(obj, file, protocol=pickle.HIGHEST_PROTOCOL):
+    """
+    A convenience function wrapping SafePickler. It functions similarly to pickle.dump
+    """
+    SafePickler(file, protocol).dump(obj)
+
+def safe_dumps(obj, protocol=pickle.HIGHEST_PROTOCOL):
+    """
+    A convenience function wrapping SafePickler. It functions similarly to pickle.dumps
+    """
+    file = StringIO()
+    SafePickler(file, protocol).dump(obj)
+    return file.getvalue()
 
 def fake_package(name):
     """
