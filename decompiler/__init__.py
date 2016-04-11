@@ -21,6 +21,7 @@
 from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
                  reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
+from translate import say_get_code
 
 from operator import itemgetter
 from StringIO import StringIO
@@ -35,14 +36,14 @@ import testcasedecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "util", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
 
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None):
+           decompile_python=False, printlock=None, translator=None):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python).dump(ast, indent_level)
+               decompile_python=decompile_python, translator=translator).dump(ast, indent_level)
 
 # Implementation
 
@@ -56,9 +57,10 @@ class Decompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 indentation = '    ', printlock=None):
+                 indentation = '    ', printlock=None, translator=None):
         super(Decompiler, self).__init__(out_file, indentation, printlock)
         self.decompile_python = decompile_python
+        self.translator = translator
 
         self.paired_with = False
         self.say_inside_menu = None
@@ -75,6 +77,9 @@ class Decompiler(DecompilerBase):
             # A very crude version check, but currently the best we can do.
             # Note that this commit first appears in the 6.99 release.
             self.is_356c6e34_or_later = True
+
+        if self.translator:
+            self.translator.translate_dialogue(ast)
 
         # skip_indent_until_write avoids an initial blank line
         super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
@@ -577,6 +582,9 @@ class Decompiler(DecompilerBase):
                 self.write("set %s" % ast.set)
 
             for label, condition, block in ast.items:
+                if self.translator:
+                    label = self.translator.strings.get(label, label)
+
                 if isinstance(condition, unicode):
                     self.advance_to_line(condition.linenumber)
                 self.indent()
@@ -658,16 +666,7 @@ class Decompiler(DecompilerBase):
             self.say_inside_menu = ast
             return
         self.indent()
-        if ast.who is not None:
-            self.write("%s " % ast.who)
-        if hasattr(ast, 'attributes') and ast.attributes is not None:
-            for i in ast.attributes:
-                self.write("%s " % i)
-        self.write('"%s"' % string_escape(ast.what))
-        if not ast.interact and not inmenu:
-            self.write(" nointeract")
-        if ast.with_ is not None:
-            self.write(" with %s" % ast.with_)
+        self.write(say_get_code(ast, inmenu))
 
     @dispatch(renpy.ast.UserStatement)
     def print_userstatement(self, ast):

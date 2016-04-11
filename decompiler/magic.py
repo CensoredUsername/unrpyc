@@ -94,7 +94,7 @@ class FakeClassType(type):
         return self.__subclasscheck__(instance.__class__)
 
     def __subclasscheck__(self, subclass):
-        return (self.__eq__(subclass) or
+        return (self == subclass or
                 (bool(subclass.__bases__) and
                  any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 
@@ -341,7 +341,7 @@ class FakeModule(types.ModuleType):
         return self.__subclasscheck__(instance.__class__)
 
     def __subclasscheck__(self, subclass):
-        return (self.__eq__(subclass) or
+        return (self == subclass or
                 (bool(subclass.__bases__) and
                  any(self.__subclasscheck__(base) for base in subclass.__bases__)))
 
@@ -487,11 +487,12 @@ class SafeUnpickler(FakeUnpickler):
 
     This inherits from :class:`FakeUnpickler`
     """
-    def __init__(self, file, class_factory=None, safe_modules=(),
+    def __init__(self, file, class_factory=None, safe_modules=(), fake_modules=(),
                  use_copyreg=False, encoding="bytes", errors="strict"):
         FakeUnpickler.__init__(self, file, class_factory, encoding=encoding, errors=errors)
         # A set of modules which are safe to load
         self.safe_modules = set(safe_modules)
+        self.fake_modules = set(fake_modules)
         self.use_copyreg = use_copyreg
 
     def find_class(self, module, name):
@@ -501,8 +502,21 @@ class SafeUnpickler(FakeUnpickler):
             klass = getattr(mod, name)
             return klass
 
-        else:
-            return self.class_factory(name, module)
+        if module in self.fake_modules:
+            mod = sys.modules.get(module, None)
+            if mod is None:
+                mod = FakeModule(module)
+                print("Created module {0}".format(str(mod)))
+
+            if isinstance(mod, FakeModule):
+                klass = getattr(mod, name, None)
+                if klass is None or isinstance(klass, FakeModule):
+                    klass = self.class_factory(name, module)
+                    setattr(mod, name, klass)
+
+                return klass
+
+        return self.class_factory(name, module)
 
     def get_extension(self, code):
         if self.use_copyreg:
@@ -541,7 +555,7 @@ def loads(string, class_factory=None, encoding="bytes", errors="errors"):
     return FakeUnpickler(StringIO(string), class_factory,
                          encoding=encoding, errors=errors).load()
 
-def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
+def safe_load(file, class_factory=None, safe_modules=(), fake_modules=(), use_copyreg=False,
               encoding="bytes", errors="errors"):
     """
     Read a pickled object representation from the open binary :term:`file object` *file*
@@ -568,7 +582,7 @@ def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
     This function can be used to unpickle untrusted data safely with the default
     class_factory when *safe_modules* is empty and *use_copyreg* is False.
     """
-    return SafeUnpickler(file, class_factory, safe_modules, use_copyreg,
+    return SafeUnpickler(file, class_factory, safe_modules, fake_modules, use_copyreg,
                          encoding=encoding, errors=errors).load()
 
 def safe_loads(string, class_factory=None, safe_modules=(), use_copyreg=False,
