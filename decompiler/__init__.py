@@ -21,7 +21,7 @@
 from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
                  reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
-from translate import say_get_code
+from util import say_get_code
 
 from operator import itemgetter
 from StringIO import StringIO
@@ -35,6 +35,7 @@ import sl2decompiler
 import testcasedecompiler
 import codegen
 import astdump
+import translate
 
 __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
 

@@ -18,48 +18,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import magic
-magic.fake_package(b"renpy")
+from util import say_get_code
 import renpy
 
 import hashlib
 import re
 from copy import copy
-
-def encode_say_string(s):
-    """
-    Encodes a string in the format used by Ren'Py say statements.
-    """
-
-    s = s.replace("\\", "\\\\")
-    s = s.replace("\n", "\\n")
-    s = s.replace("\"", "\\\"")
-    s = re.sub(r'(?<= ) ', '\\ ', s)
-
-    return "\"" + s + "\""
-
-# Adapted from Ren'Py's Say.get_code
-def say_get_code(ast, inmenu=False):
-    rv = [ ]
-
-    if ast.who:
-        rv.append(ast.who)
-
-    if hasattr(ast, 'attributes') and ast.attributes is not None:
-        rv.extend(ast.attributes)
-
-    # no dialogue_filter applies to us
-
-    rv.append(encode_say_string(ast.what))
-
-    if not ast.interact and not inmenu:
-        rv.append("nointeract")
-
-    if ast.with_:
-        rv.append("with")
-        rv.append(ast.with_)
-
-    return " ".join(rv)
 
 class Translator(object):
     def __init__(self, language, saving_translations=False):
