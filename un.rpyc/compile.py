@@ -58,7 +58,7 @@ def Module(name, filename, munge_globals=True):
     if args.minimize:
         # in modules only locals are worth optimizing
         code = minimize.minimize(code, True, args.obfuscate and munge_globals, args.obfuscate, args.obfuscate)
-    return p.Module(name, code, False)
+    return p.Module(name, code)
 
 def Exec(code):
     if args.minimize:
@@ -70,16 +70,30 @@ def Exec(code):
 pack_folder = path.dirname(path.abspath(__file__))
 base_folder = path.dirname(pack_folder)
 
-decompiler = p.Sequence(
-                    Exec("""
+decompiler = p.ExecTranspile("""
+# Set up the namespace
+from os.path import join
+from os import getcwd
+from sys import modules, meta_path
+from renpy.loader import listdirfiles
+
+# and some things we store in the global namespace so we can access them inside exec
+global basepath
+global files
+global __package__
+
+# an easter egg
+exec '''
 try:
     import renpy
 except Exception:
     raise _Stop(({"version": "broken", "key": "thrown away"}, []))
-"""),
-                    p.AssignGlobal("basepath", p.Imports("os.path", "join")(p.Imports("os", "getcwd")(), "game"), False),
-                    p.AssignGlobal("files", p.Imports("renpy.loader", "listdirfiles")(), False),
-                    Exec("""
+''' in globals()
+
+basepath = join(getcwd(), "game")
+files = listdirfiles()
+
+exec '''
 import os, sys, renpy
 sys.files = []
 for (dir, fn) in files:
@@ -92,44 +106,67 @@ for (dir, fn) in files:
             abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
             fobj = renpy.loader.load(fn)
             sys.files.append((abspath, fn, dir, fobj))
-"""),
-                    Module("util", path.join(base_folder, "decompiler/util.py")),
-                    Module("magic", path.join(base_folder, "decompiler/magic.py"), False),
-                    Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
-                    p.Assign("renpy_modules", p.Imports("sys", "modules").copy()),
-                    Exec("""
+''' in globals()
+
+_0 # util
+_1 # magic
+_2 # codegen
+
+renpy_modules = modules.copy()
+
+exec '''
 import sys
 for i in sys.modules.copy():
     if "renpy" in i and not "renpy.execution" in i:
         sys.modules.pop(i)
-"""),
-                    p.Assign("renpy_loader", p.Imports("sys", "meta_path").pop()),
-                    p.Assign("package", p.LoadGlobal("__package__")),
-                    p.AssignGlobal("__package__", "", False),
-                    p.GetModule("traceback"),
-                    p.GetModule("codecs"),
-                    p.Imports("magic", "fake_package")("renpy"),
-                    p.Imports("magic", "FakeModule")("astdump"),
-                    #turns out we don't actually need astdump in here
-                    #Module("astdump", path.join(base_folder, "decompiler/astdump.py")),
-                    Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
-                    Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
-                    Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
-                    Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
-                    Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py")),
-                    p.Imports("unrpyc", "decompile_game")(),
-                    p.Imports("magic", "remove_fake_package")("renpy"),
-                    p.Imports("sys", "modules").update(p.Load("renpy_modules")),
-                    p.Imports("sys", "meta_path").append(p.Load("renpy_loader")),
-                    p.AssignGlobal("__package__", p.Load("package"), False),
-                    p.Imports("renpy", "script_version") # I wonder why I even bother with this since by the time this is checked, we've already done damage
-                    )
+''' in globals()
 
-rpyc = ({'version': decompiler, 'key': p.Imports("renpy.game", "script").key}, [])
+renpy_loader = meta_path.pop()
+package = __package__
+__package__ = ""
+
+import traceback as traceback
+import codecs as codecs
+
+from magic import fake_package, FakeModule, remove_fake_package
+# fake the prescense of renpy
+fake_package("renpy")
+# astdump and translate are unused
+FakeModule("astdump")
+FakeModule("translate")
+
+_3 # testcasedecompiler
+_4 # screendecompiler
+_5 # sl2decompiler
+_6 # decompiler
+_7 # unrpyc
+
+from unrpyc import decompile_game
+decompile_game()
+remove_fake_package("renpy")
+
+modules.update(renpy_modules)
+meta_path.append(renpy_loader)
+__package__ = package
+
+from renpy import script_version
+from renpy.game import script
+({'version': script_version, 'key': script.key}, [])
+""", (
+    Module("util", path.join(base_folder, "decompiler/util.py")),
+    Module("magic", path.join(base_folder, "decompiler/magic.py"), False),
+    Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
+    Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
+    Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+    Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
+    Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
+    Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
+))
+
 
 unrpyc = zlib.compress(
              p.optimize(
-                 p.dumps(rpyc, protocol),
+                 p.dumps(decompiler, protocol),
              protocol),
          9)
 
@@ -162,4 +199,4 @@ if args.debug:
         pickletools.dis(data, f)
 
     with open(path.join(pack_folder, "un.dis3"), "wb" if p.PY2 else "w") as f:
-        p.pprint(rpyc, f)
+        p.pprint(decompiler, f)
