@@ -9,9 +9,7 @@ setup(
     description='Tool to decompile Ren\'Py compiled .rpyc script files.',
     long_description=readme(),
     url='https://github.com/CensoredUsername/unrpyc',
-    packages=['unrpyc','decompiler'],
-    entry_points={
-        'console_scripts': ['unrpyc=unrpyc:main'],
-    },
+    packages=['decompiler'],
+    scripts=['unrpyc.py'],
     zip_safe=False,
 )
