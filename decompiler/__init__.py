@@ -35,7 +35,6 @@ import sl2decompiler
 import testcasedecompiler
 import codegen
 import astdump
-import translate
 
 __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
 
