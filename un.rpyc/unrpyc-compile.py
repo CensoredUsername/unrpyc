@@ -22,6 +22,7 @@ import os
 import os.path as path
 import codecs
 import traceback
+import struct
 
 import decompiler
 import magic
