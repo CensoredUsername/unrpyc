@@ -231,6 +231,7 @@ class SL2Decompiler(DecompilerBase):
         (ui._imagemap, "imagemap"):        ("imagemap", 'many'),
         (layout.Side, "side"):             ("side", 'many'),
         (layout.Grid, "grid"):             ("grid", 'many'),
+        (sld.sl2vpgrid, "vpgrid"):         ("vpgrid", 'many'),
         (layout.MultiBox, "fixed"):        ("fixed", 'many'),
         (layout.MultiBox, "vbox"):         ("vbox", 'many'),
         (layout.MultiBox, "hbox"):         ("hbox", 'many')
