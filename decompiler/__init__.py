@@ -72,7 +72,7 @@ class Decompiler(DecompilerBase):
     def dump(self, ast, indent_level=0):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
-            ast[-1].expression is None and
+            (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
             ast[-1].linenumber == ast[-2].linenumber):
             # A very crude version check, but currently the best we can do.
             # Note that this commit first appears in the 6.99 release.
@@ -395,7 +395,7 @@ class Decompiler(DecompilerBase):
             return
         remaining_blocks = len(self.block) - self.index
         # See if we're the label for a menu, rather than a standalone label.
-        if remaining_blocks > 1 and not ast.block and ast.parameters is None:
+        if remaining_blocks > 1 and not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None):
             next_ast = self.block[self.index + 1]
             if (hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
                 (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
@@ -415,7 +415,7 @@ class Decompiler(DecompilerBase):
         try:
             self.write("label %s%s%s:" % (
                 ast.name,
-                reconstruct_paraminfo(ast.parameters),
+                reconstruct_paraminfo(ast.parameters) if hasattr(ast, 'parameters') else '',
                 " hide" if hasattr(ast, 'hide') and ast.hide else ""))
             self.print_nodes(ast.block, 1)
         finally:
@@ -439,7 +439,7 @@ class Decompiler(DecompilerBase):
             words.append("expression")
         words.append(ast.label)
 
-        if ast.arguments is not None:
+        if hasattr(ast, 'arguments') and ast.arguments is not None:
             if ast.expression:
                 words.append("pass")
             words.append(reconstruct_arginfo(ast.arguments))
@@ -454,7 +454,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Return)
     def print_return(self, ast):
-        if (ast.expression is None and self.parent is None and
+        if ((not hasattr(ast, 'expression') or ast.expression is None) and self.parent is None and
             self.index + 1 == len(self.block) and self.index and
             ast.linenumber == self.block[self.index - 1].linenumber):
             # As of Ren'Py commit 356c6e34, a return statement is added to
@@ -464,7 +464,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("return")
 
-        if ast.expression is not None:
+        if hasattr(ast, 'expression') and ast.expression is not None:
             self.write(" %s" % ast.expression)
 
     @dispatch(renpy.ast.If)
@@ -477,7 +477,8 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("else:")
             else:
-                self.advance_to_line(condition.linenumber)
+                if(hasattr(condition, 'linenumber')):
+                    self.advance_to_line(condition.linenumber)
                 self.indent()
                 self.write(statement() % condition)
 
