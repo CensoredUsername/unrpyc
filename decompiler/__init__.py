@@ -101,8 +101,8 @@ class Decompiler(DecompilerBase):
     # ATL printing functions
 
     def print_atl(self, ast):
-        self.advance_to_line(ast.loc[1])
         with self.increase_indent():
+            self.advance_to_line(ast.loc[1])
             if ast.statements:
                 self.print_nodes(ast.statements)
             # If a statement ends with a colon but has no block after it, loc will
@@ -739,8 +739,8 @@ class Decompiler(DecompilerBase):
 
         # TranslateString's linenumber refers to the line with "old", not to the
         # line with "translate %s strings:"
-        self.advance_to_line(ast.linenumber)
         with self.increase_indent():
+            self.advance_to_line(ast.linenumber)
             self.indent()
             self.write('old "%s"' % string_escape(ast.old))
             self.indent()
