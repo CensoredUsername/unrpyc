@@ -80,7 +80,7 @@ def read_ast_from_file(in_file):
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None):
+                   comparable=False, no_pyexpr=False, translator=None, init_offset=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     out_filename = filepath + ('.txt' if dump else '.rpy')
@@ -101,7 +101,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                           no_pyexpr=no_pyexpr)
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
-                                             translator=translator)
+                                             translator=translator, init_offset=init_offset)
     return True
 
 def extract_translations(input_filename, language):
@@ -128,7 +128,7 @@ def worker(t):
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator)
+                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, init_offset=args.init_offset)
     except Exception as e:
         with printlock:
             print "Error while decompiling %s:" % filename
@@ -173,6 +173,11 @@ def main():
                         help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
                         "This is useful when comparing dumps from different versions of Ren'Py. "
                         "It should only be used if necessary, since it will cause loss of information such as line numbers.")
+
+    parser.add_argument('--init-offset', dest='init_offset', action='store_true',
+                        help="Attempt to guess when init offset statements were used and insert them. "
+                        "This is always safe to enable if the game's Ren'Py version supports init offset statements, "
+                        "and the generated code is exactly equivalent, only less cluttered.")
 
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile. "

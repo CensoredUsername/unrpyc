@@ -41,9 +41,9 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None, translator=None):
+           decompile_python=False, printlock=None, translator=None, init_offset=False):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python, translator=translator).dump(ast, indent_level)
+               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset)
 
 # Implementation
 
@@ -70,7 +70,7 @@ class Decompiler(DecompilerBase):
         self.init_offset = 0
         self.is_356c6e34_or_later = False
 
-    def dump(self, ast, indent_level=0):
+    def dump(self, ast, indent_level=0, init_offset=False):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
             (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
@@ -81,6 +81,9 @@ class Decompiler(DecompilerBase):
 
         if self.translator:
             self.translator.translate_dialogue(ast)
+
+        if init_offset and isinstance(ast, (tuple, list)):
+            self.set_best_init_offset(ast)
 
         # skip_indent_until_write avoids an initial blank line
         super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
@@ -517,6 +520,28 @@ class Decompiler(DecompilerBase):
         if not self.in_init:
             self.missing_init = True
 
+    def set_best_init_offset(self, nodes):
+        votes = {}
+        for ast in nodes:
+            if not isinstance(ast, renpy.ast.Init):
+                continue
+            offset = ast.priority
+            # Keep this block in sync with print_init
+            if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
+                if isinstance(ast.block[0], renpy.ast.Screen):
+                    offset -= -500
+                elif isinstance(ast.block[0], renpy.ast.Testcase):
+                    offset -= 500
+                elif isinstance(ast.block[0], renpy.ast.Image):
+                    offset -= 500 if self.is_356c6e34_or_later else 990
+            votes[offset] = votes.get(offset, 0) + 1
+        if votes:
+            winner = max(votes, key=votes.get)
+            # It's only worth setting an init offset if it would save
+            # more than one priority specification versus not setting one.
+            if votes.get(0, 0) + 1 < votes[winner]:
+                self.set_init_offset(winner)
+
     def set_init_offset(self, offset):
         def do_set_init_offset(linenumber):
             # if we got to the end of the file and haven't emitted this yet,
@@ -538,6 +563,7 @@ class Decompiler(DecompilerBase):
         try:
             # A bunch of statements can have implicit init blocks
             # Define has a default priority of 0, screen of -500 and image of 990
+            # Keep this block in sync with set_best_init_offset
             # TODO merge this and require_init into another decorator or something
             if len(ast.block) == 1 and (
                 isinstance(ast.block[0], (renpy.ast.Define,

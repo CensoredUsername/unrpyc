@@ -33,6 +33,10 @@ Options:
                  dumps from different versions of Ren'Py. It should only be used
                  if necessary, since it will cause loss of information such as
                  line numbers.
+  --init-offset  Attempt to guess when init offset statements were used and
+                 insert them. This is always safe to enable if the game's Ren'Py
+                 version supports init offset statements, and the generated code
+                 is exactly equivalent, only less cluttered.
 
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
