@@ -15,6 +15,7 @@ class DecompilerBase(object):
 
         self.block_stack = []
         self.index_stack = []
+        self.blank_line_queue = []
 
     def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         """
@@ -61,7 +62,7 @@ class DecompilerBase(object):
         Save our current state.
         """
         state = (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level)
+            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue)
         self.out_file = StringIO()
         return state
 
@@ -78,14 +79,25 @@ class DecompilerBase(object):
         Roll back to a saved state.
         """
         (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level) = state
+            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue) = state
 
     def advance_to_line(self, linenumber):
+        # If there was anything that we wanted to do as soon as we found a blank line,
+        # try to do it now.
+        self.blank_line_queue = filter(lambda m: m(linenumber), self.blank_line_queue)
         if self.linenumber < linenumber:
             # Stop one line short, since the call to indent() will advance the last line.
             # Note that if self.linenumber == linenumber - 1, this will write the empty string.
             # This is to make sure that skip_indent_until_write is cleared in that case.
             self.write("\n" * (linenumber - self.linenumber - 1))
+
+    def do_when_blank_line(self, m):
+        """
+        Do something the next time we find a blank line. m should be a method that takes one
+        parameter (the line we're advancing to), and returns whether or not it needs to run
+        again.
+        """
+        self.blank_line_queue.append(m)
 
     def indent(self):
         """
