@@ -517,6 +517,20 @@ class Decompiler(DecompilerBase):
         if not self.in_init:
             self.missing_init = True
 
+    def set_init_offset(self, offset):
+        def do_set_init_offset(linenumber):
+            # if we got to the end of the file and haven't emitted this yet,
+            # don't bother, since it only applies to stuff below it.
+            if linenumber is None or linenumber - self.linenumber <= 1 or self.indent_level:
+                return True
+            if offset != self.init_offset:
+                self.indent()
+                self.write("init offset = %s" % offset)
+                self.init_offset = offset
+            return False
+
+        self.do_when_blank_line(do_set_init_offset)
+
     @dispatch(renpy.ast.Init)
     def print_init(self, ast):
         in_init = self.in_init
