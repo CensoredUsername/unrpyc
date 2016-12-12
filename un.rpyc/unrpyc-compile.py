@@ -70,7 +70,7 @@ def ensure_dir(filename):
     if dir and not path.exists(dir):
         os.makedirs(dir)
 
-def decompile_rpyc(file_obj, abspath):
+def decompile_rpyc(file_obj, abspath, init_offset):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
     out_filename = filepath + '.rpy'
@@ -79,7 +79,7 @@ def decompile_rpyc(file_obj, abspath):
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
-        decompiler.pprint(out_file, ast)
+        decompiler.pprint(out_file, ast, init_offset=init_offset)
     return True
 
 def decompile_game():
@@ -90,7 +90,7 @@ def decompile_game():
 
         for abspath, fn, dir, file in sys.files:
             try:
-                decompile_rpyc(file, abspath)
+                decompile_rpyc(file, abspath, sys.init_offset)
             except Exception, e:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']

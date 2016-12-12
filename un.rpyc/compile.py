@@ -95,6 +95,7 @@ files = listdirfiles()
 
 exec '''
 import os, sys, renpy
+sys.init_offset = renpy.version_tuple >= (6, 99, 10, 1224)
 sys.files = []
 for (dir, fn) in files:
     if fn.endswith(".rpyc"):
