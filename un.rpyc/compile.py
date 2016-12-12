@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can
 
 parser.add_argument("-d", "--debug", dest="debug", action="store_true", help="Create debug files")
 
-parser.add_argument("-m", "--magic-path", dest="magic", action="store",
+parser.add_argument("-m", "--magic-path", dest="magic", action="store", default="picklemagic"
                     help="In case picklemagic isn't in the python search path you can specify its folder here")
 
 parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
@@ -42,9 +42,7 @@ parser.add_argument("-o", "--obfuscate", dest="obfuscate", action="store_true",
 
 args = parser.parse_args()
 
-if args.magic:
-    sys.path.append(path.abspath(args.magic))
-
+sys.path.append(path.abspath(args.magic))
 protocol = int(args.protocol)
 
 try:
