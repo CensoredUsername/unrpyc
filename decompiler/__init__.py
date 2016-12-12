@@ -121,7 +121,6 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
-        self.indent()
         warp_words = WordConcatenator(False)
 
         # warpers
@@ -172,7 +171,14 @@ class Decompiler(DecompilerBase):
                 expression_words.append("pass")
         words.append(expression_words.join())
 
-        self.write(warp + words.join())
+        to_write = warp + words.join()
+        if to_write:
+            self.indent()
+            self.write(to_write)
+        else:
+            # A trailing comma results in an empty RawMultipurpose being
+            # generated on the same line as the last real one.
+            self.write(",")
 
     @dispatch(renpy.atl.RawBlock)
     def print_atl_rawblock(self, ast):

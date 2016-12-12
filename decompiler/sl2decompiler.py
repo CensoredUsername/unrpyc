@@ -246,7 +246,12 @@ class SL2Decompiler(DecompilerBase):
         keywords_by_line = []
         current_line = (lineno, [])
         for key, value in keywords:
-            if current_line[0] is None or value.linenumber > current_line[0]:
+            if value is None:
+                value = ""
+                if current_line[0] is None:
+                    keywords_by_line.append(current_line)
+                    current_line = (0, [])
+            elif current_line[0] is None or value.linenumber > current_line[0]:
                 keywords_by_line.append(current_line)
                 current_line = (value.linenumber, [])
             current_line[1].extend((key, value))
