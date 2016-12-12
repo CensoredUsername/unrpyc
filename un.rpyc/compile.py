@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can
 
 parser.add_argument("-d", "--debug", dest="debug", action="store_true", help="Create debug files")
 
-parser.add_argument("-m", "--magic-path", dest="magic", action="store", default="picklemagic"
+parser.add_argument("-m", "--magic-path", dest="magic", action="store", default="picklemagic",
                     help="In case picklemagic isn't in the python search path you can specify its folder here")
 
 parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
