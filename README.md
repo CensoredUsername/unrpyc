@@ -1,6 +1,12 @@
+master: [![Build Status](https://travis-ci.org/CensoredUsername/unrpyc.svg?branch=master)]
+(https://travis-ci.org/CensoredUsername/unrpyc)
+
+dev: [![Build Status](https://travis-ci.org/CensoredUsername/unrpyc.svg?branch=dev)]
+(https://travis-ci.org/CensoredUsername/unrpyc)
+
 Unrpyc is a script to decompile Ren'Py (http://www.renpy.org/) compiled .rpyc
 script files. It will not extract files from .rpa archives. For that, use
-rpatool (https://github.com/Shizmob/rpatool), or UnRPA
+[rpatool](https://github.com/Shizmob/rpatool) or [UnRPA]
 (https://github.com/Lattyware/unrpa).
 
 Thanks to recent changes, unrpyc no longer needs internal renpy structures to
@@ -9,6 +15,7 @@ work.
 Usage options:
 
 Options:
+```
   --version      show program's version number and exit
 
   -h, --help     show this help message and exit
@@ -37,7 +44,7 @@ Options:
                  insert them. This is always safe to enable if the game's Ren'Py
                  version supports init offset statements, and the generated code
                  is exactly equivalent, only less cluttered.
-
+```
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
 You can give several .rpyc files on the command line. Each script will be
@@ -70,14 +77,14 @@ the un.rpyc file into the "game" directory inside the game files and everything
 will be decompiled.
 
 Supported:
-renpy version 6
-Windows, OSX and Linux
+* renpy version 6
+* Windows, OSX and Linux
 
 Unrpyc has only been tested on versions up to 6.99.9, though newer versions are
 expected to mostly work. If you find an error due to a new ren'py version being
 incompatible, please open an issue.
 
 Requirements:
-Python version 2.7
+* Python version 2.7
 
 https://github.com/CensoredUsername/unrpyc
