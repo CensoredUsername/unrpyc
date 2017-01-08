@@ -1,6 +1,17 @@
 language: python
 python:
-    - "2.7"
+- '2.7'
 script:
-    - cd un.rpyc
-    - ./compile.py -p 1
+- cd un.rpyc
+- "./compile.py -p 1"
+- cd ..
+before_deploy: "./make-bintray-json.sh"
+deploy:
+  skip_cleanup: true
+  on:
+    all_branches: true
+  provider: bintray
+  file: bintray.json
+  user: jackmcbarn
+  key:
+    secure: g9uz4gG8Dmb9cTG4hNNmuzQvKON00NTON2lOfQH6HbYkFYySwCJ76Kq1D11d7luav2s/bPytuNSrIUCTwGZf64eMGDuZbbpFR4dGEIuxYmSKbCqTL9getd5EapwxffQPoridG/SZGOBRLgI+zw0XRlNMDfBJQxp+B8Zs7u7+xMg=

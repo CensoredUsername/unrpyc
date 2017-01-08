@@ -12,3 +12,5 @@
 /dist
 /tests
 /*.egg-info
+
+/bintray.json

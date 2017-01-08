@@ -1,0 +1,19 @@
+{
+    "package": {
+        "name": "un.rpyc-BRANCHNAME",
+        "repo": "unrpyc",
+        "subject": "jackmcbarn"
+    },
+
+    "version": {
+        "name": "1.0.6+gGITREV"
+    },
+
+    "files": {
+        [
+        {"includePattern": "un.rpyc/un.rpyc", "uploadPattern": "un.rpyc"}
+        ]
+    },
+
+    "publish": true
+}
