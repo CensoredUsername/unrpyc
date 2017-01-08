@@ -9,11 +9,10 @@
         "name": "1.0.6+gGITREV"
     },
 
-    "files": {
+    "files":
         [
         {"includePattern": "un.rpyc/un.rpyc", "uploadPattern": "un.rpyc"}
-        ]
-    },
+        ],
 
     "publish": true
 }
