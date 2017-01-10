@@ -19,7 +19,7 @@ define s = Character('Sylvie', color="#c8ffc8")
 define m = Character('Me', color="#c8c8ff")
 
 
-label start: # intentional difference to test failure
+label start:
     $ bl_game = False
 
     play music "illurock.ogg"
