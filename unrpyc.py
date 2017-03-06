@@ -195,7 +195,12 @@ def main():
             args.translations = in_file.read()
 
     # Expand wildcards
-    filesAndDirs = map(glob.glob, args.file)
+    def glob_or_complain(s):
+        retval = glob.glob(s)
+        if not retval:
+            print "File not found: " + s
+        return retval
+    filesAndDirs = map(glob_or_complain, args.file)
     # Concatenate lists
     filesAndDirs = list(itertools.chain(*filesAndDirs))
 
@@ -208,10 +213,11 @@ def main():
         else:
             files.append(i)
 
-    # Check if we actually have files
+    # Check if we actually have files. Don't worry about
+    # no parameters passed, since ArgumentParser catches that
     if len(files) == 0:
-        parser.print_help();
-        parser.error("No script files given.")
+        print "No script files to decompile."
+        return
 
     files = map(lambda x: (args, x, path.getsize(x)), files)
     processes = int(args.processes)
