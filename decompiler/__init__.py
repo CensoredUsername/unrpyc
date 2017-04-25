@@ -145,8 +145,8 @@ class Decompiler(DecompilerBase):
         # splines
         spline_words = WordConcatenator(False)
         for name, expressions in ast.splines:
-            spline_words.append(name)
-            for expression in expressions:
+            spline_words.append(name, expressions[-1])
+            for expression in expressions[:-1]:
                 spline_words.append("knot", expression)
         words.append(spline_words.join())
 
