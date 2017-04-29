@@ -140,7 +140,7 @@ class DecompilerBase(object):
         if self.printlock:
             self.printlock.acquire()
         try:
-            print message
+            print(message)
         finally:
             if self.printlock:
                 self.printlock.release()

@@ -86,10 +86,10 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
     out_filename = filepath + ('.txt' if dump else '.rpy')
 
     with printlock:
-        print "Decompiling %s to %s..." % (input_filename, out_filename)
+        print("Decompiling %s to %s..." % (input_filename, out_filename))
 
         if not overwrite and path.exists(out_filename):
-            print "Output file already exists. Pass --clobber to overwrite."
+            print("Output file already exists. Pass --clobber to overwrite.")
             return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
@@ -106,7 +106,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
 
 def extract_translations(input_filename, language):
     with printlock:
-        print "Extracting translations from %s..." % input_filename
+        print("Extracting translations from %s..." % input_filename)
 
     with open(input_filename, 'rb') as in_file:
         ast = read_ast_from_file(in_file)
@@ -131,8 +131,8 @@ def worker(t):
                                   no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, init_offset=args.init_offset)
     except Exception as e:
         with printlock:
-            print "Error while decompiling %s:" % filename
-            print traceback.format_exc()
+            print("Error while decompiling %s:" % filename)
+            print(traceback.format_exc())
         return False
 
 def sharelock(lock):
@@ -187,7 +187,7 @@ def main():
 
     if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
         # Fail early to avoid wasting time going through the files
-        print "Output translation file already exists. Pass --clobber to overwrite."
+        print("Output translation file already exists. Pass --clobber to overwrite.")
         return
 
     if args.translation_file:
@@ -198,7 +198,7 @@ def main():
     def glob_or_complain(s):
         retval = glob.glob(s)
         if not retval:
-            print "File not found: " + s
+            print("File not found: " + s)
         return retval
     filesAndDirs = map(glob_or_complain, args.file)
     # Concatenate lists
@@ -216,7 +216,7 @@ def main():
     # Check if we actually have files. Don't worry about
     # no parameters passed, since ArgumentParser catches that
     if len(files) == 0:
-        print "No script files to decompile."
+        print("No script files to decompile.")
         return
 
     files = map(lambda x: (args, x, path.getsize(x)), files)
@@ -233,7 +233,7 @@ def main():
         results = map(worker, files)
 
     if args.write_translation_file:
-        print "Writing translations to %s..." % args.write_translation_file
+        print("Writing translations to %s..." % args.write_translation_file)
         translated_dialogue = {}
         translated_strings = {}
         good = 0
@@ -254,11 +254,11 @@ def main():
         bad = results.count(False)
 
     if bad == 0:
-        print "Decompilation of %d script file%s successful" % (good, 's' if good>1 else '')
+        print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))
     elif good == 0:
-        print "Decompilation of %d file%s failed" % (bad, 's' if bad>1 else '')
+        print("Decompilation of %d file%s failed" % (bad, 's' if bad>1 else ''))
     else:
-        print "Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else '')
+        print("Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else ''))
 
 if __name__ == '__main__':
     main()
