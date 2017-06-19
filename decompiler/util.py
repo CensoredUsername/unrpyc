@@ -140,7 +140,7 @@ class DecompilerBase(object):
         if self.printlock:
             self.printlock.acquire()
         try:
-            print message
+            print(message)
         finally:
             if self.printlock:
                 self.printlock.release()
@@ -239,7 +239,7 @@ KEYWORDS = set(['$', 'as', 'at', 'behind', 'call', 'expression', 'hide',
                 'python', 'return', 'scene', 'set', 'show', 'with',
                 'while', 'zorder', 'transform'])
 
-word_regexp = ur'[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*'
+word_regexp = '[a-zA-Z_\u00a0-\ufffd][0-9a-zA-Z_\u00a0-\ufffd]*'
 
 def simple_expression_guard(s):
     # Some things we deal with are supposed to be parsed by
@@ -281,20 +281,20 @@ class Lexer(object):
 
     def eol(self):
         # eat the next whitespace and check for the end of this simple_expression
-        self.re(ur"(\s+|\\\n)+")
+        self.re(r"(\s+|\\\n)+")
         return self.pos >= self.length
 
     def match(self, regexp):
         # strip whitespace and match regexp
-        self.re(ur"(\s+|\\\n)+")
+        self.re(r"(\s+|\\\n)+")
         return self.re(regexp)
 
     def python_string(self, clear_whitespace=True):
         # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
         if clear_whitespace:
-            return self.match(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.match(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
         else:
-            return self.re(ur"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.re(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
 
 
     def container(self):
