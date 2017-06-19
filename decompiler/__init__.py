@@ -797,6 +797,7 @@ class Decompiler(DecompilerBase):
             self.write('new "%s"' % string_escape(ast.new))
 
     @dispatch(renpy.ast.TranslateBlock)
+    @dispatch(renpy.ast.TranslateEarlyBlock)
     def print_translateblock(self, ast):
         self.indent()
         self.write("translate %s " % (ast.language or "None"))
