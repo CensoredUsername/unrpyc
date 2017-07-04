@@ -136,7 +136,7 @@ class DecompilerBase(object):
             return None
         return self.block_stack[-2][self.index_stack[-2]]
 
-    def write_failure(self, message):
+    def print_debug(self, message):
         if self.printlock:
             self.printlock.acquire()
         try:
@@ -144,6 +144,9 @@ class DecompilerBase(object):
         finally:
             if self.printlock:
                 self.printlock.release()
+
+    def write_failure(self, message):
+        self.print_debug(message)
         self.indent()
         self.write("pass # <<<COULD NOT DECOMPILE: %s>>>" % message)
 

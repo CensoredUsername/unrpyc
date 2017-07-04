@@ -174,32 +174,44 @@ class SL2Decompiler(DecompilerBase):
         key = (ast.displayable, ast.style)
         nameAndChildren = self.displayable_names.get(key)
         if nameAndChildren is None:
-            self.write_failure("Unknown SL2 displayable: %s" % str(key))
+            # This is either a displayable we don't know about, or a user-defined displayable
+
+            # workaround: assume the name of the displayable matches the given style
+            # this is rather often the case. However, as it may be wrong we have to
+            # print a debug message
+            nameAndChildren = (ast.style, 'many')
+            self.print_debug(
+ """Warning: Encountered a user-defined displayable of type '{}'.
+    Unfortunately, the name of user-defined displayables is not recorded in the compiled file.
+    For now the style name '{}' will be substituted.
+    To check if this is correct, find the corresponding renpy.register_sl_displayable call.""".format(
+                    ast.displayable, ast.style
+                )
+            )
+        (name, children) = nameAndChildren
+        self.indent()
+        self.write(name)
+        if ast.positional:
+            self.write(" " + " ".join(ast.positional))
+        # The AST contains no indication of whether or not "has" blocks
+        # were used. We'll use one any time it's possible (except for
+        # directly nesting them, or if they wouldn't contain any children),
+        # since it results in cleaner code.
+        if (not has_block and children == 1 and len(ast.children) == 1 and
+            isinstance(ast.children[0], sl2.slast.SLDisplayable) and
+            ast.children[0].children and (not ast.keyword or
+                ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
+            self.print_keywords_and_children(ast.keyword, [],
+                ast.location[1], needs_colon=True)
+            self.advance_to_line(ast.children[0].location[1])
+            with self.increase_indent():
+                self.indent()
+                self.write("has ")
+                self.skip_indent_until_write = True
+                self.print_displayable(ast.children[0], True)
         else:
-            (name, children) = nameAndChildren
-            self.indent()
-            self.write(name)
-            if ast.positional:
-                self.write(" " + " ".join(ast.positional))
-            # The AST contains no indication of whether or not "has" blocks
-            # were used. We'll use one any time it's possible (except for
-            # directly nesting them, or if they wouldn't contain any children),
-            # since it results in cleaner code.
-            if (not has_block and children == 1 and len(ast.children) == 1 and
-                isinstance(ast.children[0], sl2.slast.SLDisplayable) and
-                ast.children[0].children and (not ast.keyword or
-                    ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
-                self.print_keywords_and_children(ast.keyword, [],
-                    ast.location[1], needs_colon=True)
-                self.advance_to_line(ast.children[0].location[1])
-                with self.increase_indent():
-                    self.indent()
-                    self.write("has ")
-                    self.skip_indent_until_write = True
-                    self.print_displayable(ast.children[0], True)
-            else:
-                self.print_keywords_and_children(ast.keyword, ast.children,
-                     ast.location[1], has_block=has_block)
+            self.print_keywords_and_children(ast.keyword, ast.children,
+                 ast.location[1], has_block=has_block)
 
     displayable_names = {
         (behavior.OnEvent, None):          ("on", 0),
