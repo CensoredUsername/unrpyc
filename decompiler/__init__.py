@@ -812,6 +812,14 @@ class Decompiler(DecompilerBase):
         finally:
             self.in_init = in_init
 
+    @dispatch(renpy.ast.TranslateEarlyBlock)
+    def print_translateearlyblock(self, ast):
+        """
+        class TranslateEarlyBlock(TranslateBlock):
+        This is similar to the TranslateBlock, except it runs before deferred styles do.
+        """
+        print_translateblock(self,ast)
+
     # Screens
 
     @dispatch(renpy.ast.Screen)
