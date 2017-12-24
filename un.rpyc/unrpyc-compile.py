@@ -73,7 +73,7 @@ def ensure_dir(filename):
 def decompile_rpyc(file_obj, abspath, init_offset):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
-    out_filename = filepath + '.rpy'
+    out_filename = filepath + ('.rpym' if ext == ".rpymc" else ".rpy")
 
     ast = read_ast_from_file(file_obj)
 

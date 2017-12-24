@@ -83,7 +83,12 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                    comparable=False, no_pyexpr=False, translator=None, init_offset=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
-    out_filename = filepath + ('.txt' if dump else '.rpy')
+    if dump:
+        out_filename = filepath + ".txt"
+    elif ext == ".rpymc":
+        out_filename = filepath + ".rpym"
+    else:
+        out_filename = filepath + ".rpy"
 
     with printlock:
         print("Decompiling %s to %s..." % (input_filename, out_filename))
@@ -141,7 +146,7 @@ def sharelock(lock):
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
-    parser = argparse.ArgumentParser(description="Decompile .rpyc files")
+    parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
 
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
                         help="overwrites existing output files")
@@ -209,7 +214,7 @@ def main():
     for i in filesAndDirs:
         if path.isdir(i):
             for dirpath, dirnames, filenames in walk(i):
-                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j[-5:] == '.rpyc')
+                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpycm')))
         else:
             files.append(i)
 
