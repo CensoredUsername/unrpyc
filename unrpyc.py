@@ -214,7 +214,7 @@ def main():
     for i in filesAndDirs:
         if path.isdir(i):
             for dirpath, dirnames, filenames in walk(i):
-                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpycm')))
+                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpymc')))
         else:
             files.append(i)
 
