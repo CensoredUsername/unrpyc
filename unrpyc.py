@@ -52,7 +52,12 @@ class PyCode(magic.FakeStrict):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return list.__new__(list)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList), magic.FakeStrict)
 
 printlock = Lock()
 
