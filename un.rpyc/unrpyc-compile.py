@@ -85,7 +85,9 @@ def decompile_rpyc(file_obj, abspath, init_offset):
 def decompile_game():
     import sys
 
-    with open(path.join(os.getcwd(), "game/unrpyc.log.txt"), "w") as f:
+    logfile = path.join(os.getcwd(), "game/unrpyc.log.txt")
+    ensure_dir(logfile)
+    with open(logfile, "w") as f:
         f.write("Beginning decompiling\n")
 
         for abspath, fn, dir, file in sys.files:
