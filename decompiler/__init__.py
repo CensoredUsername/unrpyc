@@ -578,6 +578,7 @@ class Decompiler(DecompilerBase):
                 (ast.priority == -500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Screen)) or
                 (ast.priority == self.init_offset and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Testcase)) or
+                (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("layeredimage ")) or
                 # Images had their default init priority changed in commit 679f9e31 (Ren'Py 6.99.10).
                 # We don't have any way of detecting this commit, though. The closest one we can
                 # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
@@ -723,6 +724,19 @@ class Decompiler(DecompilerBase):
     def print_userstatement(self, ast):
         self.indent()
         self.write(ast.line)
+
+        if hasattr(ast, "block") and ast.block:
+            with self.increase_indent():
+                self.print_lex(ast.block)
+
+    def print_lex(self, lex):
+        for file, linenumber, content, block in lex:
+            self.advance_to_line(linenumber)
+            self.indent()
+            self.write(content)
+            if block:
+                with self.increase_indent():
+                    self.print_lex(block)
 
     @dispatch(renpy.ast.Style)
     def print_style(self, ast):
