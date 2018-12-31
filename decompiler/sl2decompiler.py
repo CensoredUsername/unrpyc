@@ -117,7 +117,11 @@ class SL2Decompiler(DecompilerBase):
             children = ast.children
 
         self.indent()
-        self.write("for %sin %s:" % (variable, ast.expression))
+        if hasattr(ast, "index_expression") and ast.index_expression is not None:
+            self.write("for %sindex %s in %s:" % (variable, ast.index_expression, ast.expression))
+
+        else:
+            self.write("for %sin %s:" % (variable, ast.expression))
 
         # Interestingly, for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
