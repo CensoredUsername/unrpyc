@@ -84,6 +84,7 @@ global __package__
 
 # an easter egg
 exec '''
+import StringIO
 try:
     import renpy
 except Exception:
@@ -105,8 +106,8 @@ for (dir, fn) in files:
             continue
         elif (dir, fn[:-1]) not in files:
             abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
-            fobj = renpy.loader.load(fn)
-            sys.files.append((abspath, fn, dir, fobj))
+            with renpy.loader.load(fn) as file:
+                sys.files.append((abspath, fn, dir, file.read()))
 ''' in globals()
 
 _0 # util

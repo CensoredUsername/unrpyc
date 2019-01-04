@@ -45,9 +45,8 @@ class PyCode(magic.FakeStrict):
 
 factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
 
-def read_ast_from_file(in_file):
+def read_ast_from_file(raw_contents):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
-    raw_contents = in_file.read()
     if raw_contents.startswith("RENPY RPC2"):
         # parse the archive structure
         position = 10
@@ -70,12 +69,12 @@ def ensure_dir(filename):
     if dir and not path.exists(dir):
         os.makedirs(dir)
 
-def decompile_rpyc(file_obj, abspath, init_offset):
+def decompile_rpyc(data, abspath, init_offset):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
     out_filename = filepath + ('.rpym' if ext == ".rpymc" else ".rpy")
 
-    ast = read_ast_from_file(file_obj)
+    ast = read_ast_from_file(data)
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
@@ -90,17 +89,15 @@ def decompile_game():
     with open(logfile, "w") as f:
         f.write("Beginning decompiling\n")
 
-        for abspath, fn, dir, file in sys.files:
+        for abspath, fn, dir, data in sys.files:
             try:
-                decompile_rpyc(file, abspath, sys.init_offset)
+                decompile_rpyc(data, abspath, sys.init_offset)
             except Exception, e:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
                 f.write("\nDecompiled {0}\n".format(abspath))
-            finally:
-                file.close()
 
         f.write("\nend decompiling\n")
 
