@@ -133,7 +133,7 @@ class SL2Decompiler(DecompilerBase):
         # Extract the source code from the slast.SLPython object. If it starts with a
         # newline, print it as a python block, else, print it as a $ statement
         code = ast.code.source
-        if code[0] == "\n":
+        if code.startswith("\n"):
             code = code[1:]
             self.write("python:")
             with self.increase_indent():
