@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 from setuptools import setup
 
 def readme():
