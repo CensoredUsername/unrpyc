@@ -43,7 +43,12 @@ class PyCode(magic.FakeStrict):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return list.__new__(cls)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList), magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
@@ -61,7 +66,7 @@ def read_ast_from_file(raw_contents):
 
         raw_contents = chunks[1]
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, factory, ("_ast",))
+    data, stmts = magic.safe_loads(raw_contents, factory, ("_ast, collections",))
     return stmts
 
 def ensure_dir(filename):

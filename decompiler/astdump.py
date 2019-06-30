@@ -79,7 +79,17 @@ class AstDumper(object):
 
     def print_list(self, ast):
         # handles the printing of simple containers of N elements.
-        self.p(self.MAP_OPEN[ast.__class__])
+        if type(ast) not in (list, tuple, set, frozenset):
+            self.p(repr(type(ast)))
+
+            for k in (list, tuple, set, frozenset):
+                if isinstance(ast, k):
+                    klass = k
+
+        else:
+            klass = ast.__class__
+
+        self.p(self.MAP_OPEN[klass])
 
         self.ind(1, ast)
         for i, obj in enumerate(ast):
@@ -88,10 +98,13 @@ class AstDumper(object):
                 self.p(',')
                 self.ind()
         self.ind(-1, ast)
-        self.p(self.MAP_CLOSE[ast.__class__])
+        self.p(self.MAP_CLOSE[klass])
 
     def print_dict(self, ast):
         # handles the printing of dictionaries
+        if type(ast) != dict:
+            self.p(repr(type(ast)))
+
         self.p('{')
 
         self.ind(1, ast)

@@ -52,7 +52,12 @@ class PyCode(magic.FakeStrict):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return list.__new__(cls)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList), magic.FakeStrict)
 
 printlock = Lock()
 
@@ -76,7 +81,7 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
