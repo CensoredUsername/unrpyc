@@ -48,7 +48,12 @@ class RevertableList(magic.FakeStrict, list):
     def __new__(cls):
         return list.__new__(cls)
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList), magic.FakeStrict)
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict), magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
