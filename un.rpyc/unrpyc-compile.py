@@ -71,7 +71,7 @@ def read_ast_from_file(raw_contents):
 
         raw_contents = chunks[1]
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, factory, ("_ast, collections",))
+    data, stmts = magic.safe_loads(raw_contents, factory, {"_ast", "collections"})
     return stmts
 
 def ensure_dir(filename):
