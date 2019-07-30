@@ -62,7 +62,12 @@ class RevertableDict(magic.FakeStrict, dict):
     def __new__(cls):
         return dict.__new__(cls)
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict), magic.FakeStrict)
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return set.__new__(cls)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet), magic.FakeStrict)
 
 printlock = Lock()
 
