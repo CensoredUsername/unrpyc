@@ -67,6 +67,12 @@ class RevertableSet(magic.FakeStrict, set):
     def __new__(cls):
         return set.__new__(cls)
 
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
 class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet), magic.FakeStrict)
 
 printlock = Lock()
