@@ -73,7 +73,14 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet), magic.FakeStrict)
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 

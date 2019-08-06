@@ -64,7 +64,14 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet), magic.FakeStrict)
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
