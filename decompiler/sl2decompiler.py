@@ -61,12 +61,10 @@ class SL2Decompiler(DecompilerBase):
         # If we have parameters, print them.
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        # Print any keywords
-        if ast.tag:
-            self.write(" tag %s" % ast.tag)
+
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
-            ast.children, ast.location[1])
+            ast.children, ast.location[1], tag=ast.tag)
 
     @dispatch(sl2.slast.SLIf)
     def print_if(self, ast):
@@ -253,7 +251,7 @@ class SL2Decompiler(DecompilerBase):
         (layout.MultiBox, "hbox"):         ("hbox", 'many')
     }
 
-    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False):
+    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
 
@@ -261,6 +259,10 @@ class SL2Decompiler(DecompilerBase):
         # Otherwise, we're on the line that could start a block.
         keywords_by_line = []
         current_line = (lineno, [])
+        if tag is not None:
+            keywords_by_line.append(current_line)
+            current_line = (0, [])
+            current_line[1].extend(("tag", tag))
         for key, value in keywords:
             if value is None:
                 value = ""
