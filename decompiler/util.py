@@ -294,10 +294,12 @@ class Lexer(object):
 
     def python_string(self, clear_whitespace=True):
         # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
+        # edit: now parses docstrings correctly. There was a degenerate case where '''string'string''' would
+        # result in issues
         if clear_whitespace:
-            return self.match(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.match(r"""(u?(?P<a>"(?:"")?|'(?:'')?).*?(?<=[^\\])(?:\\\\)*(?P=a))""")
         else:
-            return self.re(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.re(r"""(u?(?P<a>"(?:"")?|'(?:'')?).*?(?<=[^\\])(?:\\\\)*(?P=a))""")
 
 
     def container(self):
