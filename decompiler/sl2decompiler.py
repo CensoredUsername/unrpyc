@@ -26,6 +26,7 @@ from util import DecompilerBase, First, reconstruct_paraminfo, \
                  reconstruct_arginfo, split_logical_lines, Dispatcher
 
 from renpy import ui, sl2
+from renpy.ast import PyExpr
 from renpy.text import text
 from renpy.sl2 import sldisplayables as sld
 from renpy.display import layout, behavior, im, motion, dragdrop
@@ -149,7 +150,10 @@ class SL2Decompiler(DecompilerBase):
     def print_use(self, ast):
         # A use statement requires reconstructing the arguments it wants to pass
         self.indent()
-        self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
+        self.write("use ")
+        if isinstance(ast.target, PyExpr):
+            self.write("expression ")
+        self.write("%s%s" % (ast.target, reconstruct_arginfo(ast.args)))
         if hasattr(ast, 'id') and ast.id is not None:
             self.write(" id %s" % ast.id)
 
