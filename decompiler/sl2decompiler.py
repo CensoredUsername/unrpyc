@@ -151,9 +151,15 @@ class SL2Decompiler(DecompilerBase):
         # A use statement requires reconstructing the arguments it wants to pass
         self.indent()
         self.write("use ")
+        args = reconstruct_arginfo(ast.args)
         if isinstance(ast.target, PyExpr):
-            self.write("expression ")
-        self.write("%s%s" % (ast.target, reconstruct_arginfo(ast.args)))
+            self.write("expression %s" % ast.target)
+            if args:
+                self.write(" pass ")
+        else:
+            self.write("%s" % ast.target)
+
+        self.write("%s" % reconstruct_arginfo(ast.args))
         if hasattr(ast, 'id') and ast.id is not None:
             self.write(" id %s" % ast.id)
 
