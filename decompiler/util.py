@@ -481,6 +481,10 @@ def say_get_code(ast, inmenu=False):
     if hasattr(ast, 'attributes') and ast.attributes is not None:
         rv.extend(ast.attributes)
 
+    if hasattr(ast, 'temporary_attributes') and ast.temporary_attributes is not None:
+        rv.append("@")
+        rv.extend(ast.temporary_attributes)
+
     # no dialogue_filter applies to us
 
     rv.append(encode_say_string(ast.what))
@@ -491,5 +495,8 @@ def say_get_code(ast, inmenu=False):
     if ast.with_:
         rv.append("with")
         rv.append(ast.with_)
+
+    if hasattr(ast, 'arguments') and ast.arguments is not None:
+        rv.append(reconstruct_arginfo(ast.arguments))
 
     return " ".join(rv)
