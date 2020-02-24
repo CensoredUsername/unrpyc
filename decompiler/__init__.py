@@ -619,7 +619,12 @@ class Decompiler(DecompilerBase):
         if self.label_inside_menu is not None:
             self.write(" %s" % self.label_inside_menu.name)
             self.label_inside_menu = None
+
+        if hasattr(ast, "arguments") and ast.arguments is not None:
+            self.write(reconstruct_arginfo(ast.arguments))
+
         self.write(":")
+
         with self.increase_indent():
             if self.say_inside_menu is not None:
                 self.print_say(self.say_inside_menu, inmenu=True)
