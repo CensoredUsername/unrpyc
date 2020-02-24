@@ -633,7 +633,12 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("set %s" % ast.set)
 
-            for label, condition, block in ast.items:
+            if hasattr(ast, "item_arguments"):
+                item_arguments = ast.item_arguments
+            else:
+                item_arguments = [None] * len(ast.items)
+
+            for (label, condition, block), arguments in zip(ast.items, item_arguments):
                 if self.translator:
                     label = self.translator.strings.get(label, label)
 
@@ -641,6 +646,9 @@ class Decompiler(DecompilerBase):
                     self.advance_to_line(condition.linenumber)
                 self.indent()
                 self.write('"%s"' % string_escape(label))
+
+                if arguments is not None:
+                    self.write(reconstruct_arginfo(arguments))
 
                 if block is not None:
                     if isinstance(condition, unicode):
