@@ -67,7 +67,7 @@ class AstDumper(object):
             self.print_dict(ast)
         elif isinstance(ast, (str, unicode)):
             self.print_string(ast)
-        elif isinstance(ast, (int, bool)) or ast is None:
+        elif isinstance(ast, (int, long, bool)) or ast is None:
             self.print_other(ast)
         elif inspect.isclass(ast):
             self.print_class(ast)
