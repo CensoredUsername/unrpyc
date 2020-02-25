@@ -205,6 +205,10 @@ class SL2Decompiler(DecompilerBase):
         self.write(name)
         if ast.positional:
             self.write(" " + " ".join(ast.positional))
+        if hasattr(ast, 'variable'):
+            variable = ast.variable
+        else:
+            variable = None
         # The AST contains no indication of whether or not "has" blocks
         # were used. We'll use one any time it's possible (except for
         # directly nesting them, or if they wouldn't contain any children),
@@ -214,7 +218,7 @@ class SL2Decompiler(DecompilerBase):
             ast.children[0].children and (not ast.keyword or
                 ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
             self.print_keywords_and_children(ast.keyword, [],
-                ast.location[1], needs_colon=True)
+                ast.location[1], needs_colon=True, variable=variable)
             self.advance_to_line(ast.children[0].location[1])
             with self.increase_indent():
                 self.indent()
@@ -223,7 +227,7 @@ class SL2Decompiler(DecompilerBase):
                 self.print_displayable(ast.children[0], True)
         else:
             self.print_keywords_and_children(ast.keyword, ast.children,
-                 ast.location[1], has_block=has_block)
+                 ast.location[1], has_block=has_block, variable=variable)
 
     displayable_names = {
         (behavior.OnEvent, None):          ("on", 0),
@@ -261,7 +265,7 @@ class SL2Decompiler(DecompilerBase):
         (layout.MultiBox, "hbox"):         ("hbox", 'many')
     }
 
-    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None):
+    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None, variable=None):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
 
@@ -269,6 +273,10 @@ class SL2Decompiler(DecompilerBase):
         # Otherwise, we're on the line that could start a block.
         keywords_by_line = []
         current_line = (lineno, [])
+        if variable is not None:
+            keywords_by_line.append(current_line)
+            current_line = (0, [])
+            current_line[1].extend(("as", variable))
         if tag is not None:
             keywords_by_line.append(current_line)
             current_line = (0, [])
