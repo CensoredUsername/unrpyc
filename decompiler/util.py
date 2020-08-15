@@ -195,10 +195,10 @@ def reconstruct_paraminfo(paraminfo):
         if not paraminfo.extrapos:
             rv.append(sep())
             rv.append("*")
-        for param in nameonly:
+        for parameter in nameonly:
             rv.append(sep())
             rv.append(parameter[0])
-            if param[1] is not None:
+            if parameter[1] is not None:
                 rv.append("=%s" % parameter[1])
     if paraminfo.extrakw:
         rv.append(sep())
