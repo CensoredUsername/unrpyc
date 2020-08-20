@@ -667,9 +667,6 @@ class Decompiler(DecompilerBase):
         self.write(":")
 
         with self.increase_indent():
-            if self.say_inside_menu is not None:
-                self.print_say_inside_menu()
-
             if ast.with_ is not None:
                 self.indent()
                 self.write("with %s" % ast.with_)
@@ -687,10 +684,36 @@ class Decompiler(DecompilerBase):
                 if self.translator:
                     label = self.translator.strings.get(label, label)
 
+                state = None
+
                 if isinstance(condition, unicode):
+                    if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
+                        # The easy case: we know the line number that the menu item is on, because the condition tells us
+                        # So we put the say statement here if there's room for it, or don't if there's not
+                        self.print_say_inside_menu()
                     self.advance_to_line(condition.linenumber)
+                elif self.say_inside_menu is not None:
+                    # The hard case: we don't know the line number that the menu item is on
+                    # So try to put it in, but be prepared to back it out if that puts us behind on the line number
+                    state = self.save_state()
+                    self.most_lines_behind = self.last_lines_behind
+                    self.print_say_inside_menu()
 
                 self.print_menu_item(label, condition, block, arguments)
+
+                if state is not None:
+                    if self.most_lines_behind > state[7]: # state[7] is the saved value of self.last_lines_behind
+                        # We tried to print the say statement that's inside the menu, but it didn't fit here
+                        # Undo it and print this item again without it. We'll fit it in later
+                        self.rollback_state(state)
+                        self.print_menu_item(label, condition, block, arguments)
+                    else:
+                        self.most_lines_behind = max(state[6], self.most_lines_behind) # state[6] is the saved value of self.most_lines_behind
+                        self.commit_state(state)
+
+            if self.say_inside_menu is not None:
+                # There was no room for this before any of the menu options, so it will just have to go after them all
+                self.print_say_inside_menu()
 
     # Programming related functions
 
