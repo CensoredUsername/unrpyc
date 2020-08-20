@@ -640,6 +640,19 @@ class Decompiler(DecompilerBase):
         self.print_say(self.say_inside_menu, inmenu=True)
         self.say_inside_menu = None
 
+    def print_menu_item(self, label, condition, block, arguments):
+        self.indent()
+        self.write('"%s"' % string_escape(label))
+
+        if arguments is not None:
+            self.write(reconstruct_arginfo(arguments))
+
+        if block is not None:
+            if isinstance(condition, unicode):
+                self.write(" if %s" % condition)
+            self.write(":")
+            self.print_nodes(block, 1)
+
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast):
         self.indent()
@@ -676,17 +689,8 @@ class Decompiler(DecompilerBase):
 
                 if isinstance(condition, unicode):
                     self.advance_to_line(condition.linenumber)
-                self.indent()
-                self.write('"%s"' % string_escape(label))
 
-                if arguments is not None:
-                    self.write(reconstruct_arginfo(arguments))
-
-                if block is not None:
-                    if isinstance(condition, unicode):
-                        self.write(" if %s" % condition)
-                    self.write(":")
-                    self.print_nodes(block, 1)
+                self.print_menu_item(label, condition, block, arguments)
 
     # Programming related functions
 
