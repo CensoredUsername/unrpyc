@@ -69,6 +69,13 @@ class Decompiler(DecompilerBase):
         self.missing_init = False
         self.init_offset = 0
         self.is_356c6e34_or_later = False
+        self.most_lines_behind = 0
+        self.last_lines_behind = 0
+
+    def advance_to_line(self, linenumber):
+        self.last_lines_behind = max(self.linenumber + 1 - linenumber, 0)
+        self.most_lines_behind = max(self.last_lines_behind, self.most_lines_behind)
+        super(Decompiler, self).advance_to_line(linenumber)
 
     def dump(self, ast, indent_level=0, init_offset=False):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
