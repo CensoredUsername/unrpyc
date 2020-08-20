@@ -636,6 +636,10 @@ class Decompiler(DecompilerBase):
         finally:
             self.in_init = in_init
 
+    def print_say_inside_menu(self):
+        self.print_say(self.say_inside_menu, inmenu=True)
+        self.say_inside_menu = None
+
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast):
         self.indent()
@@ -651,8 +655,7 @@ class Decompiler(DecompilerBase):
 
         with self.increase_indent():
             if self.say_inside_menu is not None:
-                self.print_say(self.say_inside_menu, inmenu=True)
-                self.say_inside_menu = None
+                self.print_say_inside_menu()
 
             if ast.with_ is not None:
                 self.indent()
