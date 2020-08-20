@@ -77,6 +77,23 @@ class Decompiler(DecompilerBase):
         self.most_lines_behind = max(self.last_lines_behind, self.most_lines_behind)
         super(Decompiler, self).advance_to_line(linenumber)
 
+    def save_state(self):
+        return (super(Decompiler, self).save_state(),
+                self.paired_with, self.say_inside_menu, self.label_inside_menu, self.in_init, self.missing_init, self.most_lines_behind, self.last_lines_behind)
+
+    def commit_state(self, state):
+        super(Decompiler, self).commit_state(state[0])
+
+    def rollback_state(self, state):
+        self.paired_with = state[1]
+        self.say_inside_menu = state[2]
+        self.label_inside_menu = state[3]
+        self.in_init = state[4]
+        self.missing_init = state[5]
+        self.most_lines_behind = state[6]
+        self.last_lines_behind = state[7]
+        super(Decompiler, self).rollback_state(state[0])
+
     def dump(self, ast, indent_level=0, init_offset=False):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
