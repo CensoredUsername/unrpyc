@@ -277,15 +277,14 @@ class SL2Decompiler(DecompilerBase):
         # Otherwise, we're on the line that could start a block.
         keywords_by_line = []
         current_line = (lineno, [])
+        keywords_somewhere = [] # These can go anywhere inside the block that there's room.
         if variable is not None:
-            keywords_by_line.append(current_line)
-            current_line = (0, [])
-            current_line[1].extend(("as", variable))
+            keywords_somewhere.extend(("as", variable))
         if tag is not None:
             if current_line[0] is None or not self.tag_outside_block:
-                keywords_by_line.append(current_line)
-                current_line = (0, [])
-            current_line[1].extend(("tag", tag))
+                keywords_somewhere.extend(("tag", tag))
+            else:
+                current_line[1].extend(("tag", tag))
         for key, value in keywords:
             if value is None:
                 value = ""
@@ -296,6 +295,11 @@ class SL2Decompiler(DecompilerBase):
                 keywords_by_line.append(current_line)
                 current_line = (value.linenumber, [])
             current_line[1].extend((key, value))
+        if keywords_by_line:
+            # Easy case: we have at least one line inside the block that already has keywords.
+            # Just put the ones from keywords_somewhere with them.
+            current_line[1].extend(keywords_somewhere)
+            keywords_somewhere = []
         keywords_by_line.append(current_line)
         last_keyword_line = keywords_by_line[-1][0]
         children_with_keywords = []
@@ -311,17 +315,38 @@ class SL2Decompiler(DecompilerBase):
                                 key=itemgetter(0))
         if keywords_by_line[0][1]: # this never happens if lineno was None
             self.write(" %s" % ' '.join(keywords_by_line[0][1]))
-        if block_contents or (not has_block and children_after_keywords):
+        if keywords_somewhere: # this never happens if there's anything in block_contents
+            # Hard case: we need to put a keyword somewhere inside the block, but we have no idea which line to put it on.
             if lineno is not None:
                 self.write(":")
-            with self.increase_indent():
-                for i in block_contents:
-                    if isinstance(i[1], list):
-                        self.advance_to_line(i[0])
+            for index, child in enumerate(children_after_keywords):
+                if child.location[1] > self.linenumber + 1:
+                    # We have at least one blank line before the next child. Put the keywords here.
+                    with self.increase_indent():
                         self.indent()
-                        self.write(' '.join(i[1]))
-                    else:
-                        self.print_node(i[1])
-        elif needs_colon:
-            self.write(":")
-        self.print_nodes(children_after_keywords, 0 if has_block else 1)
+                        self.write(' '.join(keywords_somewhere))
+                    self.print_nodes(children_after_keywords[index:], 0 if has_block else 1)
+                    break
+                with self.increase_indent():
+                    # Even if we're in a "has" block, we need to indent this child since there will be a keyword line after it.
+                    self.print_node(child)
+            else:
+                # No blank lines before any children, so just put the remaining keywords at the end.
+                with self.increase_indent():
+                    self.indent()
+                    self.write(' '.join(keywords_somewhere))
+        else:
+            if block_contents or (not has_block and children_after_keywords):
+                if lineno is not None:
+                    self.write(":")
+                with self.increase_indent():
+                    for i in block_contents:
+                        if isinstance(i[1], list):
+                            self.advance_to_line(i[0])
+                            self.indent()
+                            self.write(' '.join(i[1]))
+                        else:
+                            self.print_node(i[1])
+            elif needs_colon:
+                self.write(":")
+            self.print_nodes(children_after_keywords, 0 if has_block else 1)
