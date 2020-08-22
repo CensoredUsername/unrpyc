@@ -279,7 +279,10 @@ class SL2Decompiler(DecompilerBase):
         current_line = (lineno, [])
         keywords_somewhere = [] # These can go anywhere inside the block that there's room.
         if variable is not None:
-            keywords_somewhere.extend(("as", variable))
+            if current_line[0] is None:
+                keywords_somewhere.extend(("as", variable))
+            else:
+                current_line[1].extend(("as", variable))
         if tag is not None:
             if current_line[0] is None or not self.tag_outside_block:
                 keywords_somewhere.extend(("tag", tag))
