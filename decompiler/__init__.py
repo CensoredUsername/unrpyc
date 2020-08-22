@@ -74,7 +74,7 @@ class Decompiler(DecompilerBase):
         self.tag_outside_block = False
 
     def advance_to_line(self, linenumber):
-        self.last_lines_behind = max(self.linenumber + 1 - linenumber, 0)
+        self.last_lines_behind = max(self.linenumber + (0 if self.skip_indent_until_write else 1) - linenumber, 0)
         self.most_lines_behind = max(self.last_lines_behind, self.most_lines_behind)
         super(Decompiler, self).advance_to_line(linenumber)
 
@@ -122,9 +122,9 @@ class Decompiler(DecompilerBase):
         assert not self.missing_init, "A required init, init label, or translate block was missing"
 
     def print_node(self, ast):
-        # We special-case line advancement for TranslateString in its print
-        # method, so don't advance lines for it here.
-        if hasattr(ast, 'linenumber') and not isinstance(ast, renpy.ast.TranslateString):
+        # We special-case line advancement for some types in their print
+        # methods, so don't advance lines for them here.
+        if hasattr(ast, 'linenumber') and not isinstance(ast, (renpy.ast.TranslateString, renpy.ast.With, renpy.ast.Label, renpy.ast.Pass, renpy.ast.Return)):
             self.advance_to_line(ast.linenumber)
         # It doesn't matter what line "block:" is on. The loc of a RawBlock
         # refers to the first statement inside the block, which we advance
@@ -423,6 +423,7 @@ class Decompiler(DecompilerBase):
                 self.write(" with %s" % ast.expr)
             self.paired_with = False
         else:
+            self.advance_to_line(ast.linenumber)
             self.indent()
             self.write("with %s" % ast.expr)
             self.paired_with = False
@@ -444,6 +445,7 @@ class Decompiler(DecompilerBase):
                 self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
                 self.label_inside_menu = ast
                 return
+        self.advance_to_line(ast.linenumber)
         self.indent()
 
         # It's possible that we're an "init label", not a regular label. There's no way to know
@@ -502,6 +504,7 @@ class Decompiler(DecompilerBase):
             # the end of each rpyc file. Don't include this in the source.
             return
 
+        self.advance_to_line(ast.linenumber)
         self.indent()
         self.write("return")
 
@@ -544,6 +547,7 @@ class Decompiler(DecompilerBase):
             self.block[self.index - 2].linenumber == ast.linenumber):
             return
 
+        self.advance_to_line(ast.linenumber)
         self.indent()
         self.write("pass")
 
