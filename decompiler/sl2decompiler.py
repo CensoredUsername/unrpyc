@@ -34,8 +34,8 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           skip_indent_until_write=False, printlock=None):
-    return SL2Decompiler(out_file, printlock=printlock).dump(
+           skip_indent_until_write=False, printlock=None, tag_outside_block=False):
+    return SL2Decompiler(out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -44,6 +44,10 @@ class SL2Decompiler(DecompilerBase):
     """
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
+
+    def __init__(self, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
+        super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
+        self.tag_outside_block = tag_outside_block
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class
@@ -278,8 +282,9 @@ class SL2Decompiler(DecompilerBase):
             current_line = (0, [])
             current_line[1].extend(("as", variable))
         if tag is not None:
-            keywords_by_line.append(current_line)
-            current_line = (0, [])
+            if current_line[0] is None or not self.tag_outside_block:
+                keywords_by_line.append(current_line)
+                current_line = (0, [])
             current_line[1].extend(("tag", tag))
         for key, value in keywords:
             if value is None:

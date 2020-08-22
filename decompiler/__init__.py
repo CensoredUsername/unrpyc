@@ -41,9 +41,9 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None, translator=None, init_offset=False):
+           decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset)
+               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
 
 # Implementation
 
@@ -71,6 +71,7 @@ class Decompiler(DecompilerBase):
         self.is_356c6e34_or_later = False
         self.most_lines_behind = 0
         self.last_lines_behind = 0
+        self.tag_outside_block = False
 
     def advance_to_line(self, linenumber):
         self.last_lines_behind = max(self.linenumber + 1 - linenumber, 0)
@@ -94,7 +95,7 @@ class Decompiler(DecompilerBase):
         self.last_lines_behind = state[7]
         super(Decompiler, self).rollback_state(state[0])
 
-    def dump(self, ast, indent_level=0, init_offset=False):
+    def dump(self, ast, indent_level=0, init_offset=False, tag_outside_block=False):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
             (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
@@ -102,6 +103,9 @@ class Decompiler(DecompilerBase):
             # A very crude version check, but currently the best we can do.
             # Note that this commit first appears in the 6.99 release.
             self.is_356c6e34_or_later = True
+            self.tag_outside_block = tag_outside_block
+        else:
+            self.tag_outside_block = True
 
         if self.translator:
             self.translator.translate_dialogue(ast)
@@ -912,7 +916,8 @@ class Decompiler(DecompilerBase):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
                                     self.skip_indent_until_write,
-                                    self.printlock)
+                                    self.printlock,
+                                    self.tag_outside_block)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
