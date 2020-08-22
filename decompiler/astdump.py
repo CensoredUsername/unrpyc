@@ -49,16 +49,23 @@ class AstDumper(object):
         self.no_pyexpr = no_pyexpr
 
     def dump(self, ast):
+        self.linenumber = 1
         self.indent = 0
         self.passed = [] # We'll keep a stack of objects which we've traversed here so we don't recurse endlessly on circular references
+        self.passed_where = []
         self.print_ast(ast)
 
     def print_ast(self, ast):
         # Decides which function should be used to print the given ast object.
-        if ast in self.passed:
-            self.print_other(ast)
+        try:
+            i = self.passed.index(ast)
+        except ValueError:
+            pass
+        else:
+            self.p('<circular reference to object on line %d>' % self.passed_where[i])
             return
         self.passed.append(ast)
+        self.passed_where.append(self.linenumber)
         if isinstance(ast, (list, tuple, set, frozenset)):
             self.print_list(ast)
         elif isinstance(ast, renpy.ast.PyExpr):
@@ -75,6 +82,7 @@ class AstDumper(object):
             self.print_object(ast)
         else:
             self.print_other(ast)
+        self.passed_where.pop()
         self.passed.pop()
 
     def print_list(self, ast):
@@ -247,7 +255,7 @@ class AstDumper(object):
             return string
 
     def print_other(self, ast):
-        # used as a last fallback and to print things when a recursive lookup is detected
+        # used as a last fallback
         self.p(repr(ast))
 
     def ind(self, diff_indent=0, ast=None):
@@ -260,4 +268,6 @@ class AstDumper(object):
 
     def p(self, string):
         # write the string to the stream
-        self.out_file.write(unicode(string))
+        string = unicode(string)
+        self.linenumber += string.count('\n')
+        self.out_file.write(string)
