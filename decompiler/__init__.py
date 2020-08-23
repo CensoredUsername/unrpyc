@@ -882,6 +882,8 @@ class Decompiler(DecompilerBase):
             self.advance_to_line(ast.linenumber)
             self.indent()
             self.write('old "%s"' % string_escape(ast.old))
+            if hasattr(ast, 'newloc'):
+                self.advance_to_line(ast.newloc[1])
             self.indent()
             self.write('new "%s"' % string_escape(ast.new))
 
