@@ -167,6 +167,16 @@ class AstDumper(object):
             # When no attributes are set, some versions of Ren'Py set it to None
             # and some don't set it at all.
             return False
+        elif (key == 'temporary_attributes' and ast.temporary_attributes is None and
+            isinstance(ast, renpy.ast.Say)):
+            # When no temporary attributes are set, some versions of Ren'Py set
+            # it to None and some don't set it at all.
+            return False
+        elif (key == 'rollback' and ast.rollback == 'normal' and
+            isinstance(ast, renpy.ast.Say)):
+            # When rollback is normal, some versions of Ren'Py set it to 'normal'
+            # and some don't set it at all.
+            return False
         elif (key == 'block' and ast.block == [] and
             isinstance(ast, renpy.ast.UserStatement)):
             # When there's no block, some versions of Ren'Py set it to None
