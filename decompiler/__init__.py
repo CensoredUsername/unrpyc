@@ -103,9 +103,8 @@ class Decompiler(DecompilerBase):
             # A very crude version check, but currently the best we can do.
             # Note that this commit first appears in the 6.99 release.
             self.is_356c6e34_or_later = True
-            self.tag_outside_block = tag_outside_block
-        else:
-            self.tag_outside_block = True
+
+        self.tag_outside_block = tag_outside_block
 
         if self.translator:
             self.translator.translate_dialogue(ast)

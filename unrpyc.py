@@ -210,7 +210,7 @@ def main():
     parser.add_argument('--tag-outside-block', dest='tag_outside_block', action='store_true',
                         help="Always put SL2 'tag's on the same line as 'screen' rather than inside the block. "
                         "This will break compiling with Ren'Py 7.3 and above, but is needed to get correct line numbers "
-                        "from files compiled with Ren'Py 6.99 through 7.2.")
+                        "from some files compiled with older Ren'Py versions.")
 
     parser.add_argument('--init-offset', dest='init_offset', action='store_true',
                         help="Attempt to guess when init offset statements were used and insert them. "
