@@ -70,7 +70,7 @@ class SL2Decompiler(DecompilerBase):
 
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
-            ast.children, ast.location[1], tag=ast.tag)
+            ast.children, ast.location[1], tag=ast.tag, atl_transform=getattr(ast, 'atl_transform', None))
 
     @dispatch(sl2.slast.SLIf)
     def print_if(self, ast):
@@ -214,6 +214,7 @@ class SL2Decompiler(DecompilerBase):
             variable = ast.variable
         else:
             variable = None
+        atl_transform = getattr(ast, 'atl_transform', None)
         # The AST contains no indication of whether or not "has" blocks
         # were used. We'll use one any time it's possible (except for
         # directly nesting them, or if they wouldn't contain any children),
@@ -221,9 +222,10 @@ class SL2Decompiler(DecompilerBase):
         if (not has_block and children == 1 and len(ast.children) == 1 and
             isinstance(ast.children[0], sl2.slast.SLDisplayable) and
             ast.children[0].children and (not ast.keyword or
-                ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
+                ast.children[0].location[1] > ast.keyword[-1][1].linenumber) and
+            (atl_transform is None or ast.children[0].location[1] > atl_transform.loc[1])):
             self.print_keywords_and_children(ast.keyword, [],
-                ast.location[1], needs_colon=True, variable=variable)
+                ast.location[1], needs_colon=True, variable=variable, atl_transform=atl_transform)
             self.advance_to_line(ast.children[0].location[1])
             with self.increase_indent():
                 self.indent()
@@ -232,7 +234,7 @@ class SL2Decompiler(DecompilerBase):
                 self.print_displayable(ast.children[0], True)
         else:
             self.print_keywords_and_children(ast.keyword, ast.children,
-                 ast.location[1], has_block=has_block, variable=variable)
+                 ast.location[1], has_block=has_block, variable=variable, atl_transform=atl_transform)
 
     displayable_names = {
         (behavior.OnEvent, None):          ("on", 0),
