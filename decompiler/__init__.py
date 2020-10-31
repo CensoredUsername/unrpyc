@@ -435,10 +435,11 @@ class Decompiler(DecompilerBase):
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             return
         remaining_blocks = len(self.block) - self.index
-        # See if we're the label for a menu, rather than a standalone label.
-        if remaining_blocks > 1 and not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None):
+        if remaining_blocks > 1:
             next_ast = self.block[self.index + 1]
-            if (hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+            # See if we're the label for a menu, rather than a standalone label.
+            if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+                hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
                 (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
                 isinstance(next_ast, renpy.ast.Say) and
                 self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
