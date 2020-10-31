@@ -29,6 +29,8 @@ from StringIO import StringIO
 import magic
 magic.fake_package(b"renpy")
 import renpy
+magic.fake_package(b"store")
+import store
 
 import screendecompiler
 import sl2decompiler
@@ -65,6 +67,7 @@ class Decompiler(DecompilerBase):
         self.paired_with = False
         self.say_inside_menu = None
         self.label_inside_menu = None
+        self.label_inside_call_location = None
         self.in_init = False
         self.missing_init = False
         self.init_offset = 0
@@ -80,7 +83,7 @@ class Decompiler(DecompilerBase):
 
     def save_state(self):
         return (super(Decompiler, self).save_state(),
-                self.paired_with, self.say_inside_menu, self.label_inside_menu, self.in_init, self.missing_init, self.most_lines_behind, self.last_lines_behind)
+                self.paired_with, self.say_inside_menu, self.label_inside_menu, self.label_inside_call_location, self.in_init, self.missing_init, self.most_lines_behind, self.last_lines_behind)
 
     def commit_state(self, state):
         super(Decompiler, self).commit_state(state[0])
@@ -89,10 +92,11 @@ class Decompiler(DecompilerBase):
         self.paired_with = state[1]
         self.say_inside_menu = state[2]
         self.label_inside_menu = state[3]
-        self.in_init = state[4]
-        self.missing_init = state[5]
-        self.most_lines_behind = state[6]
-        self.last_lines_behind = state[7]
+        self.label_inside_call_location = state[4]
+        self.in_init = state[5]
+        self.missing_init = state[6]
+        self.most_lines_behind = state[7]
+        self.last_lines_behind = state[8]
         super(Decompiler, self).rollback_state(state[0])
 
     def dump(self, ast, indent_level=0, init_offset=False, tag_outside_block=False):
@@ -437,6 +441,12 @@ class Decompiler(DecompilerBase):
         remaining_blocks = len(self.block) - self.index
         if remaining_blocks > 1:
             next_ast = self.block[self.index + 1]
+            # See if we're the label for a call location, rather than a standalone label.
+            if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+                hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+                isinstance(next_ast, store.locations.CallLocation)):
+                self.label_inside_call_location = ast
+                return
             # See if we're the label for a menu, rather than a standalone label.
             if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
                 hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
@@ -472,6 +482,40 @@ class Decompiler(DecompilerBase):
     def print_jump(self, ast):
         self.indent()
         self.write("jump %s%s" % ("expression " if ast.expression else "", ast.target))
+
+    @dispatch(store.locations.CallLocation)
+    def print_call_location(self, ast):
+        self.indent()
+        self.write("call location %s" % ast.location)
+
+        if self.label_inside_call_location is not None:
+            self.write(" %s" % self.label_inside_call_location.name)
+            self.label_inside_call_location = None
+
+        self.write(":")
+
+        with self.increase_indent():
+            for zone, props, condition, show, block in ast.zones:
+                self.indent()
+                words = WordConcatenator(False)
+                if isinstance(zone, tuple):
+                    zone, image_name, zorder, behind = zone
+                    words.append(zone)
+                    words.append(*image_name)
+                    if zorder is not None:
+                        words.append("zorder %s" % zorder)
+                    if behind:
+                        words.append("behind %s" % ','.join(behind))
+                else:
+                    words.append(zone)
+                if props is not None:
+                    words.append("pass %s" % reconstruct_arginfo(props))
+                if isinstance(show, renpy.ast.PyExpr):
+                    words.append("showif %s" % show)
+                if isinstance(condition, renpy.ast.PyExpr):
+                    words.append("if %s" % condition)
+                self.write("%s:" % words.join())
+                self.print_nodes(block, 1)
 
     @dispatch(renpy.ast.Call)
     def print_call(self, ast):
