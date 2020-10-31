@@ -919,7 +919,17 @@ class Decompiler(DecompilerBase):
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
-            self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
+            def print_atl_callback(linenumber, indent_level, atl):
+                old_linenumber = self.linenumber
+                self.linenumber = linenumber
+                with self.increase_indent(indent_level - self.indent_level):
+                    self.print_atl(atl)
+                new_linenumber = self.linenumber
+                self.linenumber = old_linenumber
+                return new_linenumber
+
+            self.linenumber = sl2decompiler.pprint(self.out_file, screen, print_atl_callback,
+                                    self.indent_level,
                                     self.linenumber,
                                     self.skip_indent_until_write,
                                     self.printlock,

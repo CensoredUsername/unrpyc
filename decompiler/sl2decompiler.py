@@ -33,9 +33,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0, linenumber=1,
+def pprint(out_file, ast, print_atl_callback, indent_level=0, linenumber=1,
            skip_indent_until_write=False, printlock=None, tag_outside_block=False):
-    return SL2Decompiler(out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
+    return SL2Decompiler(print_atl_callback, out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -45,8 +45,9 @@ class SL2Decompiler(DecompilerBase):
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
 
-    def __init__(self, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
+    def __init__(self, print_atl_callback, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
         super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
+        self.print_atl_callback = print_atl_callback
         self.tag_outside_block = tag_outside_block
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
@@ -94,7 +95,7 @@ class SL2Decompiler(DecompilerBase):
                 self.write("%s %s:" % (keyword(), condition))
 
             # Every condition has a block of type slast.SLBlock
-            if block.keyword or block.children:
+            if block.keyword or block.children or getattr(block, 'atl_transform', None):
                 self.print_block(block)
             else:
                 with self.increase_indent():
@@ -105,7 +106,7 @@ class SL2Decompiler(DecompilerBase):
     def print_block(self, ast):
         # A block contains possible keyword arguments and a list of child nodes
         # this is the reason if doesn't keep a list of children but special Blocks
-        self.print_keywords_and_children(ast.keyword, ast.children, None)
+        self.print_keywords_and_children(ast.keyword, ast.children, None, atl_transform=getattr(ast, 'atl_transform', None))
 
     @dispatch(sl2.slast.SLFor)
     def print_for(self, ast):
@@ -269,7 +270,7 @@ class SL2Decompiler(DecompilerBase):
         (layout.MultiBox, "hbox"):         ("hbox", 'many')
     }
 
-    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None, variable=None):
+    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None, variable=None, atl_transform=None):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
 
@@ -353,3 +354,10 @@ class SL2Decompiler(DecompilerBase):
             elif needs_colon:
                 self.write(":")
             self.print_nodes(children_after_keywords, 0 if has_block else 1)
+        if atl_transform is not None:
+            # "at transform:", possibly preceded by other keywords, and followed by an ATL block
+            # TODO this doesn't always go at the end. Use line numbers to figure out where it goes
+            with self.increase_indent():
+                self.indent()
+                self.write("at transform:")
+                self.linenumber = self.print_atl_callback(self.linenumber, self.indent_level, atl_transform)
