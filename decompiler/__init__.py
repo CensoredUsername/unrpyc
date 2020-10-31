@@ -616,6 +616,17 @@ class Decompiler(DecompilerBase):
                     offset -= 500
                 elif isinstance(ast.block[0], renpy.ast.Image):
                     offset -= 500 if self.is_356c6e34_or_later else 990
+                elif isinstance(ast.block[0], renpy.ast.UserStatement):
+                    if ast.block[0].line.startswith("image minion "):
+                        offset -= 500
+                    elif ast.block[0].line.startswith("ability ") or ast.block[0].line.startswith("init memories ") or ast.block[0].line.startswith("person store ") or ast.block[0].line.startswith("layered_image "):
+                        offset -= 50
+                    elif ast.block[0].line.startswith("init market "):
+                        offset -= 150
+                    elif ast.block[0].line.startswith("define location "):
+                        offset -= -500
+                    elif ast.block[0].line.startswith("inv_item ") or ast.block[0].line.startswith("achievement ") or ast.block[0].line.startswith("define person "):
+                        offset -= 100
             votes[offset] = votes.get(offset, 0) + 1
         if votes:
             winner = max(votes, key=votes.get)
@@ -655,6 +666,18 @@ class Decompiler(DecompilerBase):
                 (ast.priority == self.init_offset and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Testcase)) or
                 (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("layeredimage ")) or
+                (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("image minion ")) or
+                (ast.priority == 50 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("ability ")) or
+                (ast.priority == 50 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("init memories ")) or
+                (ast.priority == 150 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("init market ")) or
+                (ast.priority == -500 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("define location ")) or
+                (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("location_event ")) or
+                (ast.priority == 100 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("inv_item ")) or
+                (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("goals_block ")) or
+                (ast.priority == 100 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("achievement ")) or
+                (ast.priority == 50 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("person store ")) or
+                (ast.priority == 100 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("define person ")) or
+                (ast.priority == 50 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("layered_image ")) or
                 # Images had their default init priority changed in commit 679f9e31 (Ren'Py 6.99.10).
                 # We don't have any way of detecting this commit, though. The closest one we can
                 # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
