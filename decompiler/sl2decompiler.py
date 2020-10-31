@@ -278,6 +278,7 @@ class SL2Decompiler(DecompilerBase):
 
         # If lineno is None, we're already inside of a block.
         # Otherwise, we're on the line that could start a block.
+        wrote_colon = False
         keywords_by_line = []
         current_line = (lineno, [])
         keywords_somewhere = [] # These can go anywhere inside the block that there's room.
@@ -325,6 +326,7 @@ class SL2Decompiler(DecompilerBase):
             # Hard case: we need to put a keyword somewhere inside the block, but we have no idea which line to put it on.
             if lineno is not None:
                 self.write(":")
+                wrote_colon = True
             for index, child in enumerate(children_after_keywords):
                 if child.location[1] > self.linenumber + 1:
                     # We have at least one blank line before the next child. Put the keywords here.
@@ -345,6 +347,7 @@ class SL2Decompiler(DecompilerBase):
             if block_contents or (not has_block and children_after_keywords):
                 if lineno is not None:
                     self.write(":")
+                    wrote_colon = True
                 with self.increase_indent():
                     for i in block_contents:
                         if isinstance(i[1], list):
@@ -355,10 +358,14 @@ class SL2Decompiler(DecompilerBase):
                             self.print_node(i[1])
             elif needs_colon:
                 self.write(":")
+                wrote_colon = True
             self.print_nodes(children_after_keywords, 0 if has_block else 1)
         if atl_transform is not None:
             # "at transform:", possibly preceded by other keywords, and followed by an ATL block
             # TODO this doesn't always go at the end. Use line numbers to figure out where it goes
+            if not wrote_colon and lineno is not None:
+                self.write(":")
+                wrote_colon = True
             with self.increase_indent():
                 self.indent()
                 self.write("at transform:")
