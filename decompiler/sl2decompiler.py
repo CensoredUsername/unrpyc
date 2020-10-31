@@ -25,6 +25,7 @@ from operator import itemgetter
 from util import DecompilerBase, First, reconstruct_paraminfo, \
                  reconstruct_arginfo, split_logical_lines, Dispatcher
 
+import store
 from renpy import ui, sl2
 from renpy.ast import PyExpr
 from renpy.text import text
@@ -234,6 +235,8 @@ class SL2Decompiler(DecompilerBase):
                  ast.location[1], has_block=has_block, variable=variable)
 
     displayable_names = {
+        (store.ImageTextButton, "imagetext_fixed"): ("imagetextbutton", 0),
+        (store.ColoredTextButton, "commonbutton_fixed"): ("coloredtextbutton", 0),
         (behavior.OnEvent, None):          ("on", 0),
         (behavior.OnEvent, 0):             ("on", 0),
         (behavior.MouseArea, 0):           ("mousearea", 0),
@@ -251,6 +254,8 @@ class SL2Decompiler(DecompilerBase):
         (ui._key, None):                   ("key", 0),
         (text.Text, "text"):               ("text", 0),
         (layout.Null, "default"):          ("null", 0),
+        (store.inventory.InventoryDrag, "drag"): ("inventorydrag", 1),
+        (store.inventory.InventoryDrop, "drop"): ("inventorydrop", 1),
         (dragdrop.Drag, None):             ("drag", 1),
         (dragdrop.Drag, "drag"):           ("drag", 1),
         (motion.Transform, "transform"):   ("transform", 1),
@@ -259,6 +264,7 @@ class SL2Decompiler(DecompilerBase):
         (behavior.Button, "button"):       ("button", 1),
         (layout.Window, "frame"):          ("frame", 1),
         (layout.Window, "window"):         ("window", 1),
+        (store.AlphaFrame, "alphaframe"): ("alphaframe", 'many'),
         (dragdrop.DragGroup, None):        ("draggroup", 'many'),
         (ui._imagemap, "imagemap"):        ("imagemap", 'many'),
         (layout.Side, "side"):             ("side", 'many'),
