@@ -43,11 +43,38 @@ class PyCode(magic.FakeStrict):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-factory = magic.FakeClassFactory((PyExpr, PyCode), magic.FakeStrict)
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return list.__new__(cls)
 
-def read_ast_from_file(in_file):
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+
+def read_ast_from_file(raw_contents):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
-    raw_contents = in_file.read()
     if raw_contents.startswith("RENPY RPC2"):
         # parse the archive structure
         position = 10
@@ -62,7 +89,7 @@ def read_ast_from_file(in_file):
 
         raw_contents = chunks[1]
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, factory, ("_ast",))
+    data, stmts = magic.safe_loads(raw_contents, factory, {"_ast", "collections"})
     return stmts
 
 def ensure_dir(filename):
@@ -70,12 +97,12 @@ def ensure_dir(filename):
     if dir and not path.exists(dir):
         os.makedirs(dir)
 
-def decompile_rpyc(file_obj, abspath, init_offset):
+def decompile_rpyc(data, abspath, init_offset):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
     out_filename = filepath + ('.rpym' if ext == ".rpymc" else ".rpy")
 
-    ast = read_ast_from_file(file_obj)
+    ast = read_ast_from_file(data)
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
@@ -85,20 +112,20 @@ def decompile_rpyc(file_obj, abspath, init_offset):
 def decompile_game():
     import sys
 
-    with open(path.join(os.getcwd(), "game/unrpyc.log.txt"), "w") as f:
+    logfile = path.join(os.getcwd(), "game/unrpyc.log.txt")
+    ensure_dir(logfile)
+    with open(logfile, "w") as f:
         f.write("Beginning decompiling\n")
 
-        for abspath, fn, dir, file in sys.files:
+        for abspath, fn, dir, data in sys.files:
             try:
-                decompile_rpyc(file, abspath, sys.init_offset)
+                decompile_rpyc(data, abspath, sys.init_offset)
             except Exception, e:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
                 f.write("\nDecompiled {0}\n".format(abspath))
-            finally:
-                file.close()
 
         f.write("\nend decompiling\n")
 

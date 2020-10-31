@@ -26,6 +26,7 @@ from util import DecompilerBase, First, reconstruct_paraminfo, \
                  reconstruct_arginfo, split_logical_lines, Dispatcher
 
 from renpy import ui, sl2
+from renpy.ast import PyExpr
 from renpy.text import text
 from renpy.sl2 import sldisplayables as sld
 from renpy.display import layout, behavior, im, motion, dragdrop
@@ -33,8 +34,8 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, indent_level=0, linenumber=1,
-           skip_indent_until_write=False, printlock=None):
-    return SL2Decompiler(out_file, printlock=printlock).dump(
+           skip_indent_until_write=False, printlock=None, tag_outside_block=False):
+    return SL2Decompiler(out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -43,6 +44,10 @@ class SL2Decompiler(DecompilerBase):
     """
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
+
+    def __init__(self, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
+        super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
+        self.tag_outside_block = tag_outside_block
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class
@@ -61,12 +66,10 @@ class SL2Decompiler(DecompilerBase):
         # If we have parameters, print them.
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
-        # Print any keywords
-        if ast.tag:
-            self.write(" tag %s" % ast.tag)
+
         # If we're decompiling screencode, print it. Else, insert a pass statement
         self.print_keywords_and_children(ast.keyword,
-            ast.children, ast.location[1])
+            ast.children, ast.location[1], tag=ast.tag)
 
     @dispatch(sl2.slast.SLIf)
     def print_if(self, ast):
@@ -117,7 +120,11 @@ class SL2Decompiler(DecompilerBase):
             children = ast.children
 
         self.indent()
-        self.write("for %sin %s:" % (variable, ast.expression))
+        if hasattr(ast, "index_expression") and ast.index_expression is not None:
+            self.write("for %sindex %s in %s:" % (variable, ast.index_expression, ast.expression))
+
+        else:
+            self.write("for %sin %s:" % (variable, ast.expression))
 
         # Interestingly, for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
@@ -129,7 +136,7 @@ class SL2Decompiler(DecompilerBase):
         # Extract the source code from the slast.SLPython object. If it starts with a
         # newline, print it as a python block, else, print it as a $ statement
         code = ast.code.source
-        if code[0] == "\n":
+        if code.startswith("\n"):
             code = code[1:]
             self.write("python:")
             with self.increase_indent():
@@ -147,7 +154,16 @@ class SL2Decompiler(DecompilerBase):
     def print_use(self, ast):
         # A use statement requires reconstructing the arguments it wants to pass
         self.indent()
-        self.write("use %s%s" % (ast.target, reconstruct_arginfo(ast.args)))
+        self.write("use ")
+        args = reconstruct_arginfo(ast.args)
+        if isinstance(ast.target, PyExpr):
+            self.write("expression %s" % ast.target)
+            if args:
+                self.write(" pass ")
+        else:
+            self.write("%s" % ast.target)
+
+        self.write("%s" % reconstruct_arginfo(ast.args))
         if hasattr(ast, 'id') and ast.id is not None:
             self.write(" id %s" % ast.id)
 
@@ -193,6 +209,10 @@ class SL2Decompiler(DecompilerBase):
         self.write(name)
         if ast.positional:
             self.write(" " + " ".join(ast.positional))
+        if hasattr(ast, 'variable'):
+            variable = ast.variable
+        else:
+            variable = None
         # The AST contains no indication of whether or not "has" blocks
         # were used. We'll use one any time it's possible (except for
         # directly nesting them, or if they wouldn't contain any children),
@@ -202,7 +222,7 @@ class SL2Decompiler(DecompilerBase):
             ast.children[0].children and (not ast.keyword or
                 ast.children[0].location[1] > ast.keyword[-1][1].linenumber)):
             self.print_keywords_and_children(ast.keyword, [],
-                ast.location[1], needs_colon=True)
+                ast.location[1], needs_colon=True, variable=variable)
             self.advance_to_line(ast.children[0].location[1])
             with self.increase_indent():
                 self.indent()
@@ -211,7 +231,7 @@ class SL2Decompiler(DecompilerBase):
                 self.print_displayable(ast.children[0], True)
         else:
             self.print_keywords_and_children(ast.keyword, ast.children,
-                 ast.location[1], has_block=has_block)
+                 ast.location[1], has_block=has_block, variable=variable)
 
     displayable_names = {
         (behavior.OnEvent, None):          ("on", 0),
@@ -249,7 +269,7 @@ class SL2Decompiler(DecompilerBase):
         (layout.MultiBox, "hbox"):         ("hbox", 'many')
     }
 
-    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False):
+    def print_keywords_and_children(self, keywords, children, lineno, needs_colon=False, has_block=False, tag=None, variable=None):
         # This function prints the keyword arguments and child nodes
         # Used in a displayable screen statement
 
@@ -257,6 +277,17 @@ class SL2Decompiler(DecompilerBase):
         # Otherwise, we're on the line that could start a block.
         keywords_by_line = []
         current_line = (lineno, [])
+        keywords_somewhere = [] # These can go anywhere inside the block that there's room.
+        if variable is not None:
+            if current_line[0] is None:
+                keywords_somewhere.extend(("as", variable))
+            else:
+                current_line[1].extend(("as", variable))
+        if tag is not None:
+            if current_line[0] is None or not self.tag_outside_block:
+                keywords_somewhere.extend(("tag", tag))
+            else:
+                current_line[1].extend(("tag", tag))
         for key, value in keywords:
             if value is None:
                 value = ""
@@ -267,6 +298,11 @@ class SL2Decompiler(DecompilerBase):
                 keywords_by_line.append(current_line)
                 current_line = (value.linenumber, [])
             current_line[1].extend((key, value))
+        if keywords_by_line:
+            # Easy case: we have at least one line inside the block that already has keywords.
+            # Just put the ones from keywords_somewhere with them.
+            current_line[1].extend(keywords_somewhere)
+            keywords_somewhere = []
         keywords_by_line.append(current_line)
         last_keyword_line = keywords_by_line[-1][0]
         children_with_keywords = []
@@ -282,17 +318,38 @@ class SL2Decompiler(DecompilerBase):
                                 key=itemgetter(0))
         if keywords_by_line[0][1]: # this never happens if lineno was None
             self.write(" %s" % ' '.join(keywords_by_line[0][1]))
-        if block_contents or (not has_block and children_after_keywords):
+        if keywords_somewhere: # this never happens if there's anything in block_contents
+            # Hard case: we need to put a keyword somewhere inside the block, but we have no idea which line to put it on.
             if lineno is not None:
                 self.write(":")
-            with self.increase_indent():
-                for i in block_contents:
-                    if isinstance(i[1], list):
-                        self.advance_to_line(i[0])
+            for index, child in enumerate(children_after_keywords):
+                if child.location[1] > self.linenumber + 1:
+                    # We have at least one blank line before the next child. Put the keywords here.
+                    with self.increase_indent():
                         self.indent()
-                        self.write(' '.join(i[1]))
-                    else:
-                        self.print_node(i[1])
-        elif needs_colon:
-            self.write(":")
-        self.print_nodes(children_after_keywords, 0 if has_block else 1)
+                        self.write(' '.join(keywords_somewhere))
+                    self.print_nodes(children_after_keywords[index:], 0 if has_block else 1)
+                    break
+                with self.increase_indent():
+                    # Even if we're in a "has" block, we need to indent this child since there will be a keyword line after it.
+                    self.print_node(child)
+            else:
+                # No blank lines before any children, so just put the remaining keywords at the end.
+                with self.increase_indent():
+                    self.indent()
+                    self.write(' '.join(keywords_somewhere))
+        else:
+            if block_contents or (not has_block and children_after_keywords):
+                if lineno is not None:
+                    self.write(":")
+                with self.increase_indent():
+                    for i in block_contents:
+                        if isinstance(i[1], list):
+                            self.advance_to_line(i[0])
+                            self.indent()
+                            self.write(' '.join(i[1]))
+                        else:
+                            self.print_node(i[1])
+            elif needs_colon:
+                self.write(":")
+            self.print_nodes(children_after_keywords, 0 if has_block else 1)

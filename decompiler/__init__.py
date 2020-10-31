@@ -41,9 +41,9 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None, translator=None, init_offset=False):
+           decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset)
+               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
 
 # Implementation
 
@@ -69,8 +69,33 @@ class Decompiler(DecompilerBase):
         self.missing_init = False
         self.init_offset = 0
         self.is_356c6e34_or_later = False
+        self.most_lines_behind = 0
+        self.last_lines_behind = 0
+        self.tag_outside_block = False
 
-    def dump(self, ast, indent_level=0, init_offset=False):
+    def advance_to_line(self, linenumber):
+        self.last_lines_behind = max(self.linenumber + (0 if self.skip_indent_until_write else 1) - linenumber, 0)
+        self.most_lines_behind = max(self.last_lines_behind, self.most_lines_behind)
+        super(Decompiler, self).advance_to_line(linenumber)
+
+    def save_state(self):
+        return (super(Decompiler, self).save_state(),
+                self.paired_with, self.say_inside_menu, self.label_inside_menu, self.in_init, self.missing_init, self.most_lines_behind, self.last_lines_behind)
+
+    def commit_state(self, state):
+        super(Decompiler, self).commit_state(state[0])
+
+    def rollback_state(self, state):
+        self.paired_with = state[1]
+        self.say_inside_menu = state[2]
+        self.label_inside_menu = state[3]
+        self.in_init = state[4]
+        self.missing_init = state[5]
+        self.most_lines_behind = state[6]
+        self.last_lines_behind = state[7]
+        super(Decompiler, self).rollback_state(state[0])
+
+    def dump(self, ast, indent_level=0, init_offset=False, tag_outside_block=False):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
             (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
@@ -78,6 +103,8 @@ class Decompiler(DecompilerBase):
             # A very crude version check, but currently the best we can do.
             # Note that this commit first appears in the 6.99 release.
             self.is_356c6e34_or_later = True
+
+        self.tag_outside_block = tag_outside_block
 
         if self.translator:
             self.translator.translate_dialogue(ast)
@@ -94,9 +121,9 @@ class Decompiler(DecompilerBase):
         assert not self.missing_init, "A required init, init label, or translate block was missing"
 
     def print_node(self, ast):
-        # We special-case line advancement for TranslateString in its print
-        # method, so don't advance lines for it here.
-        if hasattr(ast, 'linenumber') and not isinstance(ast, renpy.ast.TranslateString):
+        # We special-case line advancement for some types in their print
+        # methods, so don't advance lines for them here.
+        if hasattr(ast, 'linenumber') and not isinstance(ast, (renpy.ast.TranslateString, renpy.ast.With, renpy.ast.Label, renpy.ast.Pass, renpy.ast.Return)):
             self.advance_to_line(ast.linenumber)
         # It doesn't matter what line "block:" is on. The loc of a RawBlock
         # refers to the first statement inside the block, which we advance
@@ -395,6 +422,7 @@ class Decompiler(DecompilerBase):
                 self.write(" with %s" % ast.expr)
             self.paired_with = False
         else:
+            self.advance_to_line(ast.linenumber)
             self.indent()
             self.write("with %s" % ast.expr)
             self.paired_with = False
@@ -407,15 +435,17 @@ class Decompiler(DecompilerBase):
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             return
         remaining_blocks = len(self.block) - self.index
-        # See if we're the label for a menu, rather than a standalone label.
-        if remaining_blocks > 1 and not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None):
+        if remaining_blocks > 1:
             next_ast = self.block[self.index + 1]
-            if (hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
+            # See if we're the label for a menu, rather than a standalone label.
+            if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+                hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
                 (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
                 isinstance(next_ast, renpy.ast.Say) and
                 self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
                 self.label_inside_menu = ast
                 return
+        self.advance_to_line(ast.linenumber)
         self.indent()
 
         # It's possible that we're an "init label", not a regular label. There's no way to know
@@ -474,6 +504,7 @@ class Decompiler(DecompilerBase):
             # the end of each rpyc file. Don't include this in the source.
             return
 
+        self.advance_to_line(ast.linenumber)
         self.indent()
         self.write("return")
 
@@ -516,6 +547,7 @@ class Decompiler(DecompilerBase):
             self.block[self.index - 2].linenumber == ast.linenumber):
             return
 
+        self.advance_to_line(ast.linenumber)
         self.indent()
         self.write("pass")
 
@@ -578,6 +610,7 @@ class Decompiler(DecompilerBase):
                 (ast.priority == -500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Screen)) or
                 (ast.priority == self.init_offset and isinstance(ast.block[0], renpy.ast.Style)) or
                 (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Testcase)) or
+                (ast.priority == 0 + self.init_offset and isinstance(ast.block[0], renpy.ast.UserStatement) and ast.block[0].line.startswith("layeredimage ")) or
                 # Images had their default init priority changed in commit 679f9e31 (Ren'Py 6.99.10).
                 # We don't have any way of detecting this commit, though. The closest one we can
                 # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
@@ -611,6 +644,23 @@ class Decompiler(DecompilerBase):
         finally:
             self.in_init = in_init
 
+    def print_say_inside_menu(self):
+        self.print_say(self.say_inside_menu, inmenu=True)
+        self.say_inside_menu = None
+
+    def print_menu_item(self, label, condition, block, arguments):
+        self.indent()
+        self.write('"%s"' % string_escape(label))
+
+        if arguments is not None:
+            self.write(reconstruct_arginfo(arguments))
+
+        if block is not None:
+            if isinstance(condition, unicode):
+                self.write(" if %s" % condition)
+            self.write(":")
+            self.print_nodes(block, 1)
+
     @dispatch(renpy.ast.Menu)
     def print_menu(self, ast):
         self.indent()
@@ -618,12 +668,13 @@ class Decompiler(DecompilerBase):
         if self.label_inside_menu is not None:
             self.write(" %s" % self.label_inside_menu.name)
             self.label_inside_menu = None
-        self.write(":")
-        with self.increase_indent():
-            if self.say_inside_menu is not None:
-                self.print_say(self.say_inside_menu, inmenu=True)
-                self.say_inside_menu = None
 
+        if hasattr(ast, "arguments") and ast.arguments is not None:
+            self.write(reconstruct_arginfo(ast.arguments))
+
+        self.write(":")
+
+        with self.increase_indent():
             if ast.with_ is not None:
                 self.indent()
                 self.write("with %s" % ast.with_)
@@ -632,20 +683,45 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("set %s" % ast.set)
 
-            for label, condition, block in ast.items:
+            if hasattr(ast, "item_arguments"):
+                item_arguments = ast.item_arguments
+            else:
+                item_arguments = [None] * len(ast.items)
+
+            for (label, condition, block), arguments in zip(ast.items, item_arguments):
                 if self.translator:
                     label = self.translator.strings.get(label, label)
 
-                if isinstance(condition, unicode):
-                    self.advance_to_line(condition.linenumber)
-                self.indent()
-                self.write('"%s"' % string_escape(label))
+                state = None
 
-                if block is not None:
-                    if isinstance(condition, unicode):
-                        self.write(" if %s" % condition)
-                    self.write(":")
-                    self.print_nodes(block, 1)
+                if isinstance(condition, unicode):
+                    if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
+                        # The easy case: we know the line number that the menu item is on, because the condition tells us
+                        # So we put the say statement here if there's room for it, or don't if there's not
+                        self.print_say_inside_menu()
+                    self.advance_to_line(condition.linenumber)
+                elif self.say_inside_menu is not None:
+                    # The hard case: we don't know the line number that the menu item is on
+                    # So try to put it in, but be prepared to back it out if that puts us behind on the line number
+                    state = self.save_state()
+                    self.most_lines_behind = self.last_lines_behind
+                    self.print_say_inside_menu()
+
+                self.print_menu_item(label, condition, block, arguments)
+
+                if state is not None:
+                    if self.most_lines_behind > state[7]: # state[7] is the saved value of self.last_lines_behind
+                        # We tried to print the say statement that's inside the menu, but it didn't fit here
+                        # Undo it and print this item again without it. We'll fit it in later
+                        self.rollback_state(state)
+                        self.print_menu_item(label, condition, block, arguments)
+                    else:
+                        self.most_lines_behind = max(state[6], self.most_lines_behind) # state[6] is the saved value of self.most_lines_behind
+                        self.commit_state(state)
+
+            if self.say_inside_menu is not None:
+                # There was no room for this before any of the menu options, so it will just have to go after them all
+                self.print_say_inside_menu()
 
     # Programming related functions
 
@@ -724,6 +800,19 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write(ast.line)
 
+        if hasattr(ast, "block") and ast.block:
+            with self.increase_indent():
+                self.print_lex(ast.block)
+
+    def print_lex(self, lex):
+        for file, linenumber, content, block in lex:
+            self.advance_to_line(linenumber)
+            self.indent()
+            self.write(content)
+            if block:
+                with self.increase_indent():
+                    self.print_lex(block)
+
     @dispatch(renpy.ast.Style)
     def print_style(self, ast):
         self.require_init()
@@ -793,6 +882,8 @@ class Decompiler(DecompilerBase):
             self.advance_to_line(ast.linenumber)
             self.indent()
             self.write('old "%s"' % string_escape(ast.old))
+            if hasattr(ast, 'newloc'):
+                self.advance_to_line(ast.newloc[1])
             self.indent()
             self.write('new "%s"' % string_escape(ast.new))
 
@@ -831,7 +922,8 @@ class Decompiler(DecompilerBase):
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, self.indent_level,
                                     self.linenumber,
                                     self.skip_indent_until_write,
-                                    self.printlock)
+                                    self.printlock,
+                                    self.tag_outside_block)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)

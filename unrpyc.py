@@ -55,9 +55,37 @@ class PyCode(magic.FakeStrict):
 class RevertableList(magic.FakeStrict, list):
     __module__ = "renpy.python"
     def __new__(cls):
+        return list.__new__(cls)
+
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
         return list.__new__(list)
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList), magic.FakeStrict)
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList), magic.FakeStrict)
 
 printlock = Lock()
 
@@ -81,11 +109,11 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast"})
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None, init_offset=False):
+                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False, init_offset=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     if dump:
@@ -111,7 +139,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                           no_pyexpr=no_pyexpr)
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
-                                             translator=translator, init_offset=init_offset)
+                                             translator=translator, tag_outside_block=tag_outside_block, init_offset=init_offset)
     return True
 
 def extract_translations(input_filename, language):
@@ -138,7 +166,7 @@ def worker(t):
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, init_offset=args.init_offset)
+                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, tag_outside_block=args.tag_outside_block, init_offset=args.init_offset)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -183,6 +211,11 @@ def main():
                         help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
                         "This is useful when comparing dumps from different versions of Ren'Py. "
                         "It should only be used if necessary, since it will cause loss of information such as line numbers.")
+
+    parser.add_argument('--tag-outside-block', dest='tag_outside_block', action='store_true',
+                        help="Always put SL2 'tag's on the same line as 'screen' rather than inside the block. "
+                        "This will break compiling with Ren'Py 7.3 and above, but is needed to get correct line numbers "
+                        "from some files compiled with older Ren'Py versions.")
 
     parser.add_argument('--init-offset', dest='init_offset', action='store_true',
                         help="Attempt to guess when init offset statements were used and insert them. "

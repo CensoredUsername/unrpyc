@@ -49,16 +49,23 @@ class AstDumper(object):
         self.no_pyexpr = no_pyexpr
 
     def dump(self, ast):
+        self.linenumber = 1
         self.indent = 0
         self.passed = [] # We'll keep a stack of objects which we've traversed here so we don't recurse endlessly on circular references
+        self.passed_where = []
         self.print_ast(ast)
 
     def print_ast(self, ast):
         # Decides which function should be used to print the given ast object.
-        if ast in self.passed:
-            self.print_other(ast)
+        try:
+            i = self.passed.index(ast)
+        except ValueError:
+            pass
+        else:
+            self.p('<circular reference to object on line %d>' % self.passed_where[i])
             return
         self.passed.append(ast)
+        self.passed_where.append(self.linenumber)
         if isinstance(ast, (list, tuple, set, frozenset)):
             self.print_list(ast)
         elif isinstance(ast, renpy.ast.PyExpr):
@@ -67,7 +74,7 @@ class AstDumper(object):
             self.print_dict(ast)
         elif isinstance(ast, (str, unicode)):
             self.print_string(ast)
-        elif isinstance(ast, (int, bool)) or ast is None:
+        elif isinstance(ast, (int, long, bool)) or ast is None:
             self.print_other(ast)
         elif inspect.isclass(ast):
             self.print_class(ast)
@@ -75,11 +82,22 @@ class AstDumper(object):
             self.print_object(ast)
         else:
             self.print_other(ast)
+        self.passed_where.pop()
         self.passed.pop()
 
     def print_list(self, ast):
         # handles the printing of simple containers of N elements.
-        self.p(self.MAP_OPEN[ast.__class__])
+        if type(ast) not in (list, tuple, set, frozenset):
+            self.p(repr(type(ast)))
+
+            for k in (list, tuple, set, frozenset):
+                if isinstance(ast, k):
+                    klass = k
+
+        else:
+            klass = ast.__class__
+
+        self.p(self.MAP_OPEN[klass])
 
         self.ind(1, ast)
         for i, obj in enumerate(ast):
@@ -88,10 +106,13 @@ class AstDumper(object):
                 self.p(',')
                 self.ind()
         self.ind(-1, ast)
-        self.p(self.MAP_CLOSE[ast.__class__])
+        self.p(self.MAP_CLOSE[klass])
 
     def print_dict(self, ast):
         # handles the printing of dictionaries
+        if type(ast) != dict:
+            self.p(repr(type(ast)))
+
         self.p('{')
 
         self.ind(1, ast)
@@ -144,6 +165,16 @@ class AstDumper(object):
         elif (key == 'attributes' and ast.attributes is None and
             isinstance(ast, renpy.ast.Say)):
             # When no attributes are set, some versions of Ren'Py set it to None
+            # and some don't set it at all.
+            return False
+        elif (key == 'temporary_attributes' and ast.temporary_attributes is None and
+            isinstance(ast, renpy.ast.Say)):
+            # When no temporary attributes are set, some versions of Ren'Py set
+            # it to None and some don't set it at all.
+            return False
+        elif (key == 'rollback' and ast.rollback == 'normal' and
+            isinstance(ast, renpy.ast.Say)):
+            # When rollback is normal, some versions of Ren'Py set it to 'normal'
             # and some don't set it at all.
             return False
         elif (key == 'block' and ast.block == [] and
@@ -234,7 +265,7 @@ class AstDumper(object):
             return string
 
     def print_other(self, ast):
-        # used as a last fallback and to print things when a recursive lookup is detected
+        # used as a last fallback
         self.p(repr(ast))
 
     def ind(self, diff_indent=0, ast=None):
@@ -247,4 +278,6 @@ class AstDumper(object):
 
     def p(self, string):
         # write the string to the stream
-        self.out_file.write(unicode(string))
+        string = unicode(string)
+        self.linenumber += string.count('\n')
+        self.out_file.write(string)

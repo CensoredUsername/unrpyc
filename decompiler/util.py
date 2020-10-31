@@ -195,10 +195,10 @@ def reconstruct_paraminfo(paraminfo):
         if not paraminfo.extrapos:
             rv.append(sep())
             rv.append("*")
-        for param in nameonly:
+        for parameter in nameonly:
             rv.append(sep())
             rv.append(parameter[0])
-            if param[1] is not None:
+            if parameter[1] is not None:
                 rv.append("=%s" % parameter[1])
     if paraminfo.extrakw:
         rv.append(sep())
@@ -294,10 +294,12 @@ class Lexer(object):
 
     def python_string(self, clear_whitespace=True):
         # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
+        # edit: now parses docstrings correctly. There was a degenerate case where '''string'string''' would
+        # result in issues
         if clear_whitespace:
-            return self.match(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.match(r"""(u?(?P<a>"(?:"")?|'(?:'')?).*?(?<=[^\\])(?:\\\\)*(?P=a))""")
         else:
-            return self.re(r"""(u?(?P<a>"|').*?(?<=[^\\])(?:\\\\)*(?P=a))""")
+            return self.re(r"""(u?(?P<a>"(?:"")?|'(?:'')?).*?(?<=[^\\])(?:\\\\)*(?P=a))""")
 
 
     def container(self):
@@ -479,6 +481,10 @@ def say_get_code(ast, inmenu=False):
     if hasattr(ast, 'attributes') and ast.attributes is not None:
         rv.extend(ast.attributes)
 
+    if hasattr(ast, 'temporary_attributes') and ast.temporary_attributes is not None:
+        rv.append("@")
+        rv.extend(ast.temporary_attributes)
+
     # no dialogue_filter applies to us
 
     rv.append(encode_say_string(ast.what))
@@ -489,5 +495,8 @@ def say_get_code(ast, inmenu=False):
     if ast.with_:
         rv.append("with")
         rv.append(ast.with_)
+
+    if hasattr(ast, 'arguments') and ast.arguments is not None:
+        rv.append(reconstruct_arginfo(ast.arguments))
 
     return " ".join(rv)
