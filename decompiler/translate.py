@@ -32,6 +32,29 @@ class Translator(object):
         self.strings = {}
         self.dialogue = {}
         self.identifiers = set()
+        self.alternate = None
+
+    # Adapted from Ren'Py's Restructurer.unique_identifier
+    def unique_identifier(self, label, digest):
+        if label is None:
+            base = digest
+        else:
+            base = label.replace(".", "_") + "_" + digest
+
+        i = 0
+        suffix = ""
+
+        while True:
+
+            identifier = base + suffix
+
+            if identifier not in self.identifiers:
+                break
+
+            i += 1
+            suffix = "_{0}".format(i)
+
+        return identifier
 
     # Adapted from Ren'Py's Restructurer.create_translate
     def create_translate(self, block):
@@ -49,27 +72,20 @@ class Translator(object):
                 raise Exception("Don't know how to get canonical code for a %s" % str(type(i)))
             md5.update(code.encode("utf-8") + b"\r\n")
 
-        if self.label:
-            base = self.label + "_" + md5.hexdigest()[:8]
-        else:
-            base = md5.hexdigest()[:8]
+        digest = md5.hexdigest()[:8]
 
-        i = 0
-        suffix = ""
-
-        while True:
-
-            identifier = base + suffix
-
-            if identifier not in self.identifiers:
-                break
-
-            i += 1
-            suffix = "_{0}".format(i)
-
+        identifier = self.unique_identifier(self.label, digest)
         self.identifiers.add(identifier)
 
+        if self.alternate is not None:
+            alternate = self.unique_identifier(self.alternate, digest)
+            self.identifiers.add(alternate)
+        else:
+            alternate = None
+
         translated_block = self.dialogue.get(identifier)
+        if (translated_block is None) and alternate:
+            translated_block = self.dialogue.get(alternate)
         if translated_block is None:
             return block
 
@@ -101,7 +117,11 @@ class Translator(object):
 
             if isinstance(i, renpy.ast.Label):
                 if not (hasattr(i, 'hide') and i.hide):
-                    self.label = i.name
+                    if i.name.startswith("_"):
+                        self.alternate = i.name
+                    else:
+                        self.label = i.name
+                        self.alternate = None
 
             if self.saving_translations and isinstance(i, renpy.ast.TranslateString) and i.language == self.language:
                 self.strings[i.old] = i.new
@@ -110,6 +130,8 @@ class Translator(object):
                 self.walk(i, self.translate_dialogue)
             elif self.saving_translations and i.language == self.language:
                 self.dialogue[i.identifier] = i.block
+                if hasattr(i, 'alternate') and i.alternate is not None:
+                    self.dialogue[i.alternate] = i.block
 
             if isinstance(i, renpy.ast.Say):
                 group.append(i)
