@@ -107,8 +107,95 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
+def read_ast_from_file_fuzzy(in_file):
+    import zlib
+    import base64
+    from collections import Counter
+
+    # In recent times some devs have tried some simple ways of blocking decompilation. This function contains several appraoches
+    # To defeat this silliness.
+    raw_contents = in_file.read()
+
+    # Figure out the header offset. Alternatively we could also just straight up try to find the zlib header
+    position = 0
+    while position + 36 < len(raw_contents):
+        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", raw_contents[position : position + 36])
+        if a == 1 and d == 2 and g == 0 and b + c == e:
+            break;
+        position += 1
+    else:
+        raise Exception("Could not find the header")
+
+    with printlock:
+        if not raw_contents.startswith("RENPY RPC2"):
+            print("Shenanigans detected, file did not start with default RENPY RPYC2 header")
+
+        if position != 10:
+            print("Shenanigans detected, header offset was at %s" % position)
+
+        # Normal iteration loop, for now.
+        chunks = {}
+        while True:
+            slot, start, length = struct.unpack("<III", raw_contents[position: position + 12])
+            if slot == 0:
+                break
+            position += 12
+
+            chunks[slot] = raw_contents[start: start + length]
+
+        # we _assume_ they'd still put the contents in chunk 1
+        raw_contents = chunks[1]
+
+        # In a normal file we're expecting a zlib compressed pickle here, but this is occasionally also changed
+        layers = 0
+        while layers < 10:
+            layers += 1
+            count = Counter(raw_contents)
+            try:
+                data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
+                print("Found the actual pickle")
+                break
+            except Exception:
+                pass
+            try:
+                raw_contents = zlib.decompress(raw_contents)
+                print("Encountered a layer of zlib compression")
+                continue
+            except zlib.error:
+                pass
+            try:
+                if all(i in "abcdefABCDEF0123456789" for i in count.keys()):
+                    raw_contents = raw_contents.decode("hex")
+                    print("Encountered a layer of hex encoding")
+                    continue
+            except TypeError:
+                pass
+            try:
+                # Note: for some reason this doesn't error on characters not part of base64. Just on bad padding
+                # So it might trigger wrongly
+                if all(i in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
+                    raw_contents = base64.b64decode(raw_contents)
+                    print("Encountered a layer of base64 encoding")
+                    continue
+            except Exception:
+                pass
+            try:
+                # this is also likely to accept things that aren't actually escaped by it.
+                if all(ord(i) >= 0x20 and ord(i) < 0x80 for i in count.keys()):
+                    raw_contents = raw_contents.decode("string-escape")
+                    print("Encountered a layer of string-escape encoding")
+                    continue
+            except Exception:
+                pass
+            raise Exception("Couldn't figure out the encoding. hint: " + repr("".join(count.keys())))
+        else:
+            raise Exception("Couldn't figure out the encoding")
+
+    return stmts
+
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False, init_offset=False):
+                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
+                   init_offset=False, try_harder=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     if dump:
@@ -126,7 +213,10 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
-        ast = read_ast_from_file(in_file)
+        if try_harder:
+            ast = read_ast_from_file_fuzzy(in_file)
+        else:
+            ast = read_ast_from_file(in_file)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
@@ -134,7 +224,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                           no_pyexpr=no_pyexpr)
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
-                                             translator=translator, tag_outside_block=tag_outside_block, init_offset=init_offset)
+                                             translator=translator, tag_outside_block=tag_outside_block,
+                                             init_offset=init_offset)
     return True
 
 def extract_translations(input_filename, language):
@@ -161,7 +252,8 @@ def worker(t):
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, tag_outside_block=args.tag_outside_block, init_offset=args.init_offset)
+                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
+                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset, try_harder=args.try_harder)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -220,6 +312,9 @@ def main():
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile. "
                         "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
+
+    parser.add_argument('--try-harder', dest="try_harder", action="store_true",
+                        help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
     args = parser.parse_args()
 

@@ -42,6 +42,8 @@ Options:
                  insert them. This is always safe to enable if the game's Ren'Py
                  version supports init offset statements, and the generated code
                  is exactly equivalent, only less cluttered.
+  --try-harder   Tries some workarounds against common obfuscation methods.
+                 This is a lot slower.
 ```
 Usage: [python2] unrpyc.py [options] script1 script2 ...
 
