@@ -126,70 +126,75 @@ def read_ast_from_file_fuzzy(in_file):
     else:
         raise Exception("Could not find the header")
 
-    with printlock:
-        if not raw_contents.startswith("RENPY RPC2"):
-            print("Shenanigans detected, file did not start with default RENPY RPYC2 header")
+    diagnosis = []
 
-        if position != 10:
-            print("Shenanigans detected, header offset was at %s" % position)
+    if not raw_contents.startswith("RENPY RPC2"):
+        diagnosis.append("Shenanigans detected, file did not start with default RENPY RPYC2 header")
 
-        # Normal iteration loop, for now.
-        chunks = {}
-        while True:
-            slot, start, length = struct.unpack("<III", raw_contents[position: position + 12])
-            if slot == 0:
-                break
-            position += 12
+    if position != 10:
+        diagnosis.append("Shenanigans detected, header offset was at %s" % position)
 
-            chunks[slot] = raw_contents[start: start + length]
+    # Normal iteration loop, for now.
+    chunks = {}
+    while True:
+        slot, start, length = struct.unpack("<III", raw_contents[position: position + 12])
+        if slot == 0:
+            break
+        position += 12
 
-        # we _assume_ they'd still put the contents in chunk 1
-        raw_contents = chunks[1]
+        chunks[slot] = raw_contents[start: start + length]
 
-        # In a normal file we're expecting a zlib compressed pickle here, but this is occasionally also changed
-        layers = 0
-        while layers < 10:
-            layers += 1
-            count = Counter(raw_contents)
-            try:
-                data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
-                print("Found the actual pickle")
-                break
-            except Exception:
-                pass
-            try:
-                raw_contents = zlib.decompress(raw_contents)
-                print("Encountered a layer of zlib compression")
+    # we _assume_ they'd still put the contents in chunk 1
+    raw_contents = chunks[1]
+
+    # In a normal file we're expecting a zlib compressed pickle here, but this is occasionally also changed
+    layers = 0
+    while layers < 10:
+        layers += 1
+        count = Counter(raw_contents)
+        try:
+            data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
+            diagnosis.append("Found the actual pickle")
+            break
+        except Exception:
+            pass
+        try:
+            raw_contents = zlib.decompress(raw_contents)
+            diagnosis.append("Encountered a layer of zlib compression")
+            continue
+        except zlib.error:
+            pass
+        try:
+            if all(i in "abcdefABCDEF0123456789" for i in count.keys()):
+                raw_contents = raw_contents.decode("hex")
+                diagnosis.append("Encountered a layer of hex encoding")
                 continue
-            except zlib.error:
-                pass
-            try:
-                if all(i in "abcdefABCDEF0123456789" for i in count.keys()):
-                    raw_contents = raw_contents.decode("hex")
-                    print("Encountered a layer of hex encoding")
-                    continue
-            except TypeError:
-                pass
-            try:
-                # Note: for some reason this doesn't error on characters not part of base64. Just on bad padding
-                # So it might trigger wrongly
-                if all(i in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
-                    raw_contents = base64.b64decode(raw_contents)
-                    print("Encountered a layer of base64 encoding")
-                    continue
-            except Exception:
-                pass
-            try:
-                # this is also likely to accept things that aren't actually escaped by it.
-                if all(ord(i) >= 0x20 and ord(i) < 0x80 for i in count.keys()):
-                    raw_contents = raw_contents.decode("string-escape")
-                    print("Encountered a layer of string-escape encoding")
-                    continue
-            except Exception:
-                pass
-            raise Exception("Couldn't figure out the encoding. hint: " + repr("".join(count.keys())))
-        else:
-            raise Exception("Couldn't figure out the encoding")
+        except TypeError:
+            pass
+        try:
+            if all(i in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
+                raw_contents = base64.b64decode(raw_contents)
+                diagnosis.append("Encountered a layer of base64 encoding")
+                continue
+        except Exception:
+            pass
+        try:
+            # this is also likely to accept things that aren't actually escaped by it.
+            if all(ord(i) >= 0x20 and ord(i) < 0x80 for i in count.keys()):
+                raw_contents = raw_contents.decode("string-escape")
+                diagnosis.append("Encountered a layer of string-escape encoding")
+                continue
+        except Exception:
+            pass
+
+        # ensure we bail out the following loop as we didn't find anything we recognize
+        layers = 10
+    else:
+        raise Exception("Couldn't figure out the encoding. tried: \n%s\n, hint: %s" % ("\n".join(diagnosis), repr("".join(count.keys()))))
+
+    with printlock:
+        for line in diagnosis:
+            print(line)
 
     return stmts
 
