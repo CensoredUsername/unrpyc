@@ -694,7 +694,10 @@ class Decompiler(DecompilerBase):
 
                 state = None
 
-                if isinstance(condition, unicode):
+                # if the condition is a unicode subclass with a "linenumber" attribute it was script.
+                # If it isn't ren'py used to insert a "True" string. This string used to be of type str
+                # but nowadays it's of time unicode, just not of type PyExpr
+                if isinstance(condition, unicode) and hasattr(condition, "linenumber"):
                     if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
                         # The easy case: we know the line number that the menu item is on, because the condition tells us
                         # So we put the say statement here if there's room for it, or don't if there's not
