@@ -70,7 +70,7 @@ def Exec(code):
 pack_folder = path.dirname(path.abspath(__file__))
 base_folder = path.dirname(pack_folder)
 
-decompiler = p.ExecTranspile("""
+base = """
 # Set up the namespace
 from os.path import join
 from os import getcwd
@@ -150,7 +150,9 @@ remove_fake_package("renpy")
 modules.update(renpy_modules)
 meta_path.append(renpy_loader)
 __package__ = package
+"""
 
+decompiler_rpyc = p.ExecTranspile(base + """
 from renpy import script_version
 from renpy.game import script
 ({'version': script_version, 'key': script.key}, [])
@@ -165,15 +167,36 @@ from renpy.game import script
     Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
 ))
 
+decompiler_rpyb = p.ExecTranspile(base + "(None, [])\n", (
+    Module("util", path.join(base_folder, "decompiler/util.py")),
+    Module("magic", path.join(base_folder, "decompiler/magic.py"), False),
+    Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
+    Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
+    Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+    Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
+    Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
+    Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
+))
+
 
 unrpyc = zlib.compress(
-             p.optimize(
-                 p.dumps(decompiler, protocol),
-             protocol),
-         9)
+    p.optimize(
+        p.dumps(decompiler_rpyc, protocol),
+    protocol),
+9)
+
+bytecoderpyb = zlib.compress(
+    p.optimize(
+        p.dumps(decompiler_rpyb, protocol),
+    protocol),
+9)
+
 
 with open(path.join(pack_folder, "un.rpyc"), "wb") as f:
     f.write(unrpyc)
+
+with open(path.join(pack_folder, "bytecode.rpyb"), "wb") as f:
+    f.write(bytecoderpyb)
 
 if args.debug:
     print("File length = {0}".format(len(unrpyc)))
@@ -201,4 +224,4 @@ if args.debug:
         pickletools.dis(data, f)
 
     with open(path.join(pack_folder, "un.dis3"), "wb" if p.PY2 else "w") as f:
-        p.pprint(decompiler, f)
+        p.pprint(decompiler_rpyc, f)
