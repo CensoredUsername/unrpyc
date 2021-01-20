@@ -56,6 +56,11 @@ def decryptor(f):
     return f
 
 
+# Add game-specific custom extraction / decryption logic here
+
+# End of custom extraction/decryption logic
+
+
 @extractor
 def extract_slot_rpyc(f, slot):
     """
@@ -176,6 +181,7 @@ def extract_slot_zlibscan(f, slot):
         raise ValueError("Zlibscan did not find enough chunks")
 
     return chunks[slot - 1]
+
 
 @decryptor
 def decrypt_zlib(data, count):
