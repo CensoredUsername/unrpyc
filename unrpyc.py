@@ -27,7 +27,13 @@ import glob
 import itertools
 import traceback
 import struct
-from multiprocessing import Pool, Lock, cpu_count
+try:
+    from multiprocessing import Pool, Lock, cpu_count
+except ImportError:
+    MP_EXISTS = False
+    from dummy_thread import allocate_lock
+else:
+    MP_EXISTS = True
 from operator import itemgetter
 
 import decompiler
@@ -82,7 +88,7 @@ class Sentinel(magic.FakeStrict, object):
 
 class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
-printlock = Lock()
+printlock = Lock() if MP_EXISTS else allocate_lock()
 
 # needs class_factory
 import deobfuscate
@@ -184,6 +190,7 @@ def sharelock(lock):
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
+    cc_num = cpu_count() if MP_EXISTS else 1
     parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
 
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
@@ -192,8 +199,9 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('-p', '--processes', dest='processes', action='store', default=cpu_count(),
-                        help="use the specified number of processes to decompile")
+    parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
+                        choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
+                        help="Used CPU count in multiprocessing, value 1 deactivates")
 
     parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
                         help="use the specified file to translate during decompilation")
@@ -272,7 +280,7 @@ def main():
 
     files = map(lambda x: (args, x, path.getsize(x)), files)
     processes = int(args.processes)
-    if processes > 1:
+    if MP_EXISTS and processes > 1:
         # If a big file starts near the end, there could be a long time with
         # only one thread running, which is inefficient. Avoid this by starting
         # big files first.
