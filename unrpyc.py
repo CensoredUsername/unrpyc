@@ -116,6 +116,7 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
+
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
                    init_offset=False, try_harder=False):
