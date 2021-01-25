@@ -81,7 +81,6 @@ class RevertableSet(magic.FakeStrict, set):
 
 class Sentinel(magic.FakeStrict, object):
     __module__ = "renpy.object"
-
     def __new__(cls, name):
         obj = object.__new__(cls)
         obj.name = name
