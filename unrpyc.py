@@ -39,11 +39,10 @@ from operator import itemgetter
 import decompiler
 from decompiler import magic, astdump, translate
 
-
 # special definitions for special classes
+
 class PyExpr(magic.FakeStrict, unicode):
     __module__ = "renpy.ast"
-
     def __new__(cls, s, filename, linenumber):
         self = unicode.__new__(cls, s)
         self.filename = filename
@@ -53,32 +52,24 @@ class PyExpr(magic.FakeStrict, unicode):
     def __getnewargs__(self):
         return unicode(self), self.filename, self.linenumber
 
-
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
-
     def __setstate__(self, state):
         (_, self.source, self.location, self.mode) = state
         self.bytecode = None
 
-
 class RevertableList(magic.FakeStrict, list):
     __module__ = "renpy.python"
-
     def __new__(cls):
         return list.__new__(cls)
 
-
 class RevertableDict(magic.FakeStrict, dict):
     __module__ = "renpy.python"
-
     def __new__(cls):
         return dict.__new__(cls)
 
-
 class RevertableSet(magic.FakeStrict, set):
     __module__ = "renpy.python"
-
     def __new__(cls):
         return set.__new__(cls)
 
@@ -88,7 +79,6 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-
 class Sentinel(magic.FakeStrict, object):
     __module__ = "renpy.object"
 
@@ -97,7 +87,6 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-
 class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock() if MP_EXISTS else allocate_lock()
@@ -105,8 +94,8 @@ printlock = Lock() if MP_EXISTS else allocate_lock()
 # needs class_factory
 import deobfuscate
 
-
 # API
+
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
@@ -128,7 +117,6 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
-
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
                    init_offset=False, try_harder=False):
@@ -146,7 +134,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
 
         if not overwrite and path.exists(out_filename):
             print("Output file already exists. Pass --clobber to overwrite.")
-            return False  # Don't stop decompiling if one file already exists
+            return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
         if try_harder:
@@ -164,7 +152,6 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                              init_offset=init_offset)
     return True
 
-
 def extract_translations(input_filename, language):
     with printlock:
         print("Extracting translations from %s..." % input_filename)
@@ -176,7 +163,6 @@ def extract_translations(input_filename, language):
     translator.translate_dialogue(ast)
     # we pickle and unpickle this manually because the regular unpickler will choke on it
     return magic.safe_dumps(translator.dialogue), translator.strings
-
 
 def worker(t):
     (args, filename, filesize) = t
@@ -198,11 +184,9 @@ def worker(t):
             print(traceback.format_exc())
         return False
 
-
 def sharelock(lock):
     global printlock
     printlock = lock
-
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
@@ -338,7 +322,6 @@ def main():
         print("Decompilation of %d file%s failed" % (bad, 's' if bad>1 else ''))
     else:
         print("Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else ''))
-
 
 if __name__ == '__main__':
     main()
