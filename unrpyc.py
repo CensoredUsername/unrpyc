@@ -199,12 +199,8 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('-p', '--processes',
-                        dest='processes',
-                        action='store',
-                        type=int,
-                        choices=range(1, cc_num),
-                        default=cc_num - 1 if cc_num > 2 else 1,
+    parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
+                        choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
                         help="Used CPU count in multiprocessing, value 1 deactivates")
 
     parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
