@@ -27,14 +27,24 @@ import glob
 import itertools
 import traceback
 import struct
+from operator import itemgetter
+
 try:
     from multiprocessing import Pool, Lock, cpu_count
 except ImportError:
-    MP_EXISTS = False
-    from dummy_thread import allocate_lock
-else:
-    MP_EXISTS = True
-from operator import itemgetter
+    # Mock required support when multiprocessing is unavailable
+    def cpu_count():
+        return 1
+
+    class Lock:
+        def __enter__(self):
+            pass
+        def __exit__(self, type, value, traceback):
+            pass
+        def acquire(self, block=True, timeout=None):
+            pass
+        def release(self):
+            pass
 
 import decompiler
 from decompiler import magic, astdump, translate
@@ -88,7 +98,7 @@ class Sentinel(magic.FakeStrict, object):
 
 class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
-printlock = Lock() if MP_EXISTS else allocate_lock()
+printlock = Lock()
 
 # needs class_factory
 import deobfuscate
@@ -190,7 +200,7 @@ def sharelock(lock):
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
-    cc_num = cpu_count() if MP_EXISTS else 1
+    cc_num = cpu_count()
     parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
 
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
@@ -201,7 +211,8 @@ def main():
 
     parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
                         choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
-                        help="Used CPU count in multiprocessing, value 1 deactivates")
+                        help="use the specified number or processes to decompile."
+                        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
 
     parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
                         help="use the specified file to translate during decompilation")
@@ -280,7 +291,7 @@ def main():
 
     files = map(lambda x: (args, x, path.getsize(x)), files)
     processes = int(args.processes)
-    if MP_EXISTS and processes > 1:
+    if processes > 1:
         # If a big file starts near the end, there could be a long time with
         # only one thread running, which is inefficient. Avoid this by starting
         # big files first.
