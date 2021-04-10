@@ -283,8 +283,9 @@ class ScopeAnalyzer(ast.NodeTransformer):
 
         if not protect_builtins:
             # append the nodes to rename builtins
-            extra_nodes = [ast.Assign([ast.Name(value, ast.Store())], ast.Name(key, ast.Load()))
-                           for key, value in self.builtin_scope.bound_vars.iteritems() if key != value]
+            extra_nodes = [ast.Assign([ast.Name(value, ast.Store())],
+                           ast.Name(key, ast.Load())) for key, value in
+                           self.builtin_scope.bound_vars.items() if key != value]
             # ensure any "from __future__ import thing" statements are at the start of the
             futures = [future for future in node.body if
                        isinstance(future, ast.ImportFrom) and future.module == "__future__"]

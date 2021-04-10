@@ -20,8 +20,6 @@
 
 import os
 import os.path as path
-import codecs
-import traceback
 import struct
 
 import decompiler
@@ -29,10 +27,10 @@ import magic
 
 # special new and setstate methods for special classes
 
-class PyExpr(magic.FakeStrict, unicode):
+class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber):
-        self = unicode.__new__(cls, s)
+        self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
         return self
@@ -105,7 +103,7 @@ def decompile_rpyc(data, abspath, init_offset):
     ast = read_ast_from_file(data)
 
     ensure_dir(out_filename)
-    with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
+    with open(out_filename, 'w', encoding='utf-8') as out_file:
         decompiler.pprint(out_file, ast, init_offset=init_offset)
     return True
 
@@ -120,7 +118,7 @@ def decompile_game():
         for abspath, fn, dir, data in sys.files:
             try:
                 decompile_rpyc(data, abspath, sys.init_offset)
-            except Exception, e:
+            except Exception as err:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
