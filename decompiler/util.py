@@ -1,7 +1,7 @@
-from __future__ import unicode_literals
+
 import sys
 import re
-from StringIO import StringIO
+from io import StringIO
 from contextlib import contextmanager
 
 class DecompilerBase(object):
@@ -41,7 +41,7 @@ class DecompilerBase(object):
         """
         Shorthand method for writing `string` to the file
         """
-        string = unicode(string)
+        string = str(string)
         self.linenumber += string.count('\n')
         self.skip_indent_until_write = False
         self.out_file.write(string)
@@ -84,7 +84,7 @@ class DecompilerBase(object):
     def advance_to_line(self, linenumber):
         # If there was anything that we wanted to do as soon as we found a blank line,
         # try to do it now.
-        self.blank_line_queue = filter(lambda m: m(linenumber), self.blank_line_queue)
+        self.blank_line_queue = [m for m in self.blank_line_queue if m(linenumber)]
         if self.linenumber < linenumber:
             # Stop one line short, since the call to indent() will advance the last line.
             # Note that if self.linenumber == linenumber - 1, this will write the empty string.
@@ -433,18 +433,18 @@ class WordConcatenator(object):
         self.reorderable = reorderable
 
     def append(self, *args):
-        self.words.extend(filter(None, args))
+        self.words.extend([_f for _f in args if _f])
 
     def join(self):
         if not self.words:
             return ''
         if self.reorderable and self.words[-1][-1] == ' ':
-            for i in xrange(len(self.words) - 1, -1, -1):
+            for i in range(len(self.words) - 1, -1, -1):
                 if self.words[i][-1] != ' ':
                     self.words.append(self.words.pop(i))
                     break
         last_word = self.words[-1]
-        self.words = map(lambda x: x[:-1] if x[-1] == ' ' else x, self.words[:-1])
+        self.words = [x[:-1] if x[-1] == ' ' else x for x in self.words[:-1]]
         self.words.append(last_word)
         rv = (' ' if self.needs_space else '') + ' '.join(self.words)
         self.needs_space = rv[-1] != ' '

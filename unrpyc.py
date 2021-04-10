@@ -22,12 +22,12 @@
 
 import argparse
 from os import path, walk
-import codecs
 import glob
 import itertools
 import traceback
 import struct
 from operator import itemgetter
+import zlib
 
 try:
     from multiprocessing import Pool, Lock, cpu_count
@@ -39,28 +39,32 @@ except ImportError:
     class Lock:
         def __enter__(self):
             pass
+
         def __exit__(self, type, value, traceback):
             pass
+
         def acquire(self, block=True, timeout=None):
             pass
+
         def release(self):
             pass
+
 
 import decompiler
 from decompiler import magic, astdump, translate
 
 # special definitions for special classes
 
-class PyExpr(magic.FakeStrict, unicode):
+class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber):
-        self = unicode.__new__(cls, s)
+        self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
         return self
 
     def __getnewargs__(self):
-        return unicode(self), self.filename, self.linenumber
+        return str(self), self.filename, self.linenumber
 
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
@@ -101,14 +105,14 @@ class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, Revertab
 printlock = Lock()
 
 # needs class_factory
-import deobfuscate
+import deobfuscate  # nopep8 # noqa 
 
 # API
 
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
-    if raw_contents.startswith("RENPY RPC2"):
+    if raw_contents.startswith(b"RENPY RPC2"):
         # parse the archive structure
         position = 10
         chunks = {}
@@ -122,7 +126,9 @@ def read_ast_from_file(in_file):
 
         raw_contents = chunks[1]
 
-    raw_contents = raw_contents.decode('zlib')
+    # py3 compat: zlib should be enough, no need for codecs
+    # raw_contents = raw_contents.decode('zlib')
+    raw_contents = zlib.decompress(raw_contents)
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
@@ -140,7 +146,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
         out_filename = filepath + ".rpy"
 
     with printlock:
-        print("Decompiling %s to %s..." % (input_filename, out_filename))
+        print(("Decompiling %s to %s..." % (input_filename, out_filename)))
 
         if not overwrite and path.exists(out_filename):
             print("Output file already exists. Pass --clobber to overwrite.")
@@ -152,7 +158,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
         else:
             ast = read_ast_from_file(in_file)
 
-    with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
+    # py3compat: test if codecs is needet; but shouldn't
+    with open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
@@ -270,7 +277,7 @@ def main():
         if not retval:
             print("File not found: " + s)
         return retval
-    filesAndDirs = map(glob_or_complain, args.file)
+    filesAndDirs = list(map(glob_or_complain, args.file))
     # Concatenate lists
     filesAndDirs = list(itertools.chain(*filesAndDirs))
 
@@ -289,7 +296,7 @@ def main():
         print("No script files to decompile.")
         return
 
-    files = map(lambda x: (args, x, path.getsize(x)), files)
+    files = [(args, x, path.getsize(x)) for x in files]
     processes = int(args.processes)
     if processes > 1:
         # If a big file starts near the end, there could be a long time with
@@ -300,7 +307,7 @@ def main():
     else:
         # Decompile in the order Ren'Py loads in
         files.sort(key=itemgetter(1))
-        results = map(worker, files)
+        results = list(map(worker, files))
 
     if args.write_translation_file:
         print("Writing translations to %s..." % args.write_translation_file)

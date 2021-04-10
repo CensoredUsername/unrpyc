@@ -18,16 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
 
 import re
 import ast
 from operator import itemgetter
 from contextlib import contextmanager
 
-from util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, \
-                 simple_expression_guard, split_logical_lines, Dispatcher
-import codegen
+from .util import DecompilerBase, WordConcatenator, reconstruct_paraminfo, \
+    simple_expression_guard, split_logical_lines, Dispatcher
+from . import codegen
 
 # Main API
 
@@ -116,7 +115,7 @@ class SLDecompiler(DecompilerBase):
             value = getattr(ast, key)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
-            if isinstance(value, unicode):
+            if isinstance(value, str):
                 if value.linenumber not in keywords:
                     keywords[value.linenumber] = WordConcatenator(False, True)
                 keywords[value.linenumber].append("%s %s" % (key, value))
@@ -220,7 +219,7 @@ class SLDecompiler(DecompilerBase):
         with self.increase_indent():
             for i in stuff_to_print:
                 # Nodes are lists. Keywords are ready-to-print strings.
-                if type(i[1]) == list:
+                if isinstance(i[1], list):
                     self.print_node(i[1][0], i[1][1:])
                 else:
                     self.advance_to_line(i[0])

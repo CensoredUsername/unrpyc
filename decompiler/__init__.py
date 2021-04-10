@@ -18,23 +18,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
-from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
-                 reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
-from util import say_get_code
+
+from .util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
+    reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
+from .util import say_get_code
 
 from operator import itemgetter
-from StringIO import StringIO
+from io import StringIO
 
-import magic
-magic.fake_package(b"renpy")
-import renpy
+from . import magic
+magic.fake_package("renpy")
+import renpy  # nopep8 # noqa 
 
-import screendecompiler
-import sl2decompiler
-import testcasedecompiler
-import codegen
-import astdump
+
+from . import screendecompiler  # nopep8 # noqa
+from . import sl2decompiler  # nopep8 # noqa
+from . import testcasedecompiler  # nopep8 # noqa
+from . import codegen  # nopep8 # noqa
+from . import astdump  # nopep8 # noqa
 
 __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
 
@@ -295,7 +296,7 @@ class Decompiler(DecompilerBase):
         if len(imspec[6]) > 0:
             words.append("behind %s" % ', '.join(imspec[6]))
 
-        if isinstance(imspec[4], unicode):
+        if isinstance(imspec[4], str):
             words.append("onlayer %s" % imspec[4])
 
         if imspec[5] is not None:
@@ -374,7 +375,7 @@ class Decompiler(DecompilerBase):
         self.write("scene")
 
         if ast.imspec is None:
-            if isinstance(ast.layer, unicode):
+            if isinstance(ast.layer, str):
                 self.write(" onlayer %s" % ast.layer)
             needs_space = True
         else:
@@ -517,7 +518,7 @@ class Decompiler(DecompilerBase):
 
         for i, (condition, block) in enumerate(ast.entries):
             # The non-Unicode string "True" is the condition for else:.
-            if (i + 1) == len(ast.entries) and not isinstance(condition, unicode):
+            if (i + 1) == len(ast.entries) and not isinstance(condition, str):
                 self.indent()
                 self.write("else:")
             else:
@@ -656,7 +657,7 @@ class Decompiler(DecompilerBase):
             self.write(reconstruct_arginfo(arguments))
 
         if block is not None:
-            if isinstance(condition, unicode):
+            if isinstance(condition, str):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
@@ -697,7 +698,7 @@ class Decompiler(DecompilerBase):
                 # if the condition is a unicode subclass with a "linenumber" attribute it was script.
                 # If it isn't ren'py used to insert a "True" string. This string used to be of type str
                 # but nowadays it's of time unicode, just not of type PyExpr
-                if isinstance(condition, unicode) and hasattr(condition, "linenumber"):
+                if isinstance(condition, str) and hasattr(condition, "linenumber"):
                     if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
                         # The easy case: we know the line number that the menu item is on, because the condition tells us
                         # So we put the say statement here if there's room for it, or don't if there's not
@@ -839,7 +840,7 @@ class Decompiler(DecompilerBase):
             if ast.variant.linenumber not in keywords:
                 keywords[ast.variant.linenumber] = WordConcatenator(False)
             keywords[ast.variant.linenumber].append("variant %s" % ast.variant)
-        for key, value in ast.properties.iteritems():
+        for key, value in ast.properties.items():
             if value.linenumber not in keywords:
                 keywords[value.linenumber] = WordConcatenator(False)
             keywords[value.linenumber].append("%s %s" % (key, value))

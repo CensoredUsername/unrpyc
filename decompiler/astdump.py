@@ -18,11 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
 
 import sys
 import inspect
-import codegen
+from . import codegen
 import ast as py_ast
 import renpy
 
@@ -41,7 +40,7 @@ class AstDumper(object):
     MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
-                 comparable=False, indentation=u'    '):
+                 comparable=False, indentation='    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.decompile_python = decompile_python
@@ -72,9 +71,9 @@ class AstDumper(object):
             self.print_pyexpr(ast)
         elif isinstance(ast, dict):
             self.print_dict(ast)
-        elif isinstance(ast, (str, unicode)):
+        elif isinstance(ast, str):
             self.print_string(ast)
-        elif isinstance(ast, (int, long, bool)) or ast is None:
+        elif isinstance(ast, (int, bool)) or ast is None:
             self.print_other(ast)
         elif inspect.isclass(ast):
             self.print_class(ast)
@@ -110,7 +109,7 @@ class AstDumper(object):
 
     def print_dict(self, ast):
         # handles the printing of dictionaries
-        if type(ast) != dict:
+        if not isinstance(ast, dict):
             self.p(repr(type(ast)))
 
         self.p('{')
@@ -135,19 +134,19 @@ class AstDumper(object):
             ast.serial = 0
         elif key == 'col_offset':
             ast.col_offset = 0 # TODO maybe make this match?
-        elif key == 'name' and type(ast.name) == tuple:
+        elif key == 'name' and isinstance(ast.name, tuple):
             name = ast.name[0]
-            if isinstance(name, unicode):
+            if isinstance(name, str):
                 name = name.encode('utf-8')
             ast.name = (name.split(b'/')[-1], 0, 0)
-        elif key == 'location' and type(ast.location) == tuple:
+        elif key == 'location' and isinstance(ast.location, tuple):
             if len(ast.location) == 4:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
             elif len(ast.location) == 3:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], 0)
             elif len(ast.location) == 2:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1])
-        elif key == 'loc' and type(ast.loc) == tuple:
+        elif key == 'loc' and isinstance(ast.loc, tuple):
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
@@ -206,7 +205,7 @@ class AstDumper(object):
 
         if isinstance(ast, py_ast.Module) and self.decompile_python:
             self.p('.code = ')
-            self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
+            self.print_ast(codegen.to_source(ast, str(self.indentation)))
             self.p('>')
             return
 
@@ -242,7 +241,7 @@ class AstDumper(object):
         # it will print it as a docstring.
         if b'\n' in ast:
             astlist = ast.split(b'\n')
-            if isinstance(ast, unicode):
+            if isinstance(ast, str):
                 self.p('u')
             self.p('"""')
             self.p(self.escape_string(astlist.pop(0)))
@@ -257,7 +256,7 @@ class AstDumper(object):
 
     def escape_string(self, string):
         # essentially the representation of a string without the surrounding quotes
-        if isinstance(string, unicode):
+        if isinstance(string, str):
             return repr(string)[2:-1]
         elif isinstance(string, str):
             return repr(string)[1:-1]
@@ -274,10 +273,10 @@ class AstDumper(object):
         # shouldn't indent in case there's only one or zero objects in this object to print
         if ast is None or len(ast) > 1:
             self.indent += diff_indent
-            self.p(u'\n' + self.indentation * self.indent)
+            self.p('\n' + self.indentation * self.indent)
 
     def p(self, string):
         # write the string to the stream
-        string = unicode(string)
+        string = str(string)
         self.linenumber += string.count('\n')
         self.out_file.write(string)

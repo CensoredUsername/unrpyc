@@ -68,7 +68,7 @@ def extract_slot_rpyc(f, slot):
     """
     f.seek(0)
     data = f.read()
-    if data[:10] != "RENPY RPYC":
+    if data[:10] != b'RENPY RPC2':
         raise ValueError("Incorrect Header")
 
     position = 10
@@ -234,7 +234,7 @@ def assert_is_normal_rpyc(f):
     header = f.read(1024)
     f.seek(0)
 
-    if header[:10] != "RENPY RPC2":
+    if header[:10] != b'RENPY RPC2':
         # either legacy, or someone messed with the header
 
         # assuming legacy, see if this thing is a valid zlib blob
@@ -254,7 +254,7 @@ def assert_is_normal_rpyc(f):
             # 10 bytes header + 4 * 9 bytes content table
             return ValueError("File too short")
 
-        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", header[10: 46])
+        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", header[10: 46])
 
         # does the header format match default ren'py generated files?
         if not (a == 1 and b == 46 and d == 2 and (g, h, i) == (0, 0, 0) and b + c == e):
@@ -285,8 +285,8 @@ def read_ast(f):
     for extractor in EXTRACTORS:
         try:
             data = extractor(f, 1)
-        except ValueError as e:
-            diagnosis.append("strategy %s failed: %s" % (extractor.__name__, e.message))
+        except ValueError as err:
+            diagnosis.append("strategy %s failed: %s" % (extractor.__name__, err))
         else:
             diagnosis.append("strategy %s success" % extractor.__name__)
             raw_datas.add(data)
@@ -302,8 +302,8 @@ def read_ast(f):
     for raw_data in raw_datas:
         try:
             data, stmts, d = try_decrypt_section(raw_data)
-        except ValueError as e:
-            diagnosis.append(e.message)
+        except ValueError as err:
+            diagnosis.append(err)
         else:
             diagnosis.extend(d)
             with unrpyc.printlock:

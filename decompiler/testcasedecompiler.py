@@ -18,8 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
-from util import DecompilerBase, split_logical_lines, Dispatcher, string_escape
+
+from .util import DecompilerBase, split_logical_lines, Dispatcher, string_escape
 from renpy.test import testast
 
 # Main API

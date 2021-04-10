@@ -408,11 +408,11 @@ class SourceGenerator(NodeVisitor):
     def visit_AsyncFunctionDef(self, node):
         self.visit_FunctionDef(node, True)
 
-    def visit_FunctionDef(self, node, async=False):
+    def visit_FunctionDef(self, node, async_=False):
         self.newline(extra=1)
         # first decorator line number will be used
         self.decorators(node)
-        if async:
+        if async_:
             self.write('async ')
         self.write('def ')
         self.write(node.name)
@@ -561,9 +561,9 @@ class SourceGenerator(NodeVisitor):
     def visit_AsyncFor(self, node):
         self.visit_For(node, True)
 
-    def visit_For(self, node, async=False):
+    def visit_For(self, node, async_=False):
         self.newline(node, force=True)
-        if async:
+        if async_:
             self.write('async ')
         self.write('for ')
         self.visit_bare(node.target)
@@ -582,9 +582,9 @@ class SourceGenerator(NodeVisitor):
     def visit_AsyncWith(self, node):
         self.visit_With(node, True)
 
-    def visit_With(self, node, async=False):
+    def visit_With(self, node, async_=False):
         self.newline(node, force=True)
-        if async:
+        if async_:
             self.write('async ')
         self.write('with ')
 
@@ -899,7 +899,7 @@ class SourceGenerator(NodeVisitor):
     def visit_BinOp(self, node):
         self.maybe_break(node)
         symbol, precedence = self.BINOP_SYMBOLS[type(node.op)]
-        self.prec_start(precedence, type(node.op) != Pow)
+        self.prec_start(precedence, not isinstance(node.op, Pow))
 
         # work around python's negative integer literal optimization
         if isinstance(node.op, Pow):

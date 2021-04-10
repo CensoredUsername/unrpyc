@@ -18,12 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
-import sys
+
 from operator import itemgetter
 
-from util import DecompilerBase, First, reconstruct_paraminfo, \
-                 reconstruct_arginfo, split_logical_lines, Dispatcher
+from .util import DecompilerBase, First, reconstruct_paraminfo, \
+    reconstruct_arginfo, split_logical_lines, Dispatcher
 
 from renpy import ui, sl2
 from renpy.ast import PyExpr
@@ -310,14 +309,23 @@ class SL2Decompiler(DecompilerBase):
             current_line[1].extend(keywords_somewhere)
             keywords_somewhere = []
         keywords_by_line.append(current_line)
-        last_keyword_line = keywords_by_line[-1][0]
+        # py3 compat: Comparison between different types was removed in py 3(TypeError)
+        # We need to catch None before the comparison line.
+        #
+        # Values in both cmp sides where in tests never zero or lower. Replacing
+        # 'None' with a lesser int value should work and gives us the needed
+        # int-type on both sides. We go with -1 incase 0 sometime still used is.
+        ln_num_kw = keywords_by_line[-1][0] if keywords_by_line[-1][0] is not \
+            None else -1
         children_with_keywords = []
         children_after_keywords = []
         for i in children:
-            if i.location[1] > last_keyword_line:
+            ln_num_child = i.location[1] if i.location[1] is not None else -1
+            if ln_num_child > ln_num_kw:
                 children_after_keywords.append(i)
             else:
                 children_with_keywords.append((i.location[1], i))
+
         # the keywords in keywords_by_line[0] go on the line that starts the
         # block, not in it
         block_contents = sorted(keywords_by_line[1:] + children_with_keywords,
