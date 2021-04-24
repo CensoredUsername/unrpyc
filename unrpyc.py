@@ -108,7 +108,46 @@ class _ELSE_COND(magic.FakeStrict, str):
             cls.instance = str.__new__(cls, s)
         return cls.instance
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList, _ELSE_COND), magic.FakeStrict)
+class LanguageCases(magic.FakeStrict, unicode):
+    __module__ = "store"
+    __slots__ = [
+        "_cases",
+    ]
+    def __new__(cls, s, **cases):
+        self = unicode.__new__(cls, s)
+        self._cases = dict(cases)
+        return self
+
+    def __getstate__(self):
+        return self._cases
+
+    def __setstate__(self, cases):
+        self._cases.update(cases)
+
+    def __getattr__(self, name):
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError()
+
+        if name in self._cases:
+            return self._cases[name]
+
+        language = preferences.language
+        if language is None:
+            rv = None
+            language = "english"
+        else:
+            rv = self._cases.get(language + "_" + name)
+
+        if rv is not None:
+            return rv
+        elif config.developer:
+            raise AttributeError(
+                "LanguageCases have not defined "
+                "'{}' case for language '{}'".format(name, language))
+        else:
+            return __(self)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList, _ELSE_COND, LanguageCases), magic.FakeStrict)
 
 printlock = Lock()
 
