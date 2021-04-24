@@ -96,7 +96,19 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+    def __new__(cls):
+        return list.__new__(list)
+
+class _ELSE_COND(magic.FakeStrict, str):
+    __module__ = "store"
+    def __new__(cls, s):
+        if not hasattr(cls, 'instance'):
+            cls.instance = str.__new__(cls, s)
+        return cls.instance
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList, _ELSE_COND), magic.FakeStrict)
 
 printlock = Lock()
 
