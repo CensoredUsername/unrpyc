@@ -68,7 +68,7 @@ def extract_slot_rpyc(f, slot):
     """
     f.seek(0)
     data = f.read()
-    if data[:10] != "RENPY RPYC":
+    if data[:10] != b'RENPY RPC2':
         raise ValueError("Incorrect Header")
 
     position = 10
@@ -234,7 +234,7 @@ def assert_is_normal_rpyc(f):
     header = f.read(1024)
     f.seek(0)
 
-    if header[:10] != "RENPY RPC2":
+    if header[:10] != b'RENPY RPC2':
         # either legacy, or someone messed with the header
 
         # assuming legacy, see if this thing is a valid zlib blob
