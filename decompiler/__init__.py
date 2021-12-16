@@ -761,7 +761,10 @@ class Decompiler(DecompilerBase):
 
                 state = None
 
-                if isinstance(condition, unicode):
+                # if the condition is a unicode subclass with a "linenumber" attribute it was script.
+                # If it isn't ren'py used to insert a "True" string. This string used to be of type str
+                # but nowadays it's of time unicode, just not of type PyExpr
+                if isinstance(condition, unicode) and hasattr(condition, "linenumber"):
                     if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
                         # The easy case: we know the line number that the menu item is on, because the condition tells us
                         # So we put the say statement here if there's room for it, or don't if there's not
@@ -836,10 +839,13 @@ class Decompiler(DecompilerBase):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
                 priority = " %d" % (init.priority - self.init_offset)
+        index = ""
+        if hasattr(ast, "index") and ast.index is not None:
+            index = "[%s]" % ast.index.source
         if not hasattr(ast, "store") or ast.store == "store":
-            self.write("%s%s %s = %s" % (name, priority, ast.varname, ast.code.source))
+            self.write("%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
         else:
-            self.write("%s%s %s.%s = %s" % (name, priority, ast.store[6:], ast.varname, ast.code.source))
+            self.write("%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
 
     # Specials
 

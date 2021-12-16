@@ -27,8 +27,24 @@ import glob
 import itertools
 import traceback
 import struct
-from multiprocessing import Pool, Lock, cpu_count
 from operator import itemgetter
+
+try:
+    from multiprocessing import Pool, Lock, cpu_count
+except ImportError:
+    # Mock required support when multiprocessing is unavailable
+    def cpu_count():
+        return 1
+
+    class Lock:
+        def __enter__(self):
+            pass
+        def __exit__(self, type, value, traceback):
+            pass
+        def acquire(self, block=True, timeout=None):
+            pass
+        def release(self):
+            pass
 
 import decompiler
 from decompiler import magic, astdump, translate
@@ -92,9 +108,51 @@ class _ELSE_COND(magic.FakeStrict, str):
             cls.instance = str.__new__(cls, s)
         return cls.instance
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList, _ELSE_COND), magic.FakeStrict)
+class LanguageCases(magic.FakeStrict, unicode):
+    __module__ = "store"
+    __slots__ = [
+        "_cases",
+    ]
+    def __new__(cls, s, **cases):
+        self = unicode.__new__(cls, s)
+        self._cases = dict(cases)
+        return self
+
+    def __getstate__(self):
+        return self._cases
+
+    def __setstate__(self, cases):
+        self._cases.update(cases)
+
+    def __getattr__(self, name):
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError()
+
+        if name in self._cases:
+            return self._cases[name]
+
+        language = preferences.language
+        if language is None:
+            rv = None
+            language = "english"
+        else:
+            rv = self._cases.get(language + "_" + name)
+
+        if rv is not None:
+            return rv
+        elif config.developer:
+            raise AttributeError(
+                "LanguageCases have not defined "
+                "'{}' case for language '{}'".format(name, language))
+        else:
+            return __(self)
+
+class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel, RevertableList, _ELSE_COND, LanguageCases), magic.FakeStrict)
 
 printlock = Lock()
+
+# needs class_factory
+import deobfuscate
 
 # API
 
@@ -119,8 +177,10 @@ def read_ast_from_file(in_file):
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
+
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False, init_offset=False):
+                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
+                   init_offset=False, try_harder=False):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     if dump:
@@ -138,7 +198,10 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             return False # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
-        ast = read_ast_from_file(in_file)
+        if try_harder:
+            ast = deobfuscate.read_ast(in_file)
+        else:
+            ast = read_ast_from_file(in_file)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
@@ -146,7 +209,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                           no_pyexpr=no_pyexpr)
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
-                                             translator=translator, tag_outside_block=tag_outside_block, init_offset=init_offset)
+                                             translator=translator, tag_outside_block=tag_outside_block,
+                                             init_offset=init_offset)
     return True
 
 def extract_translations(input_filename, language):
@@ -173,7 +237,8 @@ def worker(t):
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator, tag_outside_block=args.tag_outside_block, init_offset=args.init_offset)
+                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
+                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset, try_harder=args.try_harder)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -186,6 +251,7 @@ def sharelock(lock):
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
+    cc_num = cpu_count()
     parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
 
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
@@ -194,8 +260,10 @@ def main():
     parser.add_argument('-d', '--dump', dest='dump', action='store_true',
                         help="instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('-p', '--processes', dest='processes', action='store', default=cpu_count(),
-                        help="use the specified number of processes to decompile")
+    parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
+                        choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
+                        help="use the specified number or processes to decompile."
+                        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
 
     parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
                         help="use the specified file to translate during decompilation")
@@ -232,6 +300,9 @@ def main():
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile. "
                         "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
+
+    parser.add_argument('--try-harder', dest="try_harder", action="store_true",
+                        help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
     args = parser.parse_args()
 
