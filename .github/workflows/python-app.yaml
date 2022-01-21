@@ -24,6 +24,6 @@ jobs:
       run: |
         ./unrpyc.py --clobber testcases/script.rpyc
         diff -u testcases/script.orig.rpy testcases/script.rpy
-        cd un.rpyc
-        "./compile.py -p 1"
+        cd un.rpyc;
+        ./compile.py -p 1
         cd ..
