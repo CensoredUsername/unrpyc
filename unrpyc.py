@@ -96,7 +96,7 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+class_factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 
@@ -123,6 +123,10 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
+    import pickletools
+    with open("idfk.txt", "wb") as f:
+        pickletools.dis(raw_contents, out=f)
+
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 

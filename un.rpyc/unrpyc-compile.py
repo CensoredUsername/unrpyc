@@ -71,7 +71,7 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
     data, stmts = magic.safe_loads(raw_contents, factory, {"_ast", "collections"})
