@@ -53,19 +53,27 @@ from decompiler import magic, astdump, translate
 
 class PyExpr(magic.FakeStrict, unicode):
     __module__ = "renpy.ast"
-    def __new__(cls, s, filename, linenumber):
+    def __new__(cls, s, filename, linenumber, py=None):
         self = unicode.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
+        self.py = py
         return self
 
     def __getnewargs__(self):
-        return unicode(self), self.filename, self.linenumber
+        if self.py is not None:
+            return unicode(self), self.filename, self.linenumber, self.py
+        else:
+            return unicode(self), self.filename, self.linenumber
 
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
-        (_, self.source, self.location, self.mode) = state
+        if len(state) == 4:
+            (_, self.source, self.location, self.mode) = state
+            self.py = None
+        else:
+            (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
 class RevertableList(magic.FakeStrict, list):
@@ -123,9 +131,9 @@ def read_ast_from_file(in_file):
         raw_contents = chunks[1]
 
     raw_contents = raw_contents.decode('zlib')
-    import pickletools
-    with open("idfk.txt", "wb") as f:
-        pickletools.dis(raw_contents, out=f)
+    # import pickletools
+    # with open("huh.txt", "wb") as f:
+    #     pickletools.dis(raw_contents, out=f)
 
     data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
