@@ -10,8 +10,8 @@ setup(
     description='Tool to decompile Ren\'Py compiled .rpyc script files.',
     long_description=readme(),
     url='https://github.com/CensoredUsername/unrpyc',
-    py_modules=['unrpyc'],
+    py_modules=['unrpyc', '.deobfuscate'],
     packages=['decompiler'],
-    scripts=['unrpyc.py', 'deobfuscate.py'],
+    scripts=['unrpyc.py'],
     zip_safe=False,
 )
