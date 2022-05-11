@@ -8,9 +8,9 @@ script files. It will not extract files from .rpa archives. For that, use
 
 ## Status
 
-master: [![Build Status](https://travis-ci.org/CensoredUsername/unrpyc.svg?branch=master)](https://travis-ci.org/CensoredUsername/unrpyc)
+master:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-dev: [![Build Status](https://travis-ci.org/CensoredUsername/unrpyc.svg?branch=dev)](https://travis-ci.org/CensoredUsername/unrpyc)
+dev:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
 ## Usage
 

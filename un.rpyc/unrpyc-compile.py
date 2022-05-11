@@ -29,16 +29,21 @@ import magic
 
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
-    def __new__(cls, s, filename, linenumber):
+    def __new__(cls, s, filename, linenumber, py=None):
         self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
+        self.py = py
         return self
 
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
-        (_, self.source, self.location, self.mode) = state
+        if len(state) == 4:
+            (_, self.source, self.location, self.mode) = state
+            self.py = None
+        else:
+            (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
 class RevertableList(magic.FakeStrict, list):
@@ -69,24 +74,9 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
-    # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
-    if raw_contents.startswith("RENPY RPC2"):
-        # parse the archive structure
-        position = 10
-        chunks = {}
-        while True:
-            slot, start, length = struct.unpack("III", raw_contents[position: position + 12])
-            if slot == 0:
-                break
-            position += 12
-
-            chunks[slot] = raw_contents[start: start + length]
-
-        raw_contents = chunks[1]
-    raw_contents = raw_contents.decode('zlib')
     data, stmts = magic.safe_loads(raw_contents, factory, {"_ast", "collections"})
     return stmts
 

@@ -57,10 +57,11 @@ from decompiler import magic, astdump, translate
 
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
-    def __new__(cls, s, filename, linenumber):
+    def __new__(cls, s, filename, linenumber, py=None):
         self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
+        self.py = py
         return self
 
     def __getnewargs__(self):
@@ -69,7 +70,11 @@ class PyExpr(magic.FakeStrict, str):
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
-        (_, self.source, self.location, self.mode) = state
+        if len(state) == 4:
+            (_, self.source, self.location, self.mode) = state
+            self.py = None
+        else:
+            (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
 class RevertableList(magic.FakeStrict, list):
@@ -100,7 +105,7 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-class_factory = magic.FakeClassFactory((PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+class_factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 

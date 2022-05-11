@@ -293,21 +293,46 @@ class SL2Decompiler(DecompilerBase):
                 keywords_somewhere.extend(("tag", tag))
             else:
                 current_line[1].extend(("tag", tag))
+
+        force_newline = False
         for key, value in keywords:
             if value is None:
-                value = ""
-                if current_line[0] is None:
+                # ok, so normally this wouldn't make sense to be None, it should be a PyExpr. However
+                # ren'py's parser is broken and instead of erroring on a keyword argument that hasn't got
+                # an actual value given it instead just inserts `None` as the value. Since basically every keyword
+                # is technically a valid expression the only way for this to happen is at the end of a line,
+                # so after this we have to force a line break
+
+                # if this is the first keyword, or the previous was broken we need to force a newline
+                if current_line[0] is None or force_newline:
+                    force_newline = False
                     keywords_by_line.append(current_line)
                     current_line = (0, [])
-            elif current_line[0] is None or value.linenumber > current_line[0]:
-                keywords_by_line.append(current_line)
-                current_line = (value.linenumber, [])
-            current_line[1].extend((key, value))
+
+                # force a newline
+                force_newline = True
+            
+                # just output the key
+                current_line[1].append(key)
+
+            else:
+                if current_line[0] is None or value.linenumber > current_line[0] or force_newline:
+                    force_newline = False
+                    keywords_by_line.append(current_line)
+                    current_line = (value.linenumber, [])
+
+                current_line[1].extend((key, value))
+
         if keywords_by_line:
+            if force_newline:
+                keywords_by_line.append(current_line)
+                current_line = (0, [])
+
             # Easy case: we have at least one line inside the block that already has keywords.
             # Just put the ones from keywords_somewhere with them.
             current_line[1].extend(keywords_somewhere)
             keywords_somewhere = []
+
         keywords_by_line.append(current_line)
         # py3 compat: Comparison between different types was removed in py 3(TypeError)
         # We need to catch None before the comparison line.
