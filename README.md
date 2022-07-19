@@ -85,7 +85,7 @@ optional arguments:
                         less cluttered.
   --try-harder          Tries some workarounds against common obfuscation
                         methods. This is a lot slower.
-  --sl-displayable-classes
+  --sl-displayable-classes CLASSNAME=NEWNAME-CHILDREN ...
                         Accepts mapping separated by '=',
                         where the first argument is the name
                         of the user-defined displayable object,
