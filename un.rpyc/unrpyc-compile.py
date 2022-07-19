@@ -87,7 +87,7 @@ def ensure_dir(filename):
     if dir and not path.exists(dir):
         os.makedirs(dir)
 
-def decompile_rpyc(data, abspath, init_offset):
+def decompile_rpyc(data, abspath, init_offset, sl_classes):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(abspath)
     out_filename = filepath + ('.rpym' if ext == ".rpymc" else ".rpy")
@@ -96,7 +96,7 @@ def decompile_rpyc(data, abspath, init_offset):
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
-        decompiler.pprint(out_file, ast, init_offset=init_offset)
+        decompiler.pprint(out_file, ast, init_offset=init_offset, sl_classes=sl_classes)
     return True
 
 def decompile_game():
@@ -106,10 +106,10 @@ def decompile_game():
     ensure_dir(logfile)
     with open(logfile, "w") as f:
         f.write("Beginning decompiling\n")
-
+        sl_classes = {}  # Enter if available for a particular game.
         for abspath, fn, dir, data in sys.files:
             try:
-                decompile_rpyc(data, abspath, sys.init_offset)
+                decompile_rpyc(data, abspath, sys.init_offset, sl_classes)
             except Exception, e:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']

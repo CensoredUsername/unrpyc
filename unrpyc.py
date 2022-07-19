@@ -297,6 +297,8 @@ def main():
             return (_key, (name, children))
         return (_key, (_value, "many"))
 
+    if args.sl_classes is None:
+        args.sl_classes = []
     args.sl_classes = dict(map(_parse_sl_arg_string, args.sl_classes))
 
     # Expand wildcards
