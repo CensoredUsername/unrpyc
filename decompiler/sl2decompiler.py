@@ -34,8 +34,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop
 # Main API
 
 def pprint(out_file, ast, print_atl_callback, indent_level=0, linenumber=1,
-           skip_indent_until_write=False, printlock=None, tag_outside_block=False):
-    return SL2Decompiler(print_atl_callback, out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
+           skip_indent_until_write=False, printlock=None, tag_outside_block=False, sl_classes=None):
+    return SL2Decompiler(print_atl_callback, out_file,
+                         printlock=printlock, tag_outside_block=tag_outside_block, sl_classes=sl_classes).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -45,10 +46,13 @@ class SL2Decompiler(DecompilerBase):
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
 
-    def __init__(self, print_atl_callback, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
+    def __init__(self, print_atl_callback, out_file=None,
+                 indentation = '    ', printlock=None,
+                 tag_outside_block=False, sl_classes=None):
         super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
         self.print_atl_callback = print_atl_callback
         self.tag_outside_block = tag_outside_block
+        self.sl_classes = (sl_classes or {})
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class
@@ -193,18 +197,31 @@ class SL2Decompiler(DecompilerBase):
         if nameAndChildren is None:
             # This is either a displayable we don't know about, or a user-defined displayable
 
-            # workaround: assume the name of the displayable matches the given style
-            # this is rather often the case. However, as it may be wrong we have to
-            # print a debug message
-            nameAndChildren = (ast.style, 'many')
-            self.print_debug(
- """Warning: Encountered a user-defined displayable of type '{}'.
-    Unfortunately, the name of user-defined displayables is not recorded in the compiled file.
-    For now the style name '{}' will be substituted.
-    To check if this is correct, find the corresponding renpy.register_sl_displayable call.""".format(
-                    ast.displayable, ast.style
+            if ast.displayable.__name__ in self.sl_classes:
+
+                nameAndChildren = self.sl_classes[ast.displayable.__name__]
+                self.print_debug(
+     """A user-defined displayable object '{0}' is detected, change the name to ({1!r}, {2!r}).""".format(
+                        ast.displayable, *nameAndChildren
+                    )
                 )
-            )
+
+            else:
+
+                # workaround: assume the name of the displayable matches the given style
+                # this is rather often the case. However, as it may be wrong we have to
+                # print a debug message
+                nameAndChildren = (ast.style, 'many')
+
+                self.print_debug(
+     """Warning: Encountered a user-defined displayable of type '{}'.
+        Unfortunately, the name of user-defined displayables is not recorded in the compiled file.
+        For now the style name '{}' will be substituted.
+        To check if this is correct, find the corresponding renpy.register_sl_displayable call.""".format(
+                        ast.displayable, ast.style
+                    )
+                )
+
         (name, children) = nameAndChildren
         self.indent()
         self.write(name)
@@ -312,7 +329,7 @@ class SL2Decompiler(DecompilerBase):
 
                 # force a newline
                 force_newline = True
-            
+
                 # just output the key
                 current_line[1].append(key)
 

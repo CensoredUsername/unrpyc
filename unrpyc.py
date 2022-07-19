@@ -141,7 +141,7 @@ def read_ast_from_file(in_file):
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
-                   init_offset=False, try_harder=False):
+                   init_offset=False, try_harder=False, sl_classes=None):
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     if dump:
@@ -171,7 +171,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
         else:
             decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
                                              translator=translator, tag_outside_block=tag_outside_block,
-                                             init_offset=init_offset)
+                                             init_offset=init_offset, sl_classes=sl_classes)
     return True
 
 def extract_translations(input_filename, language):
@@ -199,7 +199,8 @@ def worker(t):
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
                                   no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
-                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset, try_harder=args.try_harder)
+                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
+                                  try_harder=args.try_harder, sl_classes=args.sl_classes)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -265,6 +266,16 @@ def main():
     parser.add_argument('--try-harder', dest="try_harder", action="store_true",
                         help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
+    parser.add_argument('--sl-displayable-classes', dest="sl_classes", type=str, nargs='+',
+                        help="Accepts mapping separated by '=', "
+                        "where the first argument is the name of the user-defined displayable object, "
+                        "and the second argument is a string separated by '-', "
+                        "containing the name of the displayable object "
+                        "and the argument of the child displayable objects. "
+                        "Also the second argument can contain only the name of the object. "
+                        "In this case the child object argument will be set to 'many'.")
+
+
     args = parser.parse_args()
 
     if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
@@ -275,6 +286,18 @@ def main():
     if args.translation_file:
         with open(args.translation_file, 'rb') as in_file:
             args.translations = in_file.read()
+
+    def _parse_sl_arg_string(data):
+        assert ('=' in data), "Incorrect argument."
+        _key, _value = map(lambda x: x.strip(), data.split('=', 1))
+        if '-' in _value:
+            name, children = map(lambda x: x.strip(), _value.split('-', 1))
+            if children.isdigit():
+                children = int(children)
+            return (_key, (name, children))
+        return (_key, (_value, "many"))
+
+    args.sl_classes = dict(map(_parse_sl_arg_string, args.sl_classes))
 
     # Expand wildcards
     def glob_or_complain(s):

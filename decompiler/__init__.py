@@ -41,9 +41,11 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Main API
 
 def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
+           decompile_python=False, printlock=None, translator=None,
+           init_offset=False, tag_outside_block=False, sl_classes=None):
     Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
+               decompile_python=decompile_python,
+               translator=translator, sl_classes=sl_classes).dump(ast, indent_level, init_offset, tag_outside_block)
 
 # Implementation
 
@@ -57,10 +59,12 @@ class Decompiler(DecompilerBase):
     dispatch = Dispatcher()
 
     def __init__(self, out_file=None, decompile_python=False,
-                 indentation = '    ', printlock=None, translator=None):
+                 indentation = '    ', printlock=None,
+                 translator=None, sl_classes=None):
         super(Decompiler, self).__init__(out_file, indentation, printlock)
         self.decompile_python = decompile_python
         self.translator = translator
+        self.sl_classes = sl_classes
 
         self.paired_with = False
         self.say_inside_menu = None
@@ -786,7 +790,7 @@ class Decompiler(DecompilerBase):
     # actually belongs inside of the Menu statement.
     def say_belongs_to_menu(self, say, menu):
         return (not say.interact and say.who is not None and
-            say.with_ is None and 
+            say.with_ is None and
             (not hasattr(say, "attributes") or say.attributes is None) and
             isinstance(menu, renpy.ast.Menu) and
             menu.items[0][2] is not None and
@@ -939,7 +943,8 @@ class Decompiler(DecompilerBase):
                                     self.linenumber,
                                     self.skip_indent_until_write,
                                     self.printlock,
-                                    self.tag_outside_block)
+                                    self.tag_outside_block,
+                                    self.sl_classes)
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)

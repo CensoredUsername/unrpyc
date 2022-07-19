@@ -33,6 +33,7 @@ usage: unrpyc.py [-h] [-c] [-d] [-p {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}]
                  [-t TRANSLATION_FILE] [-T WRITE_TRANSLATION_FILE]
                  [-l LANGUAGE] [--sl1-as-python] [--comparable] [--no-pyexpr]
                  [--tag-outside-block] [--init-offset] [--try-harder]
+                 [--sl-displayable-classes CLASSNAME=NEWNAME-CHILDREN ...]
                  file [file ...]
 
 Decompile .rpyc/.rpymc files
@@ -84,6 +85,16 @@ optional arguments:
                         less cluttered.
   --try-harder          Tries some workarounds against common obfuscation
                         methods. This is a lot slower.
+  --sl-displayable-classes
+                        Accepts mapping separated by '=',
+                        where the first argument is the name
+                        of the user-defined displayable object,
+                        and the second argument is a string separated by '-',
+                        containing the name of the displayable object
+                        and the argument of the child displayable objects.
+                        Also the second argument can contain only the name
+                        of the object. In this case the child object argument
+                        will be set to 'many'.
 
 ```
 
