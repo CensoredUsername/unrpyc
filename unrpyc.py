@@ -104,7 +104,7 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-class_factory = magic.FakeClassFactory((set, frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+class_factory = magic.FakeClassFactory((set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 

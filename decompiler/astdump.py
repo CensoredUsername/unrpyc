@@ -37,8 +37,11 @@ class AstDumper(object):
     it will create a human-readable representation of all interesting
     attributes and write this to a given stream
     """
-    MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
-    MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
+    # test try: renpy 7.5/8 removed frozenset -so we do here the same
+    MAP_OPEN = {list: '[', tuple: '(', set: '{'}
+    MAP_CLOSE = {list: ']', tuple: ')', set: '}'}
+    # MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
+    # MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
                  comparable=False, indentation=u'    '):
@@ -66,7 +69,9 @@ class AstDumper(object):
             return
         self.passed.append(ast)
         self.passed_where.append(self.linenumber)
-        if isinstance(ast, (list, tuple, set, frozenset)):
+        # test try: renpy 7.5/8 removed frozenset -so we do here the same
+        # if isinstance(ast, (list, tuple, set, frozenset)):
+        if isinstance(ast, (list, tuple, set)):
             self.print_list(ast)
         elif isinstance(ast, renpy.ast.PyExpr):
             self.print_pyexpr(ast)
@@ -87,10 +92,12 @@ class AstDumper(object):
 
     def print_list(self, ast):
         # handles the printing of simple containers of N elements.
-        if type(ast) not in (list, tuple, set, frozenset):
+        # test try: renpy 7.5/8 removed frozenset -so we do here the same
+        # if type(ast) not in (list, tuple, set, frozenset):
+        if type(ast) not in (list, tuple, set):
             self.p(repr(type(ast)))
-
-            for k in (list, tuple, set, frozenset):
+            # for k in (list, tuple, set, frozenset):
+            for k in (list, tuple, set):
                 if isinstance(ast, k):
                     klass = k
 
