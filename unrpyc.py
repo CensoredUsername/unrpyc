@@ -77,18 +77,19 @@ class PyCode(magic.FakeStrict):
             (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
+# renpy 7.5/8 compat; change renpy.python to renpy.revertable 3times
 class RevertableList(magic.FakeStrict, list):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return list.__new__(cls)
 
 class RevertableDict(magic.FakeStrict, dict):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return dict.__new__(cls)
 
 class RevertableSet(magic.FakeStrict, set):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return set.__new__(cls)
 
