@@ -106,8 +106,8 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-# renpy 7.5/8 compat  rem frozenset, add set
-class_factory = magic.FakeClassFactory((set, frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+# renpy 7.5/8 compat  renpy removed frozenset
+class_factory = magic.FakeClassFactory((set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 
