@@ -219,10 +219,11 @@ def reconstruct_arginfo(arginfo):
         if name is not None:
             rv.append("%s=" % name)
         rv.append(val)
-    if arginfo.extrapos:
+    # renpy 7.5/8 compat; check for existenz of attrs extrapos, extrakw
+    if hasattr(arginfo, 'extrapos') and arginfo.extrapos:
         rv.append(sep())
         rv.append("*%s" % arginfo.extrapos)
-    if arginfo.extrakw:
+    if hasattr(arginfo, 'extrakw') and arginfo.extrakw:
         rv.append(sep())
         rv.append("**%s" % arginfo.extrakw)
     rv.append(")")
