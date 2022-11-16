@@ -104,14 +104,36 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-class_factory = magic.FakeClassFactory((set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+
+# renpy 7.5/8 compat
+# - renpy removed frozenset
+# - Let's create two instances of class_factory instead of redefining them on every error # due to revertable objects. renpy @7.5(also v8) is normaly used and @7.4 is fallback
+cls_factory_75 = magic.FakeClassFactory(
+    (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+
+RevertableList.__module__, RevertableDict.__module__, RevertableSet.__module__ = (
+    "renpy.python", ) * 3
+cls_factory_74 = magic.FakeClassFactory(
+    (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 
 # needs class_factory
 import deobfuscate
 
+
 # API
+def revertable_switch(raw_dat):
+    """Switches in a way between two instances of cls_factory. If a error from possible old code appears, it uses renpy.python instead of the new renpy.revertable module name."""
+    try:
+        data, stmts = magic.safe_loads(raw_dat, cls_factory_75, {
+            "_ast", "collections"})
+    except TypeError as err:
+        if 'Revertable' in err.args[0]:
+            data, stmts = magic.safe_loads(raw_dat, cls_factory_74, {
+                "_ast", "collections"})
+    return data, stmts
+
 
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
@@ -135,7 +157,9 @@ def read_ast_from_file(in_file):
     # with open("huh.txt", "wb") as f:
     #     pickletools.dis(raw_contents, out=f)
 
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
+    # renpy 7.5/8 compat; for revertable problem
+    # data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
+    data, stmts = revertable_switch(raw_contents)
     return stmts
 
 
@@ -194,7 +218,7 @@ def worker(t):
         else:
             if args.translation_file is not None:
                 translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, class_factory)
+                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, cls_factory_75)
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
@@ -325,7 +349,7 @@ def main():
                 bad += 1
                 continue
             good += 1
-            translated_dialogue.update(magic.loads(result[0], class_factory))
+            translated_dialogue.update(magic.loads(result[0], cls_factory_75))
             translated_strings.update(result[1])
         with open(args.write_translation_file, 'wb') as out_file:
             magic.safe_dump((args.language, translated_dialogue, translated_strings), out_file)
