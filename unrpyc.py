@@ -112,6 +112,7 @@ class Sentinel(magic.FakeStrict, object):
 # - Let's create two instances of class_factory instead of redefining them on every error # due to revertable objects. renpy @7.5(also v8) is normaly used and @7.4 is fallback
 cls_factory_75 = magic.FakeClassFactory(
     (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+
 RevertableList.__module__, RevertableDict.__module__, RevertableSet.__module__ = (
     "renpy.python", ) * 3
 cls_factory_74 = magic.FakeClassFactory(
@@ -126,11 +127,11 @@ import deobfuscate  # nopep8 # noqa
 def revertable_switch(raw_dat):
     """Switches in a way between two instances of cls_factory. If a error from possible old code appears, it uses renpy.python instead of the new renpy.revertable module name."""
     try:
-        data, stmts = magic.safe_loads(raw_dat, cls_factory_74, {
+        data, stmts = magic.safe_loads(raw_dat, cls_factory_75, {
             "_ast", "collections"})
     except TypeError as err:
         if 'Revertable' in err.args[0]:
-            data, stmts = magic.safe_loads(raw_dat, cls_factory_75, {
+            data, stmts = magic.safe_loads(raw_dat, cls_factory_74, {
                 "_ast", "collections"})
     return data, stmts
 
