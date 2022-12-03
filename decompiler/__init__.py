@@ -926,6 +926,12 @@ class Decompiler(DecompilerBase):
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             def print_atl_callback(linenumber, indent_level, atl):
+                # HACK: This fixes the two statements on a line Error e.g.
+                # `at tranform:parallel:` or `at tranform:on show:`
+                # This is however probably a bad solution. The real reason
+                # is the permanent activated `skip_indent_until_write=True)`
+                # in line 134.
+                self.skip_indent_until_write = False
                 old_linenumber = self.linenumber
                 self.linenumber = linenumber
                 with self.increase_indent(indent_level - self.indent_level):
