@@ -334,19 +334,14 @@ class SL2Decompiler(DecompilerBase):
             keywords_somewhere = []
 
         keywords_by_line.append(current_line)
-        # py3 compat: Comparison between different types was removed in py 3(TypeError)
-        # We need to catch None before the comparison line.
-        #
-        # Values in both cmp sides where in tests never zero or lower. Replacing
-        # 'None' with a lesser int value should work and gives us the needed
-        # int-type on both sides. We go with -1 incase 0 sometime still used is.
-        ln_num_kw = keywords_by_line[-1][0] if keywords_by_line[-1][0] is not \
-            None else -1
+        last_keyword_line = keywords_by_line[-1][0]
         children_with_keywords = []
         children_after_keywords = []
         for i in children:
-            ln_num_child = i.location[1] if i.location[1] is not None else -1
-            if ln_num_child > ln_num_kw:
+            # NOTE: PY3 compat: No comparison of different types in py3
+            # (TypeError) 'None' must be catched before the comparison, so we
+            # short circuit this.
+            if last_keyword_line is None or i.location[1] > last_keyword_line:
                 children_after_keywords.append(i)
             else:
                 children_with_keywords.append((i.location[1], i))
