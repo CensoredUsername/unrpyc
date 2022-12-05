@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/python3
 
 # Copyright (c) 2012 Yuri K. Schlesner
 #
