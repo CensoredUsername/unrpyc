@@ -657,7 +657,13 @@ class Decompiler(DecompilerBase):
             self.write(reconstruct_arginfo(arguments))
 
         if block is not None:
-            if isinstance(condition, str):
+            # FIXME: In py2 "condition" carried two types of string: u' prefixed and
+            # without. The check allowed only unicode for execution.In py3 both are str
+            # type, the second variant slips now in and menu say-lines get wrongly a
+            # "if True:" attached.
+            # In tests the value was either a condition check or "True". False/None are
+            # just includet in the fix as a hunch.
+            if isinstance(condition, str) and condition not in ("True", "False", "None"):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
