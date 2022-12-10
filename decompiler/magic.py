@@ -109,9 +109,8 @@ A barebones instance of :class:`FakeClassType`. Inherit from this to create fake
 class FakeStrict(FakeClass, object):
     def __new__(cls, *args, **kwargs):
         self = FakeClass.__new__(cls)
-        # renpy 7.5/8 combat; Check if correctly initialized
-        # if args or kwargs:
-        if not (any([(), ([], )]) in args) and kwargs != {}:
+        # NOTE: RENPY 7.5/8 compat; Check if correctly initialized
+        if not isinstance(args, tuple) and not isinstance(kwargs, dict):
             raise FakeUnpicklingError("{0} was instantiated with unexpected arguments {1}, {2}".format(cls, args, kwargs))
         return self
 
