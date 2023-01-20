@@ -266,6 +266,9 @@ def main():
     parser.add_argument('--try-harder', dest="try_harder", action="store_true",
                         help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
+    parser.add_argument('--raise-if-error', dest="raise_if_error", action="store_true",
+                        help="Raise an error if decompiling one of the files fails.")
+
     parser.add_argument('--sl-displayable-classes', dest="sl_classes", type=str, nargs='+',
                         help="Accepts mapping separated by '=', "
                         "where the first argument is the name of the user-defined displayable object, "
@@ -359,6 +362,10 @@ def main():
         # Check per file if everything went well and report back
         good = results.count(True)
         bad = results.count(False)
+
+    if args.raise_if_error:
+        if bad:
+            raise Exception("Decompilation of {0} files failed".format(bad))
 
     if bad == 0:
         print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))
