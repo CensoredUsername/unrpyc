@@ -1,8 +1,8 @@
 # Unrpyc, the Ren'py script decompiler.
 ## Branch Info
 For use with **Python 3** and on RenPy v8.0.x and v7.5.x apps.
-[!IMPORTANT]
-**<span style="color: goldenrod">Not for newer versions e.g. v8.1+ !</span>**
+>[!IMPORTANT]
+>**<span style="color: goldenrod">Not for newer versions e.g. v8.1+ !</span>**
 
 ### v1.1.9
 - based on unrpyc v1.1.8
