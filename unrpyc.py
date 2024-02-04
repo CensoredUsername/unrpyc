@@ -113,15 +113,14 @@ class Sentinel(magic.FakeStrict, object):
 cls_factory_75 = magic.FakeClassFactory(
     (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
-RevertableList.__module__, RevertableDict.__module__, RevertableSet.__module__ = (
-    "renpy.python", ) * 3
+RevertableList.__module__ = RevertableDict.__module__ = RevertableSet.__module__ = "renpy.python"
 cls_factory_74 = magic.FakeClassFactory(
     (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
 
 printlock = Lock()
 
 # needs class_factory
-import deobfuscate  # nopep8 # noqa 
+import deobfuscate  # nopep8 # noqa
 
 # API
 def revertable_switch(raw_dat):
