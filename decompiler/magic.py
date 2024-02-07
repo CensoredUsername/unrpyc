@@ -102,6 +102,7 @@ class FakeClassType(type):
 
 # PY2 doesn't like the PY3 way of metaclasses and PY3 doesn't support the PY2 way
 # so we call the metaclass directly
+# FIXME: This should now be written the py3 way
 FakeClass = FakeClassType("FakeClass", (), {"__doc__": """
 A barebones instance of :class:`FakeClassType`. Inherit from this to create fake classes.
 """}, module=__name__)
