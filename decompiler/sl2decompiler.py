@@ -312,7 +312,7 @@ class SL2Decompiler(DecompilerBase):
 
                 # force a newline
                 force_newline = True
-            
+
                 # just output the key
                 current_line[1].append(key)
 
@@ -390,7 +390,10 @@ class SL2Decompiler(DecompilerBase):
         if atl_transform is not None:
             # "at transform:", possibly preceded by other keywords, and followed by an ATL block
             # TODO this doesn't always go at the end. Use line numbers to figure out where it goes
-            if not wrote_colon and lineno is not None:
+
+            # BUG: If there was a "at ..." stmt before a transform, a wrong colon was added.
+            # In tests worked this so far
+            if not wrote_colon and lineno is not None and not has_block:
                 self.write(":")
                 wrote_colon = True
             with self.increase_indent():
