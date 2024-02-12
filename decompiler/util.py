@@ -214,17 +214,30 @@ def reconstruct_arginfo(arginfo):
 
     rv = ["("]
     sep = First("", ", ")
-    for (name, val) in arginfo.arguments:
-        rv.append(sep())
-        if name is not None:
-            rv.append("%s=" % name)
-        rv.append(val)
-    if arginfo.extrapos:
-        rv.append(sep())
-        rv.append("*%s" % arginfo.extrapos)
-    if arginfo.extrakw:
-        rv.append(sep())
-        rv.append("**%s" % arginfo.extrakw)
+    if hasattr(arginfo, "starred_indexes"):
+        # ren'py 7.5 and above, PEP 448 compliant
+        for i, (name, val) in enumerate(arginfo.arguments):
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            elif i in arginfo.starred_indexes:
+                rv.append("*")
+            elif i in arginfo.doublestarred_indexes:
+                rv.append("**")
+            rv.append(val)
+    else:
+        # ren'py 7.4 and below, python 2 style
+        for (name, val) in arginfo.arguments:
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            rv.append(val)
+        if arginfo.extrapos:
+            rv.append(sep())
+            rv.append("*%s" % arginfo.extrapos)
+        if arginfo.extrakw:
+            rv.append(sep())
+            rv.append("**%s" % arginfo.extrakw)
     rv.append(")")
 
     return "".join(rv)
