@@ -827,10 +827,14 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Say)
     def print_say(self, ast, inmenu=False):
+        # if this say statement precedes a menu statement, postpone emitting it until we're handling
+        # the menu
         if (not inmenu and self.index + 1 < len(self.block) and
             self.say_belongs_to_menu(ast, self.block[self.index + 1])):
             self.say_inside_menu = ast
             return
+
+        # else just write it.
         self.indent()
         self.write(say_get_code(ast, inmenu))
 

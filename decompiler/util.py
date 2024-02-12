@@ -558,11 +558,20 @@ def say_get_code(ast, inmenu=False):
     if not ast.interact and not inmenu:
         rv.append("nointeract")
 
-    if ast.with_:
-        rv.append("with")
-        rv.append(ast.with_)
+    # explicit_identifier was only added in 7.7/8.2.
+    if hasattr(ast, "explicit_identifier") and ast.explicit_identifier:
+        rv.append("id")
+        rv.append(ast.identifier)
+    # identifier was added in 7.4.1. But the way ren'py processed it
+    # means it doesn't stored it in the pickle unless explicitly set
+    elif hasattr(ast, "identifier") and ast.identifier is not None:
+        rv.append(ast.identifier)
 
     if hasattr(ast, 'arguments') and ast.arguments is not None:
         rv.append(reconstruct_arginfo(ast.arguments))
+
+    if ast.with_:
+        rv.append("with")
+        rv.append(ast.with_)
 
     return " ".join(rv)
