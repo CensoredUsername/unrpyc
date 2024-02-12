@@ -974,3 +974,10 @@ class Decompiler(DecompilerBase):
                                 self.skip_indent_until_write,
                                 self.printlock)
         self.skip_indent_until_write = False
+
+    # Rpy python directives
+
+    @dispatch(renpy.ast.RPY)
+    def print_rpy_python(self, ast):
+        self.indent()
+        self.write("rpy python %s" % ast.rest)
