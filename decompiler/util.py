@@ -565,6 +565,7 @@ def say_get_code(ast, inmenu=False):
     # identifier was added in 7.4.1. But the way ren'py processed it
     # means it doesn't stored it in the pickle unless explicitly set
     elif hasattr(ast, "identifier") and ast.identifier is not None:
+        rv.append("id")
         rv.append(ast.identifier)
 
     if hasattr(ast, 'arguments') and ast.arguments is not None:
