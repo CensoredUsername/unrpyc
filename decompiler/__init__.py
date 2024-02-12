@@ -427,6 +427,21 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % ast.expr)
             self.paired_with = False
 
+    @dispatch(renpy.ast.camera)
+    def print_camera(self, ast):
+        self.indent()
+        self.write("camera")
+
+        if ast.name != "master":
+            self.write(" %s" % ast.name)
+
+        if ast.at_list:
+            self.write(" at %s" % ", ".join(ast.at_list))
+
+        if ast.atl is not None:
+            self.write(":")
+            self.print_atl(ast.atl)
+
     # Flow control
 
     @dispatch(renpy.ast.Label)
@@ -782,7 +797,7 @@ class Decompiler(DecompilerBase):
             self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
 
     @dispatch(renpy.ast.Default)
-    def print_define(self, ast):
+    def print_default(self, ast):
         self.require_init()
         self.indent()
 
