@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Build
+name: Test build and run tests
 
 on:
   push:
@@ -10,18 +10,20 @@ on:
     branches: [ master, dev ]
 
 jobs:
-  build:
-
+  tests-py2:
+    name: Runs tests that require python 2
     runs-on: ubuntu-latest
+    container:
+      image: python:2.7.18-buster
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - name: Set up Python 2.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: "2.7"
+    # - name: Set up Python 2.7
+    #   uses: actions/setup-python@v2
+    #   with:
+    #     python-version: "2.7"
     - name: Test by decompiling a script and building un.rpyc
       run: |
         ./unrpyc.py --clobber testcases/script.rpyc
