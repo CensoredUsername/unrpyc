@@ -403,6 +403,8 @@ class SL2Decompiler(DecompilerBase):
             if not wrote_colon and lineno is not None:
                 self.write(":")
                 wrote_colon = True
+            # note: starting a block for at transform as is done above is not necessary anymore since 7.6/8.1. But
+            # backwards compatibility is a thing.
             with self.increase_indent():
                 self.indent()
                 self.write("at transform:")

@@ -151,6 +151,8 @@ class Decompiler(DecompilerBase):
         warp_words = WordConcatenator(False)
 
         # warpers
+        # I think something changed about the handling of pause, that last special case doesn't look necessary anymore
+        # as a proper pause warper exists now but we'll keep it around for backwards compatability
         if ast.warp_function:
             warp_words.append("warp", ast.warp_function, ast.duration)
         elif ast.warper:
