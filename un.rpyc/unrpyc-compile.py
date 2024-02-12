@@ -27,8 +27,10 @@ import struct
 import decompiler
 import magic
 
-# special new and setstate methods for special classes
+# these named classes need some special handling for us to be able to reconstruct ren'py ASTs from pickles
+SPECIAL_CLASSES = [set, frozenset]
 
+@SPECIAL_CLASSES.append
 class PyExpr(magic.FakeStrict, unicode):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber, py=None):
@@ -38,6 +40,7 @@ class PyExpr(magic.FakeStrict, unicode):
         self.py = py
         return self
 
+@SPECIAL_CLASSES.append
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
@@ -48,16 +51,28 @@ class PyCode(magic.FakeStrict):
             (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
+@SPECIAL_CLASSES.append
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+# These used to live in renpy.python
+@SPECIAL_CLASSES.append
 class RevertableList(magic.FakeStrict, list):
     __module__ = "renpy.python"
     def __new__(cls):
         return list.__new__(cls)
 
+@SPECIAL_CLASSES.append
 class RevertableDict(magic.FakeStrict, dict):
     __module__ = "renpy.python"
     def __new__(cls):
         return dict.__new__(cls)
 
+@SPECIAL_CLASSES.append
 class RevertableSet(magic.FakeStrict, set):
     __module__ = "renpy.python"
     def __new__(cls):
@@ -69,14 +84,32 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-class Sentinel(magic.FakeStrict, object):
-    __module__ = "renpy.object"
-    def __new__(cls, name):
-        obj = object.__new__(cls)
-        obj.name = name
-        return obj
+# but they live in renpy.revertable now
+@SPECIAL_CLASSES.append
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return list.__new__(cls)
 
-factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+@SPECIAL_CLASSES.append
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+@SPECIAL_CLASSES.append
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
+factory = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 def read_ast_from_file(raw_contents):
     data, stmts = magic.safe_loads(raw_contents, factory, {"_ast", "collections"})
