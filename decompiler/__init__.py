@@ -757,14 +757,9 @@ class Decompiler(DecompilerBase):
         self.print_python(ast, early=True)
 
     @dispatch(renpy.ast.Define)
-    @dispatch(renpy.ast.Default)
     def print_define(self, ast):
         self.require_init()
         self.indent()
-        if isinstance(ast, renpy.ast.Default):
-            name = "default"
-        else:
-            name = "define"
 
         # If we have an implicit init block with a non-default priority, we need to store the priority here.
         priority = ""
@@ -772,13 +767,36 @@ class Decompiler(DecompilerBase):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
                 priority = " %d" % (init.priority - self.init_offset)
+
         index = ""
         if hasattr(ast, "index") and ast.index is not None:
             index = "[%s]" % ast.index.source
+
+        operator = "="
+        if hasattr(ast, "operator"):
+            operator = ast.operator
+
         if not hasattr(ast, "store") or ast.store == "store":
-            self.write("%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
+            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, operator, ast.code.source))
         else:
-            self.write("%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
+            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
+
+    @dispatch(renpy.ast.Default)
+    def print_define(self, ast):
+        self.require_init()
+        self.indent()
+
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % (init.priority - self.init_offset)
+
+        if not hasattr(ast, "store") or ast.store == "store":
+            self.write("default%s %s = %s" % (priority, ast.varname, ast.code.source))
+        else:
+            self.write("default%s %s.%s = %s" % (priority, ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
