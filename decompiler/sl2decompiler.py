@@ -130,6 +130,16 @@ class SL2Decompiler(DecompilerBase):
         # Interestingly, for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
 
+    @dispatch(sl2.slast.SLContinue)
+    def print_continue(self, ast):
+        self.indent()
+        self.write("continue")
+
+    @dispatch(sl2.slast.SLBreak)
+    def print_break(self, ast):
+        self.indent()
+        self.write("break")
+
     @dispatch(sl2.slast.SLPython)
     def print_python(self, ast):
         self.indent()
