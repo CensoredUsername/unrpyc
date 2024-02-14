@@ -676,10 +676,9 @@ class Decompiler(DecompilerBase):
             # without. The check allowed only unicode for execution.In py3 both are str
             # type, the second variant slips now in and menu say-lines get wrongly a
             # "if True:" attached.
-
-            # The non-Unicode string "True" is the condition for else:.
-            if (i + 1) == len(ast.entries) and (
-                    condition == "True" or not isinstance(condition, str)):
+            # In tests the value was either a condition check or "True". False/None are
+            # just includet in the fix as a hunch.
+            if isinstance(condition, str) and condition not in ("True", "False", "None"):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
