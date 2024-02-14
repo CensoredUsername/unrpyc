@@ -138,7 +138,9 @@ class AstDumper(object):
             name = ast.name[0]
             if isinstance(name, str):
                 name = name.encode('utf-8')
-            ast.name = (name.split(b'/')[-1], 0, 0)
+            # this bytes string should be uneeded
+            # ast.name = (name.split(b'/')[-1], 0, 0)
+            ast.name = (name.split('/')[-1], 0, 0)
         elif key == 'location' and isinstance(ast.location, tuple):
             if len(ast.location) == 4:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
@@ -155,7 +157,7 @@ class AstDumper(object):
             # When no parameters exist, some versions of Ren'Py set parameters
             # to None and some don't set it at all.
             return False
-        elif (key == 'hide' and ast.hide == False and
+        elif (key == 'hide' and ast.hide is False and
             (isinstance(ast, renpy.ast.Python) or
             isinstance(ast, renpy.ast.Label))):
             # When hide isn't set, some versions of Ren'Py set it to False and
@@ -257,7 +259,7 @@ class AstDumper(object):
 
     def escape_string(self, string):
         # essentially the representation of a string without the surrounding quotes
-        # py3 combat
+        # py3 combat: This cuts also the first line char away because the u is now missing
         # if isinstance(string, str):
         #     return repr(string)[2:-1]
         if isinstance(string, str):
