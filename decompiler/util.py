@@ -4,6 +4,7 @@ import re
 from io import StringIO
 from contextlib import contextmanager
 
+
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation='    ', printlock=None):
         self.out_file = out_file or sys.stdout
@@ -179,30 +180,83 @@ def reconstruct_paraminfo(paraminfo):
         return ""
 
     rv = ["("]
-
     sep = First("", ", ")
-    positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
-    nameonly = [i for i in paraminfo.parameters if i not in positional]
-    for parameter in positional:
-        rv.append(sep())
-        rv.append(parameter[0])
-        if parameter[1] is not None:
-            rv.append("=%s" % parameter[1])
-    if paraminfo.extrapos:
-        rv.append(sep())
-        rv.append("*%s" % paraminfo.extrapos)
-    if nameonly:
-        if not paraminfo.extrapos:
-            rv.append(sep())
-            rv.append("*")
-        for parameter in nameonly:
+
+    if hasattr(paraminfo, "extrapos"):
+        # ren'py 7.4 and below, python 2 style
+        positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
+        nameonly = [i for i in paraminfo.parameters if i not in positional]
+        for parameter in positional:
             rv.append(sep())
             rv.append(parameter[0])
             if parameter[1] is not None:
                 rv.append("=%s" % parameter[1])
-    if paraminfo.extrakw:
-        rv.append(sep())
-        rv.append("**%s" % paraminfo.extrakw)
+        if paraminfo.extrapos:
+            rv.append(sep())
+            rv.append("*%s" % paraminfo.extrapos)
+        if nameonly:
+            if not paraminfo.extrapos:
+                rv.append(sep())
+                rv.append("*")
+            for parameter in nameonly:
+                rv.append(sep())
+                rv.append(parameter[0])
+                if parameter[1] is not None:
+                    rv.append("=%s" % parameter[1])
+        if paraminfo.extrakw:
+            rv.append(sep())
+            rv.append("**%s" % paraminfo.extrakw)
+    else:
+        # ren'py 7.5 and above.
+        # positional only, /, positional or keyword, *, keyword only, ***
+        # prescence of the / is indicated by positional only arguments being present
+        # prescence of the * (if no *args) are present is indicated by keyword only args being present.
+        state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
+
+        for parameter in paraminfo.parameters.values():
+            rv.append(sep())
+            if parameter.kind == 0:
+                # positional only
+                state = 0
+
+                rv.append(parameter.name)
+                if parameter.default is not None:
+                    rv.append("=%s" % parameter.default)
+
+            else:
+                if state == 0:
+                    # insert the / if we had a positional only argument before.
+                    state = 1
+                    rv.append("/")
+                    rv.append(sep())
+
+                if parameter.kind == 1:
+                    # positional or keyword
+                    rv.append(parameter.name)
+                    if parameter.default is not None:
+                        rv.append("=%s" % parameter.default)
+
+                elif parameter.kind == 2:
+                    # *positional
+                    state = 2
+                    rv.append("*%s" % parameter.name)
+
+                elif parameter.kind == 3:
+                    # keyword only
+                    if state == 1:
+                        # insert the * if we didn't have a *args before
+                        state = 2
+                        rv.append("*")
+                        rv.append(sep())
+
+                    rv.append(parameter.name)
+                    if parameter.default is not None:
+                        rv.append("=%s" % parameter.default)
+
+                elif parameter.kind == 4:
+                    # **keyword
+                    state = 3
+                    rv.append("**%s" % parameter.name)
 
     rv.append(")")
 
@@ -214,19 +268,32 @@ def reconstruct_arginfo(arginfo):
 
     rv = ["("]
     sep = First("", ", ")
-    for (name, val) in arginfo.arguments:
-        rv.append(sep())
-        if name is not None:
-            rv.append("%s=" % name)
-        rv.append(val)
-    if arginfo.extrapos:
-        rv.append(sep())
-        rv.append("*%s" % arginfo.extrapos)
-    if arginfo.extrakw:
-        rv.append(sep())
-        rv.append("**%s" % arginfo.extrakw)
-    rv.append(")")
+    if hasattr(arginfo, "starred_indexes"):
+        # ren'py 7.5 and above, PEP 448 compliant
+        for i, (name, val) in enumerate(arginfo.arguments):
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            elif i in arginfo.starred_indexes:
+                rv.append("*")
+            elif i in arginfo.doublestarred_indexes:
+                rv.append("**")
+            rv.append(val)
+    else:
+        # ren'py 7.4 and below, python 2 style
+        for (name, val) in arginfo.arguments:
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            rv.append(val)
+        if arginfo.extrapos:
+            rv.append(sep())
+            rv.append("*%s" % arginfo.extrapos)
+        if arginfo.extrakw:
+            rv.append(sep())
+            rv.append("**%s" % arginfo.extrakw)
 
+    rv.append(")")
     return "".join(rv)
 
 def string_escape(s): # TODO see if this needs to work like encode_say_string elsewhere
@@ -492,11 +559,21 @@ def say_get_code(ast, inmenu=False):
     if not ast.interact and not inmenu:
         rv.append("nointeract")
 
-    if ast.with_:
-        rv.append("with")
-        rv.append(ast.with_)
+    # explicit_identifier was only added in 7.7/8.2.
+    if hasattr(ast, "explicit_identifier") and ast.explicit_identifier:
+        rv.append("id")
+        rv.append(ast.identifier)
+    # identifier was added in 7.4.1. But the way ren'py processed it
+    # means it doesn't stored it in the pickle unless explicitly set
+    elif hasattr(ast, "identifier") and ast.identifier is not None:
+        rv.append("id")
+        rv.append(ast.identifier)
 
     if hasattr(ast, 'arguments') and ast.arguments is not None:
         rv.append(reconstruct_arginfo(ast.arguments))
+
+    if ast.with_:
+        rv.append("with")
+        rv.append(ast.with_)
 
     return " ".join(rv)

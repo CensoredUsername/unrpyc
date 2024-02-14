@@ -30,14 +30,16 @@ def pprint(out_file, ast, decompile_python=False, comparable=False, no_pyexpr=Fa
     # the config and creates the AstDumper instance
     AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, no_pyexpr=no_pyexpr).dump(ast)
 
+    
 class AstDumper(object):
     """
     An object which handles the walking of a tree of python objects
     it will create a human-readable representation of all interesting
     attributes and write this to a given stream
     """
-    MAP_OPEN = {list: '[', tuple: '(', set: '{', frozenset: 'frozenset({'}
-    MAP_CLOSE = {list: ']', tuple: ')', set: '}', frozenset: '})'}
+
+    MAP_OPEN = {list: '[', tuple: '(', set: 'set({', frozenset: 'frozenset({'}
+    MAP_CLOSE = {list: ']', tuple: ')', set: '})', frozenset: '})'}
 
     def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
                  comparable=False, indentation='    '):
@@ -65,7 +67,8 @@ class AstDumper(object):
             return
         self.passed.append(ast)
         self.passed_where.append(self.linenumber)
-        if isinstance(ast, (list, tuple, set, frozenset)):
+        # renpy 7.5/8 combat; renpy removed frozenset
+        if isinstance(ast, (list, tuple, set)):
             self.print_list(ast)
         elif isinstance(ast, renpy.ast.PyExpr):
             self.print_pyexpr(ast)
@@ -86,10 +89,11 @@ class AstDumper(object):
 
     def print_list(self, ast):
         # handles the printing of simple containers of N elements.
-        if type(ast) not in (list, tuple, set, frozenset):
+        # renpy 7.5/8 combat; renpy removed frozenset
+        if type(ast) not in (list, tuple, set):
             self.p(repr(type(ast)))
 
-            for k in (list, tuple, set, frozenset):
+            for k in (list, tuple, set):
                 if isinstance(ast, k):
                     klass = k
 

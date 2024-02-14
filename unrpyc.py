@@ -53,8 +53,12 @@ except ImportError:
 import decompiler
 from decompiler import magic, astdump, translate
 
-# special definitions for special classes
 
+# these named classes need some special handling for us to be able to reconstruct ren'py ASTs from pickles
+SPECIAL_CLASSES = [set, frozenset]
+
+
+@SPECIAL_CLASSES.append
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber, py=None):
@@ -67,6 +71,8 @@ class PyExpr(magic.FakeStrict, str):
     def __getnewargs__(self):
         return str(self), self.filename, self.linenumber
 
+    
+@SPECIAL_CLASSES.append
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
@@ -77,18 +83,36 @@ class PyCode(magic.FakeStrict):
             (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
+
+@SPECIAL_CLASSES.append
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+    
+# These used to live in renpy.python. They started appearing in ASTs after ren'py switched from
+# putting the unparsed contents of a user statement into the AST to putting the parsed result,
+# or when people define custom AST nodes in ren'py files.
+@SPECIAL_CLASSES.append
 class RevertableList(magic.FakeStrict, list):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return list.__new__(cls)
 
+    
+@SPECIAL_CLASSES.append
 class RevertableDict(magic.FakeStrict, dict):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return dict.__new__(cls)
 
+    
+@SPECIAL_CLASSES.append
 class RevertableSet(magic.FakeStrict, set):
-    __module__ = "renpy.python"
+    __module__ = "renpy.revertable"
     def __new__(cls):
         return set.__new__(cls)
 
@@ -98,22 +122,44 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-class Sentinel(magic.FakeStrict, object):
-    __module__ = "renpy.object"
-    def __new__(cls, name):
-        obj = object.__new__(cls)
-        obj.name = name
-        return obj
+            
+# But since 7.5 they live in renpy.revertable, so we have both
+@SPECIAL_CLASSES.append
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return list.__new__(cls)
 
-class_factory = magic.FakeClassFactory((frozenset, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+    
+@SPECIAL_CLASSES.append
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+    
+@SPECIAL_CLASSES.append
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
+
+class_factory = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 printlock = Lock()
 
 # needs class_factory
-import deobfuscate  # nopep8 # noqa 
+import deobfuscate  # nopep8 # noqa
+
 
 # API
-
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
@@ -194,7 +240,7 @@ def worker(t):
         else:
             if args.translation_file is not None:
                 translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, class_factory)
+                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, cls_factory_75)
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
@@ -325,7 +371,7 @@ def main():
                 bad += 1
                 continue
             good += 1
-            translated_dialogue.update(magic.loads(result[0], class_factory))
+            translated_dialogue.update(magic.loads(result[0], cls_factory_75))
             translated_strings.update(result[1])
         with open(args.write_translation_file, 'wb') as out_file:
             magic.safe_dump((args.language, translated_dialogue, translated_strings), out_file)
