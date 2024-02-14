@@ -53,8 +53,12 @@ except ImportError:
 import decompiler
 from decompiler import magic, astdump, translate
 
-# special definitions for special classes
 
+# these named classes need some special handling for us to be able to reconstruct ren'py ASTs from pickles
+SPECIAL_CLASSES = [set, frozenset]
+
+
+@SPECIAL_CLASSES.append
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber, py=None):
@@ -67,6 +71,8 @@ class PyExpr(magic.FakeStrict, str):
     def __getnewargs__(self):
         return str(self), self.filename, self.linenumber
 
+    
+@SPECIAL_CLASSES.append
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
     def __setstate__(self, state):
@@ -77,17 +83,34 @@ class PyCode(magic.FakeStrict):
             (_, self.source, self.location, self.mode, self.py) = state
         self.bytecode = None
 
-# renpy 7.5/8 compat; change renpy.python to renpy.revertable 3times
+
+@SPECIAL_CLASSES.append
+class Sentinel(magic.FakeStrict, object):
+    __module__ = "renpy.object"
+    def __new__(cls, name):
+        obj = object.__new__(cls)
+        obj.name = name
+        return obj
+
+    
+# These used to live in renpy.python. They started appearing in ASTs after ren'py switched from
+# putting the unparsed contents of a user statement into the AST to putting the parsed result,
+# or when people define custom AST nodes in ren'py files.
+@SPECIAL_CLASSES.append
 class RevertableList(magic.FakeStrict, list):
     __module__ = "renpy.revertable"
     def __new__(cls):
         return list.__new__(cls)
 
+    
+@SPECIAL_CLASSES.append
 class RevertableDict(magic.FakeStrict, dict):
     __module__ = "renpy.revertable"
     def __new__(cls):
         return dict.__new__(cls)
 
+    
+@SPECIAL_CLASSES.append
 class RevertableSet(magic.FakeStrict, set):
     __module__ = "renpy.revertable"
     def __new__(cls):
@@ -99,42 +122,44 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
-class Sentinel(magic.FakeStrict, object):
-    __module__ = "renpy.object"
-    def __new__(cls, name):
-        obj = object.__new__(cls)
-        obj.name = name
-        return obj
+            
+# But since 7.5 they live in renpy.revertable, so we have both
+@SPECIAL_CLASSES.append
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return list.__new__(cls)
+
+    
+@SPECIAL_CLASSES.append
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return dict.__new__(cls)
+
+    
+@SPECIAL_CLASSES.append
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.revertable"
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
 
 
-# renpy 7.5/8 compat
-# - renpy removed frozenset
-# - Let's create two instances of class_factory instead of redefining them on every error # due to revertable objects. renpy @7.5(also v8) is normaly used and @7.4 is fallback
-cls_factory_75 = magic.FakeClassFactory(
-    (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
-
-RevertableList.__module__ = RevertableDict.__module__ = RevertableSet.__module__ = "renpy.python"
-cls_factory_74 = magic.FakeClassFactory(
-    (set, PyExpr, PyCode, RevertableList, RevertableDict, RevertableSet, Sentinel), magic.FakeStrict)
+class_factory = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 printlock = Lock()
 
 # needs class_factory
 import deobfuscate  # nopep8 # noqa
 
+
 # API
-def revertable_switch(raw_dat):
-    """Switches in a way between two instances of cls_factory. If a error from possible old code appears, it uses renpy.python instead of the new renpy.revertable module name."""
-    try:
-        data, stmts = magic.safe_loads(raw_dat, cls_factory_75, {
-            "_ast", "collections"})
-    except TypeError as err:
-        if 'Revertable' in err.args[0]:
-            data, stmts = magic.safe_loads(raw_dat, cls_factory_74, {
-                "_ast", "collections"})
-    return data, stmts
-
-
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
@@ -155,9 +180,7 @@ def read_ast_from_file(in_file):
     # py3 compat: zlib should be enough, no need for codecs
     # raw_contents = raw_contents.decode('zlib')
     raw_contents = zlib.decompress(raw_contents)
-    # renpy 7.5/8 compat; for revertable problem
-    # data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
-    data, stmts = revertable_switch(raw_contents)
+    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
     return stmts
 
 

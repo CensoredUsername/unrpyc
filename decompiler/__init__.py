@@ -428,6 +428,21 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % ast.expr)
             self.paired_with = False
 
+    @dispatch(renpy.ast.camera)
+    def print_camera(self, ast):
+        self.indent()
+        self.write("camera")
+
+        if ast.name != "master":
+            self.write(" %s" % ast.name)
+
+        if ast.at_list:
+            self.write(" at %s" % ", ".join(ast.at_list))
+
+        if ast.atl is not None:
+            self.write(":")
+            self.print_atl(ast.atl)
+
     # Flow control
 
     @dispatch(renpy.ast.Label)
@@ -758,14 +773,9 @@ class Decompiler(DecompilerBase):
         self.print_python(ast, early=True)
 
     @dispatch(renpy.ast.Define)
-    @dispatch(renpy.ast.Default)
     def print_define(self, ast):
         self.require_init()
         self.indent()
-        if isinstance(ast, renpy.ast.Default):
-            name = "default"
-        else:
-            name = "define"
 
         # If we have an implicit init block with a non-default priority, we need to store the priority here.
         priority = ""
@@ -773,13 +783,36 @@ class Decompiler(DecompilerBase):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
                 priority = " %d" % (init.priority - self.init_offset)
+
         index = ""
         if hasattr(ast, "index") and ast.index is not None:
             index = "[%s]" % ast.index.source
+
+        operator = "="
+        if hasattr(ast, "operator"):
+            operator = ast.operator
+
         if not hasattr(ast, "store") or ast.store == "store":
-            self.write("%s%s %s%s = %s" % (name, priority, ast.varname, index, ast.code.source))
+            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, operator, ast.code.source))
         else:
-            self.write("%s%s %s.%s%s = %s" % (name, priority, ast.store[6:], ast.varname, index, ast.code.source))
+            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
+
+    @dispatch(renpy.ast.Default)
+    def print_default(self, ast):
+        self.require_init()
+        self.indent()
+
+        # If we have an implicit init block with a non-default priority, we need to store the priority here.
+        priority = ""
+        if isinstance(self.parent, renpy.ast.Init):
+            init = self.parent
+            if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
+                priority = " %d" % (init.priority - self.init_offset)
+
+        if not hasattr(ast, "store") or ast.store == "store":
+            self.write("default%s %s = %s" % (priority, ast.varname, ast.code.source))
+        else:
+            self.write("default%s %s.%s = %s" % (priority, ast.store[6:], ast.varname, ast.code.source))
 
     # Specials
 
@@ -795,10 +828,14 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Say)
     def print_say(self, ast, inmenu=False):
+        # if this say statement precedes a menu statement, postpone emitting it until we're handling
+        # the menu
         if (not inmenu and self.index + 1 < len(self.block) and
             self.say_belongs_to_menu(ast, self.block[self.index + 1])):
             self.say_inside_menu = ast
             return
+
+        # else just write it.
         self.indent()
         self.write(say_get_code(ast, inmenu))
 
@@ -963,3 +1000,10 @@ class Decompiler(DecompilerBase):
                                 self.skip_indent_until_write,
                                 self.printlock)
         self.skip_indent_until_write = False
+
+    # Rpy python directives
+
+    @dispatch(renpy.ast.RPY)
+    def print_rpy_python(self, ast):
+        self.indent()
+        self.write("rpy python %s" % ast.rest)
