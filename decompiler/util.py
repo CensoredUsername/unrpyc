@@ -6,11 +6,19 @@ from contextlib import contextmanager
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, indentation='    ', printlock=None):
+        # the file object that the decompiler outputs to
         self.out_file = out_file or sys.stdout
+        # the current indentation level
         self.indentation = indentation
+
+        # a boolean that can be set to make the next call to indent() not insert a newline and indent
+        # useful when a child node can continue on the same line as the parent node
+        # advance_to_line will also cancel this if it changes the lineno
         self.skip_indent_until_write = False
+        # a lock that prevents multiple decompilers writing warnings a the same time
         self.printlock = printlock
 
+        # the current line we're writing.
         self.linenumber = 0
 
         self.block_stack = []

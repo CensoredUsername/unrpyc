@@ -965,12 +965,26 @@ class Decompiler(DecompilerBase):
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
             def print_atl_callback(linenumber, indent_level, atl):
+                # screen language occasionally has to jump back to this decompiler to emit atl code
+                # for this, we need to overwrite some state of this decompiler temporarily with the
+                # state of the screenlang decompiler
+                # TODO: remove this very dirty hack and move atl decompiling to a separate
+                # atl decompiler
+
+                # overwrite state
                 old_linenumber = self.linenumber
                 self.linenumber = linenumber
+                old_skip_indent_until_write = self.skip_indent_until_write
+                self.skip_indent_until_write = False
+
                 with self.increase_indent(indent_level - self.indent_level):
                     self.print_atl(atl)
+
+                # restore state
                 new_linenumber = self.linenumber
                 self.linenumber = old_linenumber
+                self.skip_indent_until_write = old_skip_indent_until_write
+
                 return new_linenumber
 
             self.linenumber = sl2decompiler.pprint(self.out_file, screen, print_atl_callback,
