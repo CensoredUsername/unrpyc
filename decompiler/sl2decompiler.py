@@ -29,7 +29,7 @@ from renpy import ui, sl2
 from renpy.ast import PyExpr
 from renpy.text import text
 from renpy.sl2 import sldisplayables as sld
-from renpy.display import layout, behavior, im, motion, dragdrop
+from renpy.display import layout, behavior, im, motion, dragdrop, transform
 
 # Main API
 
@@ -297,7 +297,7 @@ class SL2Decompiler(DecompilerBase):
         (sld.sl2bar, None):                ("bar", 0),
         (ui._label, "label"):              ("label", 0),
         (ui._textbutton, 0):               ("textbutton", 0),
-        (ui._textbutton, "button"):               ("textbutton", 0),
+        (ui._textbutton, "button"):        ("textbutton", 0),
         (ui._imagebutton, "image_button"): ("imagebutton", 0),
         (im.image, "default"):             ("image", 0),
         (behavior.Input, "input"):         ("input", 0),
@@ -308,6 +308,7 @@ class SL2Decompiler(DecompilerBase):
         (dragdrop.Drag, None):             ("drag", 1),
         (dragdrop.Drag, "drag"):           ("drag", 1),
         (motion.Transform, "transform"):   ("transform", 1),
+        (transform.Transform, "transform"):("transform", 1),
         (ui._hotspot, "hotspot"):          ("hotspot", 1),
         (sld.sl2viewport, "viewport"):     ("viewport", 1),
         (behavior.Button, "button"):       ("button", 1),
