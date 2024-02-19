@@ -4,25 +4,38 @@ import re
 from StringIO import StringIO
 from contextlib import contextmanager
 
+class OptionBase(object):
+    def __init__(self, indentation="    ", printlock=None):
+        self.indentation = indentation
+        self.printlock = printlock
+
 class DecompilerBase(object):
-    def __init__(self, out_file=None, indentation='    ', printlock=None):
+    def __init__(self, out_file=None, options=OptionBase()):
         # the file object that the decompiler outputs to
         self.out_file = out_file or sys.stdout
-        # the current indentation level
-        self.indentation = indentation
+        # Decompilation options
+        self.options = options
+        # the string we use for indentation
+        self.indentation = options.indentation
+        # a lock that prevents multiple decompilers writing warnings a the same time
+        self.printlock = options.printlock
 
+
+        # properties used for keeping track of where we are
+        # the current line we're writing.
+        self.linenumber = 0
+        # the indentation level we're at
+        self.indent_level = 0
         # a boolean that can be set to make the next call to indent() not insert a newline and indent
         # useful when a child node can continue on the same line as the parent node
         # advance_to_line will also cancel this if it changes the lineno
         self.skip_indent_until_write = False
-        # a lock that prevents multiple decompilers writing warnings a the same time
-        self.printlock = printlock
 
-        # the current line we're writing.
-        self.linenumber = 0
-
+        # properties used for keeping track what level of block we're in
         self.block_stack = []
         self.index_stack = []
+
+        # storage for any stuff that can be emitted whenever we have a blank line
         self.blank_line_queue = []
 
     def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):

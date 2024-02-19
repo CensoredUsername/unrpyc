@@ -31,11 +31,9 @@ import codegen
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0, linenumber=1,
-           decompile_python=False,
-           skip_indent_until_write=False, printlock=None):
-    return SLDecompiler(out_file, printlock=printlock,
-                 decompile_python=decompile_python).dump(
+def pprint(out_file, ast, options,
+           indent_level=0, linenumber=1, skip_indent_until_write=False):
+    return SLDecompiler(out_file, options).dump(
                      ast, indent_level, linenumber, skip_indent_until_write)
 
 # implementation
@@ -49,10 +47,8 @@ class SLDecompiler(DecompilerBase):
     # what method to call for which statement
     dispatch = Dispatcher()
 
-    def __init__(self, out_file=None, decompile_python=False,
-                 indentation="    ", printlock=None):
-        super(SLDecompiler, self).__init__(out_file, indentation, printlock)
-        self.decompile_python = decompile_python
+    def __init__(self, out_file, options):
+        super(SLDecompiler, self).__init__(out_file, options)
         self.should_advance_to_line = True
         self.is_root = True
 
@@ -122,7 +118,7 @@ class SLDecompiler(DecompilerBase):
                 keywords[value.linenumber].append("%s %s" % (key, value))
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0)) # so the first one is right
-        if self.decompile_python:
+        if self.options.decompile_python:
             self.print_keywords_and_nodes(keywords, None, True)
             with self.increase_indent():
                 self.indent()

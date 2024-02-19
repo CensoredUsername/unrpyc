@@ -24,9 +24,9 @@ from renpy.test import testast
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0, linenumber=1,
-           skip_indent_until_write=False, printlock=None):
-    return TestcaseDecompiler(out_file, printlock=printlock).dump(
+def pprint(out_file, ast, options,
+           indent_level=0, linenumber=1, skip_indent_until_write=False):
+    return TestcaseDecompiler(out_file, options).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation

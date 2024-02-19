@@ -33,9 +33,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop, transform
 
 # Main API
 
-def pprint(out_file, ast, print_atl_callback, indent_level=0, linenumber=1,
-           skip_indent_until_write=False, printlock=None, tag_outside_block=False):
-    return SL2Decompiler(print_atl_callback, out_file, printlock=printlock, tag_outside_block=tag_outside_block).dump(
+def pprint(out_file, ast, options, print_atl_callback,
+           indent_level=0, linenumber=1, skip_indent_until_write=False):
+    return SL2Decompiler(out_file, options, print_atl_callback).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -45,10 +45,9 @@ class SL2Decompiler(DecompilerBase):
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
 
-    def __init__(self, print_atl_callback, out_file=None, indentation = '    ', printlock=None, tag_outside_block=False):
-        super(SL2Decompiler, self).__init__(out_file, indentation, printlock)
+    def __init__(self, out_file, options, print_atl_callback):
+        super(SL2Decompiler, self).__init__(out_file, options)
         self.print_atl_callback = print_atl_callback
-        self.tag_outside_block = tag_outside_block
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class

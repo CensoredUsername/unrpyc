@@ -177,6 +177,7 @@ def read_ast_from_file(in_file):
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
                    init_offset=False, try_harder=False):
+
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
     if dump:
@@ -204,9 +205,10 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
         else:
-            decompiler.pprint(out_file, ast, decompile_python=decompile_python, printlock=printlock,
-                                             translator=translator, tag_outside_block=tag_outside_block,
-                                             init_offset=init_offset)
+            options = decompiler.Options(printlock=printlock, decompile_python=decompile_python, translator=translator,
+                                         tag_outside_block=tag_outside_block, init_offset=init_offset)
+
+            decompiler.pprint(out_file, ast, options)
     return True
 
 def extract_translations(input_filename, language):

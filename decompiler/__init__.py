@@ -20,8 +20,8 @@
 
 from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
-                 reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher
-from util import say_get_code
+                 reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher, \
+                 say_get_code, OptionBase
 
 from operator import itemgetter
 from StringIO import StringIO
@@ -36,14 +36,25 @@ import testcasedecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
 
 # Main API
 
-def pprint(out_file, ast, indent_level=0,
-           decompile_python=False, printlock=None, translator=None, init_offset=False, tag_outside_block=False):
-    Decompiler(out_file, printlock=printlock,
-               decompile_python=decompile_python, translator=translator).dump(ast, indent_level, init_offset, tag_outside_block)
+# Object that carries configurable decompilation options
+class Options(OptionBase):
+    def __init__(self, indentation="    ", printlock=None, decompile_python=False,
+                 translator=None, init_offset=False, tag_outside_block=False):
+        super(Options, self).__init__(indentation=indentation, printlock=printlock)
+
+        # decompilation options
+        self.decompile_python = decompile_python
+        self.translator = translator
+        self.init_offset = init_offset
+        self.tag_outside_block = tag_outside_block
+
+
+def pprint(out_file, ast, options=Options()):
+    Decompiler(out_file, options).dump(ast)
 
 # Implementation
 
@@ -56,11 +67,8 @@ class Decompiler(DecompilerBase):
     # what method to call for which ast class
     dispatch = Dispatcher()
 
-    def __init__(self, out_file=None, decompile_python=False,
-                 indentation = '    ', printlock=None, translator=None):
-        super(Decompiler, self).__init__(out_file, indentation, printlock)
-        self.decompile_python = decompile_python
-        self.translator = translator
+    def __init__(self, out_file, options):
+        super(Decompiler, self).__init__(out_file, options)
 
         self.paired_with = False
         self.say_inside_menu = None
@@ -71,7 +79,6 @@ class Decompiler(DecompilerBase):
         self.is_356c6e34_or_later = False
         self.most_lines_behind = 0
         self.last_lines_behind = 0
-        self.tag_outside_block = False
 
     def advance_to_line(self, linenumber):
         self.last_lines_behind = max(self.linenumber + (0 if self.skip_indent_until_write else 1) - linenumber, 0)
@@ -95,7 +102,7 @@ class Decompiler(DecompilerBase):
         self.last_lines_behind = state[7]
         super(Decompiler, self).rollback_state(state[0])
 
-    def dump(self, ast, indent_level=0, init_offset=False, tag_outside_block=False):
+    def dump(self, ast):
         if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
             isinstance(ast[-1], renpy.ast.Return) and
             (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
@@ -104,16 +111,14 @@ class Decompiler(DecompilerBase):
             # Note that this commit first appears in the 6.99 release.
             self.is_356c6e34_or_later = True
 
-        self.tag_outside_block = tag_outside_block
+        if self.options.translator:
+            self.options.translator.translate_dialogue(ast)
 
-        if self.translator:
-            self.translator.translate_dialogue(ast)
-
-        if init_offset and isinstance(ast, (tuple, list)):
+        if self.options.init_offset and isinstance(ast, (tuple, list)):
             self.set_best_init_offset(ast)
 
         # skip_indent_until_write avoids an initial blank line
-        super(Decompiler, self).dump(ast, indent_level, skip_indent_until_write=True)
+        super(Decompiler, self).dump(ast, skip_indent_until_write=True)
         # if there's anything we wanted to write out but didn't yet, do it now
         for m in self.blank_line_queue:
             m(None)
@@ -281,6 +286,7 @@ class Decompiler(DecompilerBase):
     def print_atl_rawtime(self, ast):
         self.indent()
         self.write("time %s" % ast.time)
+
 
     # Displayable related functions
 
@@ -706,8 +712,8 @@ class Decompiler(DecompilerBase):
                 item_arguments = [None] * len(ast.items)
 
             for (label, condition, block), arguments in zip(ast.items, item_arguments):
-                if self.translator:
-                    label = self.translator.strings.get(label, label)
+                if self.options.translator:
+                    label = self.options.translator.strings.get(label, label)
 
                 state = None
 
@@ -956,11 +962,10 @@ class Decompiler(DecompilerBase):
         self.require_init()
         screen = ast.screen
         if isinstance(screen, renpy.screenlang.ScreenLangScreen):
-            self.linenumber = screendecompiler.pprint(self.out_file, screen, self.indent_level,
-                                    self.linenumber,
-                                    self.decompile_python,
-                                    self.skip_indent_until_write,
-                                    self.printlock)
+            self.linenumber = screendecompiler.pprint(
+                self.out_file, screen, self.options,
+                self.indent_level, self.linenumber, self.skip_indent_until_write
+            )
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
@@ -987,12 +992,10 @@ class Decompiler(DecompilerBase):
 
                 return new_linenumber
 
-            self.linenumber = sl2decompiler.pprint(self.out_file, screen, print_atl_callback,
-                                    self.indent_level,
-                                    self.linenumber,
-                                    self.skip_indent_until_write,
-                                    self.printlock,
-                                    self.tag_outside_block)
+            self.linenumber = sl2decompiler.pprint(
+                self.out_file, screen, self.options, print_atl_callback,
+                self.indent_level, self.linenumber, self.skip_indent_until_write
+            )
             self.skip_indent_until_write = False
         else:
             self.print_unknown(screen)
@@ -1004,10 +1007,10 @@ class Decompiler(DecompilerBase):
         self.require_init()
         self.indent()
         self.write('testcase %s:' % ast.label)
-        self.linenumber = testcasedecompiler.pprint(self.out_file, ast.test.block, self.indent_level + 1,
-                                self.linenumber,
-                                self.skip_indent_until_write,
-                                self.printlock)
+        self.linenumber = testcasedecompiler.pprint(
+            self.out_file, ast.test.block, self.options,
+            self.indent_level + 1, self.linenumber, self.skip_indent_until_write
+        )
         self.skip_indent_until_write = False
 
     # Rpy python directives

@@ -129,7 +129,8 @@ def decompile_rpyc(data, abspath, init_offset):
 
     ensure_dir(out_filename)
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
-        decompiler.pprint(out_file, ast, init_offset=init_offset)
+        options = decompiler.Options(init_offset=init_offset)
+        decompiler.pprint(out_file, ast, optionst)
     return True
 
 def decompile_game():
