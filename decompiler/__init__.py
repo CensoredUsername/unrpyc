@@ -290,7 +290,7 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % ast.expr)
             self.paired_with = False
 
-    @dispatch(renpy.ast.camera)
+    @dispatch(renpy.ast.Camera)
     def print_camera(self, ast):
         self.indent()
         self.write("camera")
