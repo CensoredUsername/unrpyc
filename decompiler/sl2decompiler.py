@@ -25,6 +25,8 @@ from operator import itemgetter
 from util import DecompilerBase, First, reconstruct_paraminfo, \
                  reconstruct_arginfo, split_logical_lines, Dispatcher
 
+import atldecompiler
+
 from renpy import ui, sl2
 from renpy.ast import PyExpr
 from renpy.text import text
@@ -33,9 +35,9 @@ from renpy.display import layout, behavior, im, motion, dragdrop, transform
 
 # Main API
 
-def pprint(out_file, ast, options, print_atl_callback,
+def pprint(out_file, ast, options,
            indent_level=0, linenumber=1, skip_indent_until_write=False):
-    return SL2Decompiler(out_file, options, print_atl_callback).dump(
+    return SL2Decompiler(out_file, options).dump(
         ast, indent_level, linenumber, skip_indent_until_write)
 
 # Implementation
@@ -45,9 +47,8 @@ class SL2Decompiler(DecompilerBase):
     An object which handles the decompilation of renpy screen language 2 screens to a given stream
     """
 
-    def __init__(self, out_file, options, print_atl_callback):
+    def __init__(self, out_file, options):
         super(SL2Decompiler, self).__init__(out_file, options)
-        self.print_atl_callback = print_atl_callback
 
     # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which slast class
@@ -531,8 +532,12 @@ class SL2Decompiler(DecompilerBase):
             assert not has_block, "cannot start a block on the same line as an at transform block"
             self.write(sep())
             self.write("at transform:")
-            self.linenumber = self.print_atl_callback(self.linenumber, self.indent_level, item[3])
 
+            self.linenumber = atldecompiler.pprint(
+                self.out_file, item[3], self.options,
+                self.indent_level, self.linenumber, self.skip_indent_until_write
+            )
+            self.skip_indent_until_write = False
             return
 
         if ty == "keywords_broken":

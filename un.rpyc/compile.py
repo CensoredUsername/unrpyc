@@ -141,9 +141,10 @@ FakeModule("translate")
 
 _3 # testcasedecompiler
 _4 # screendecompiler
-_5 # sl2decompiler
-_6 # decompiler
-_7 # unrpyc
+_5 # atldecompiler
+_6 # sl2decompiler
+_7 # decompiler
+_8 # unrpyc
 
 from unrpyc import decompile_game
 decompile_game()
@@ -164,6 +165,7 @@ from renpy.game import script
     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
     Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+    Module("atldecompiler", path.join(base_folder, "decompiler/atldecompiler.py")),
     Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
     Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
     Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
@@ -175,6 +177,7 @@ decompiler_rpyb = p.ExecTranspile(base + "(None, [])\n", (
     Module("codegen", path.join(base_folder, "decompiler/codegen.py")),
     Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+    Module("atldecompiler", path.join(base_folder, "decompiler/atldecompiler.py")),
     Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
     Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
     Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
@@ -189,6 +192,7 @@ rpy_one = p.GetItem(p.Sequence(
 rpy_two = p.GetItem(p.Sequence(
     Module("testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
     Module("screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
+    Module("atldecompiler", path.join(base_folder, "decompiler/atldecompiler.py")),
     Module("sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
     Module("decompiler", path.join(base_folder, "decompiler/__init__.py")),
     Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))

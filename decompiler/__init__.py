@@ -33,6 +33,7 @@ import renpy
 import screendecompiler
 import sl2decompiler
 import testcasedecompiler
+import atldecompiler
 import codegen
 import astdump
 
@@ -130,163 +131,17 @@ class Decompiler(DecompilerBase):
         # methods, so don't advance lines for them here.
         if hasattr(ast, 'linenumber') and not isinstance(ast, (renpy.ast.TranslateString, renpy.ast.With, renpy.ast.Label, renpy.ast.Pass, renpy.ast.Return)):
             self.advance_to_line(ast.linenumber)
-        # It doesn't matter what line "block:" is on. The loc of a RawBlock
-        # refers to the first statement inside the block, which we advance
-        # to from print_atl.
-        elif hasattr(ast, 'loc') and not isinstance(ast, renpy.atl.RawBlock):
-            self.advance_to_line(ast.loc[1])
+
         self.dispatch.get(type(ast), type(self).print_unknown)(self, ast)
 
-    # ATL printing functions
+    # ATL subdecompiler hook
 
     def print_atl(self, ast):
-        with self.increase_indent():
-            self.advance_to_line(ast.loc[1])
-            if ast.statements:
-                self.print_nodes(ast.statements)
-            # If a statement ends with a colon but has no block after it, loc will
-            # get set to ('', 0). That isn't supposed to be valid syntax, but it's
-            # the only thing that can generate that.
-            elif ast.loc != ('', 0):
-                self.indent()
-                self.write("pass")
-
-    @dispatch(renpy.atl.RawMultipurpose)
-    def print_atl_rawmulti(self, ast):
-        warp_words = WordConcatenator(False)
-
-        # warpers
-        # I think something changed about the handling of pause, that last special case doesn't look necessary anymore
-        # as a proper pause warper exists now but we'll keep it around for backwards compatability
-        if ast.warp_function:
-            warp_words.append("warp", ast.warp_function, ast.duration)
-        elif ast.warper:
-            warp_words.append(ast.warper, ast.duration)
-        elif ast.duration != "0":
-            warp_words.append("pause", ast.duration)
-
-        warp = warp_words.join()
-        words = WordConcatenator(warp and warp[-1] != ' ', True)
-
-        # revolution
-        if ast.revolution:
-            words.append(ast.revolution)
-
-        # circles
-        if ast.circles != "0":
-            words.append("circles %s" % ast.circles)
-
-        # splines
-        spline_words = WordConcatenator(False)
-        for name, expressions in ast.splines:
-            spline_words.append(name, expressions[-1])
-            for expression in expressions[:-1]:
-                spline_words.append("knot", expression)
-        words.append(spline_words.join())
-
-        # properties
-        property_words = WordConcatenator(False)
-        for key, value in ast.properties:
-            property_words.append(key, value)
-        words.append(property_words.join())
-
-        # with
-        expression_words = WordConcatenator(False)
-        # TODO There's a lot of cases where pass isn't needed, since we could
-        # reorder stuff so there's never 2 expressions in a row. (And it's never
-        # necessary for the last one, but we don't know what the last one is
-        # since it could get reordered.)
-        needs_pass = len(ast.expressions) > 1
-        for (expression, with_expression) in ast.expressions:
-            expression_words.append(expression)
-            if with_expression:
-                expression_words.append("with", with_expression)
-            if needs_pass:
-                expression_words.append("pass")
-        words.append(expression_words.join())
-
-        to_write = warp + words.join()
-        if to_write:
-            self.indent()
-            self.write(to_write)
-        else:
-            # A trailing comma results in an empty RawMultipurpose being
-            # generated on the same line as the last real one.
-            self.write(",")
-
-    @dispatch(renpy.atl.RawBlock)
-    def print_atl_rawblock(self, ast):
-        self.indent()
-        self.write("block:")
-        self.print_atl(ast)
-
-    @dispatch(renpy.atl.RawChild)
-    def print_atl_rawchild(self, ast):
-        for child in ast.children:
-            self.indent()
-            self.write("contains:")
-            self.print_atl(child)
-
-    @dispatch(renpy.atl.RawChoice)
-    def print_atl_rawchoice(self, ast):
-        for chance, block in ast.choices:
-            self.indent()
-            self.write("choice")
-            if chance != "1.0":
-                self.write(" %s" % chance)
-            self.write(":")
-            self.print_atl(block)
-        if (self.index + 1 < len(self.block) and
-            isinstance(self.block[self.index + 1], renpy.atl.RawChoice)):
-            self.indent()
-            self.write("pass")
-
-    @dispatch(renpy.atl.RawContainsExpr)
-    def print_atl_rawcontainsexpr(self, ast):
-        self.indent()
-        self.write("contains %s" % ast.expression)
-
-    @dispatch(renpy.atl.RawEvent)
-    def print_atl_rawevent(self, ast):
-        self.indent()
-        self.write("event %s" % ast.name)
-
-    @dispatch(renpy.atl.RawFunction)
-    def print_atl_rawfunction(self, ast):
-        self.indent()
-        self.write("function %s" % ast.expr)
-
-    @dispatch(renpy.atl.RawOn)
-    def print_atl_rawon(self, ast):
-        for name, block in sorted(ast.handlers.items(),
-                                  key=lambda i: i[1].loc[1]):
-            self.indent()
-            self.write("on %s:" % name)
-            self.print_atl(block)
-
-    @dispatch(renpy.atl.RawParallel)
-    def print_atl_rawparallel(self, ast):
-        for block in ast.blocks:
-            self.indent()
-            self.write("parallel:")
-            self.print_atl(block)
-        if (self.index + 1 < len(self.block) and
-            isinstance(self.block[self.index + 1], renpy.atl.RawParallel)):
-            self.indent()
-            self.write("pass")
-
-    @dispatch(renpy.atl.RawRepeat)
-    def print_atl_rawrepeat(self, ast):
-        self.indent()
-        self.write("repeat")
-        if ast.repeats:
-            self.write(" %s" % ast.repeats) # not sure if this is even a string
-
-    @dispatch(renpy.atl.RawTime)
-    def print_atl_rawtime(self, ast):
-        self.indent()
-        self.write("time %s" % ast.time)
-
+        self.linenumber = atldecompiler.pprint(
+            self.out_file, ast, self.options,
+            self.indent_level, self.linenumber, self.skip_indent_until_write
+        )
+        self.skip_indent_until_write = False
 
     # Displayable related functions
 
@@ -969,31 +824,8 @@ class Decompiler(DecompilerBase):
             self.skip_indent_until_write = False
 
         elif isinstance(screen, renpy.sl2.slast.SLScreen):
-            def print_atl_callback(linenumber, indent_level, atl):
-                # screen language occasionally has to jump back to this decompiler to emit atl code
-                # for this, we need to overwrite some state of this decompiler temporarily with the
-                # state of the screenlang decompiler
-                # TODO: remove this very dirty hack and move atl decompiling to a separate
-                # atl decompiler
-
-                # overwrite state
-                old_linenumber = self.linenumber
-                self.linenumber = linenumber
-                old_skip_indent_until_write = self.skip_indent_until_write
-                self.skip_indent_until_write = False
-
-                with self.increase_indent(indent_level - self.indent_level):
-                    self.print_atl(atl)
-
-                # restore state
-                new_linenumber = self.linenumber
-                self.linenumber = old_linenumber
-                self.skip_indent_until_write = old_skip_indent_until_write
-
-                return new_linenumber
-
             self.linenumber = sl2decompiler.pprint(
-                self.out_file, screen, self.options, print_atl_callback,
+                self.out_file, screen, self.options,
                 self.indent_level, self.linenumber, self.skip_indent_until_write
             )
             self.skip_indent_until_write = False
