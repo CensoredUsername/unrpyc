@@ -480,7 +480,8 @@ class SL2Decompiler(DecompilerBase):
         # If there are none, we need to insert one. Inserting it at the start is preferable.
         if keywords_somewhere:
             # if we have no contents: put them on the first line available
-            if not contents_grouped:
+            # same if --tag-outside-block is used.
+            if not contents_grouped or self.options.tag_outside_block:
                 contents_grouped.append((start_lineno, "keywords", keywords_somewhere))
 
             # if there's multiple empty lines after the statement, fill them with it
