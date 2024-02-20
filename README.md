@@ -14,7 +14,7 @@ dev:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflow
 
 ## Usage
 
-This tool can either be ran as a command line tool, as a library, or injected into the game itself. It requires Python 2.7 to be installed to be used as a command line tool.
+This tool can either be ran as a command line tool, as a library, or injected into the game itself. For files from Ren'py 6 and 7, python 2.7 is required to run it as a command line tool.
 
 ### Command line tool usage
 
@@ -126,7 +126,7 @@ to recent engine versions so if you encounter an issues with older games, please
 report it.
 
 Supported:
-* renpy version 6 and 7 (current)
+* renpy version 6 and 7 (up to 7.7, the current)
 * Windows, OSX and Linux
 
 ## Issue reports
