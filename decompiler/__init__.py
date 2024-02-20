@@ -44,7 +44,8 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 # Object that carries configurable decompilation options
 class Options(OptionBase):
     def __init__(self, indentation="    ", printlock=None, decompile_python=False,
-                 translator=None, init_offset=False, tag_outside_block=False):
+                 translator=None, init_offset=False, tag_outside_block=False,
+                 sl_custom_names=None):
         super(Options, self).__init__(indentation=indentation, printlock=printlock)
 
         # decompilation options
@@ -52,7 +53,7 @@ class Options(OptionBase):
         self.translator = translator
         self.init_offset = init_offset
         self.tag_outside_block = tag_outside_block
-
+        self.sl_custom_names = sl_custom_names
 
 def pprint(out_file, ast, options=Options()):
     Decompiler(out_file, options).dump(ast)

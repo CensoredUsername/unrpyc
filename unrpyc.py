@@ -176,7 +176,7 @@ def read_ast_from_file(in_file):
 
 def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
-                   init_offset=False, try_harder=False):
+                   init_offset=False, try_harder=False, sl_custom_names=None):
 
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
@@ -206,7 +206,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
                                           no_pyexpr=no_pyexpr)
         else:
             options = decompiler.Options(printlock=printlock, decompile_python=decompile_python, translator=translator,
-                                         tag_outside_block=tag_outside_block, init_offset=init_offset)
+                                         tag_outside_block=tag_outside_block, init_offset=init_offset, sl_custom_names=sl_custom_names)
 
             decompiler.pprint(out_file, ast, options)
     return True
@@ -223,6 +223,38 @@ def extract_translations(input_filename, language):
     # we pickle and unpickle this manually because the regular unpickler will choke on it
     return magic.safe_dumps(translator.dialogue), translator.strings
 
+def parse_sl_custom_names(unparsed_arguments):
+    # parse a list of strings in the format
+    # classname=name-nchildren into {classname: (name, nchildren)}
+    parsed_arguments = {}
+    for argument in unparsed_arguments:
+        content = argument.split("=")
+        if len(content) != 2:
+            raise Exception("Bad format in custom sl displayable registration: '{}'".format(argument))
+
+        classname, name = content
+        split = name.split("-")
+        if len(split) == 1:
+            amount = "many"
+
+        elif len(split) == 2:
+            name, amount = split
+            if amount == "0":
+                amount = 0
+            elif amount == "1":
+                amount = 1
+            elif amount == "many":
+                pass
+            else:
+                raise Exception("Bad child node count in custom sl displayable registration: '{}'".format(argument))
+
+        else:
+            raise Exception("Bad format in custom sl displayable registration: '{}'".format(argument))
+
+        parsed_arguments[classname] = (name, amount)
+
+    return parsed_arguments
+
 def worker(t):
     (args, filename, filesize) = t
     try:
@@ -236,7 +268,8 @@ def worker(t):
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
                                   no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
-                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset, try_harder=args.try_harder)
+                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
+                                  try_harder=args.try_harder, sl_custom_names=args.sl_custom_names)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -302,6 +335,13 @@ def main():
     parser.add_argument('--try-harder', dest="try_harder", action="store_true",
                         help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
+    parser.add_argument('--register-sl-displayable', dest="sl_custom_names", type=str, nargs='+',
+                        help="Accepts mapping separated by '=', "
+                        "where the first argument is the name of the user-defined displayable object, "
+                        "and the second argument is a string containing the name of the displayable,"
+                        "potentially followed by a '-', and the amount of children the displayable takes"
+                        "(valid options are '0', '1' or 'many', with 'many' being the default)")
+
     args = parser.parse_args()
 
     if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
@@ -312,6 +352,13 @@ def main():
     if args.translation_file:
         with open(args.translation_file, 'rb') as in_file:
             args.translations = in_file.read()
+
+    if args.sl_custom_names is not None:
+        try:
+            args.sl_custom_names = parse_sl_custom_names(args.sl_custom_names)
+        except Exception as e:
+            print("\n".join(e.args))
+            return
 
     # Expand wildcards
     def glob_or_complain(s):

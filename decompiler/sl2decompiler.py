@@ -220,10 +220,15 @@ class SL2Decompiler(DecompilerBase):
         # attributes.
         key = (ast.displayable, ast.style)
         nameAndChildren = self.displayable_names.get(key)
-        if nameAndChildren is None:
-            # This is either a displayable we don't know about, or a user-defined displayable
 
-            # workaround: assume the name of the displayable matches the given style
+        if nameAndChildren is None and self.options.sl_custom_names:
+            # check if we have a name registered for this displayable
+            nameAndChildren = self.options.sl_custom_names.get(ast.displayable.__name__)
+            self.print_debug("Substituted '{}' as the name for displayable {}".format(nameAndChildren[0], ast.displayable))
+
+        if nameAndChildren is None:
+            # This is a (user-defined) displayable we don't know about.
+            # fallback: assume the name of the displayable matches the given style
             # this is rather often the case. However, as it may be wrong we have to
             # print a debug message
             nameAndChildren = (ast.style, 'many')
@@ -235,6 +240,7 @@ class SL2Decompiler(DecompilerBase):
                     ast.displayable, ast.style
                 )
             )
+
         (name, children) = nameAndChildren
         self.indent()
         self.write(name)

@@ -33,6 +33,7 @@ usage: unrpyc.py [-h] [-c] [-d] [-p {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}]
                  [-t TRANSLATION_FILE] [-T WRITE_TRANSLATION_FILE]
                  [-l LANGUAGE] [--sl1-as-python] [--comparable] [--no-pyexpr]
                  [--tag-outside-block] [--init-offset] [--try-harder]
+                 [--register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]]
                  file [file ...]
 
 Decompile .rpyc/.rpymc files
@@ -84,7 +85,14 @@ optional arguments:
                         less cluttered.
   --try-harder          Tries some workarounds against common obfuscation
                         methods. This is a lot slower.
-
+  --register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]
+                        Accepts mapping separated by '=', where the first
+                        argument is the name of the user-defined displayable
+                        object, and the second argument is a string containing
+                        the name of the displayable,potentially followed by a
+                        '-', and the amount of children the displayable
+                        takes(valid options are '0', '1' or 'many', with
+                        'many' being the default)
 ```
 
 You can give several .rpyc files on the command line. Each script will be
