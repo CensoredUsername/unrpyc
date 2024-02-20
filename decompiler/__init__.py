@@ -167,7 +167,7 @@ class Decompiler(DecompilerBase):
         if ast.code is not None:
             self.write(" = %s" % ast.code.source)
         else:
-            if hasattr(ast, "atl") and ast.atl is not None:
+            if ast.atl is not None:
                 self.write(":")
                 self.print_atl(ast.atl)
 
@@ -186,7 +186,7 @@ class Decompiler(DecompilerBase):
         if ast.parameters is not None:
             self.write(reconstruct_paraminfo(ast.parameters))
 
-        if hasattr(ast, "atl") and ast.atl is not None:
+        if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
 
@@ -204,7 +204,7 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % self.paired_with)
             self.paired_with = True
 
-        if hasattr(ast, "atl") and ast.atl is not None:
+        if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
 
@@ -216,7 +216,7 @@ class Decompiler(DecompilerBase):
         if ast.at_list:
             self.write(" at %s" % ', '.join(ast.at_list))
 
-        if hasattr(ast, "atl") and ast.atl is not None:
+        if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
 
@@ -239,7 +239,7 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % self.paired_with)
             self.paired_with = True
 
-        if hasattr(ast, "atl") and ast.atl is not None:
+        if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
 
@@ -259,7 +259,7 @@ class Decompiler(DecompilerBase):
         # the 'paired' attribute indicates that this with
         # and with node afterwards are part of a postfix
         # with statement. detect this and process it properly
-        if hasattr(ast, "paired") and ast.paired is not None:
+        if ast.paired is not None:
             # Sanity check. check if there's a matching with statement two nodes further
             if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
                    self.block[self.index + 2].expr == ast.paired):
@@ -305,7 +305,7 @@ class Decompiler(DecompilerBase):
         if remaining_blocks > 1:
             next_ast = self.block[self.index + 1]
             # See if we're the label for a menu, rather than a standalone label.
-            if (not ast.block and (not hasattr(ast, 'parameters') or ast.parameters is None) and
+            if (not ast.block and ast.parameters is None and
                 hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
                 (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
                 isinstance(next_ast, renpy.ast.Say) and
@@ -325,8 +325,8 @@ class Decompiler(DecompilerBase):
         try:
             self.write("label %s%s%s:" % (
                 ast.name,
-                reconstruct_paraminfo(ast.parameters) if hasattr(ast, 'parameters') else '',
-                " hide" if hasattr(ast, 'hide') and ast.hide else ""))
+                reconstruct_paraminfo(ast.parameters),
+                " hide" if ast.hide else ""))
             self.print_nodes(ast.block, 1)
         finally:
             if self.missing_init:
@@ -349,7 +349,7 @@ class Decompiler(DecompilerBase):
             words.append("expression")
         words.append(ast.label)
 
-        if hasattr(ast, 'arguments') and ast.arguments is not None:
+        if ast.arguments is not None:
             if ast.expression:
                 words.append("pass")
             words.append(reconstruct_arginfo(ast.arguments))
@@ -364,7 +364,7 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Return)
     def print_return(self, ast):
-        if ((not hasattr(ast, 'expression') or ast.expression is None) and self.parent is None and
+        if (ast.expression is None and self.parent is None and
             self.index + 1 == len(self.block) and self.index and
             ast.linenumber == self.block[self.index - 1].linenumber):
             # As of Ren'Py commit 356c6e34, a return statement is added to
@@ -375,7 +375,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("return")
 
-        if hasattr(ast, 'expression') and ast.expression is not None:
+        if ast.expression is not None:
             self.write(" %s" % ast.expression)
 
     @dispatch(renpy.ast.If)
@@ -384,6 +384,7 @@ class Decompiler(DecompilerBase):
 
         for i, (condition, block) in enumerate(ast.entries):
             # The non-Unicode string "True" is the condition for else:.
+            # todo: this probably isn't true anymore for 8.0/7.5 and upwards.
             if (i + 1) == len(ast.entries) and not isinstance(condition, unicode):
                 self.indent()
                 self.write("else:")
@@ -536,7 +537,7 @@ class Decompiler(DecompilerBase):
             self.write(" %s" % self.label_inside_menu.name)
             self.label_inside_menu = None
 
-        if hasattr(ast, "arguments") and ast.arguments is not None:
+        if ast.arguments is not None:
             self.write(reconstruct_arginfo(ast.arguments))
 
         self.write(":")
@@ -550,12 +551,7 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("set %s" % ast.set)
 
-            if hasattr(ast, "item_arguments"):
-                item_arguments = ast.item_arguments
-            else:
-                item_arguments = [None] * len(ast.items)
-
-            for (label, condition, block), arguments in zip(ast.items, item_arguments):
+            for (label, condition, block), arguments in zip(ast.items, ast.item_arguments):
                 if self.options.translator:
                     label = self.options.translator.strings.get(label, label)
 
@@ -607,7 +603,7 @@ class Decompiler(DecompilerBase):
                 self.write(" early")
             if ast.hide:
                 self.write(" hide")
-            if hasattr(ast, "store") and ast.store != "store":
+            if ast.store != "store":
                 self.write(" in ")
                 # Strip prepended "store."
                 self.write(ast.store[6:])
@@ -636,17 +632,13 @@ class Decompiler(DecompilerBase):
                 priority = " %d" % (init.priority - self.init_offset)
 
         index = ""
-        if hasattr(ast, "index") and ast.index is not None:
+        if ast.index is not None:
             index = "[%s]" % ast.index.source
 
-        operator = "="
-        if hasattr(ast, "operator"):
-            operator = ast.operator
-
-        if not hasattr(ast, "store") or ast.store == "store":
-            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, operator, ast.code.source))
+        if ast.store == "store":
+            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, ast.operator, ast.code.source))
         else:
-            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
+            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, ast.operator, ast.code.source))
 
     @dispatch(renpy.ast.Default)
     def print_default(self, ast):
@@ -660,7 +652,7 @@ class Decompiler(DecompilerBase):
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
                 priority = " %d" % (init.priority - self.init_offset)
 
-        if not hasattr(ast, "store") or ast.store == "store":
+        if ast.store == "store":
             self.write("default%s %s = %s" % (priority, ast.varname, ast.code.source))
         else:
             self.write("default%s %s.%s = %s" % (priority, ast.store[6:], ast.varname, ast.code.source))
@@ -672,7 +664,7 @@ class Decompiler(DecompilerBase):
     def say_belongs_to_menu(self, say, menu):
         return (not say.interact and say.who is not None and
             say.with_ is None and 
-            (not hasattr(say, "attributes") or say.attributes is None) and
+            say.attributes is None and
             isinstance(menu, renpy.ast.Menu) and
             menu.items[0][2] is not None and
             not self.should_come_before(say, menu))
@@ -695,7 +687,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write(ast.line)
 
-        if hasattr(ast, "block") and ast.block:
+        if ast.block:
             with self.increase_indent():
                 self.print_lex(ast.block)
 
@@ -777,8 +769,7 @@ class Decompiler(DecompilerBase):
             self.advance_to_line(ast.linenumber)
             self.indent()
             self.write('old "%s"' % string_escape(ast.old))
-            if hasattr(ast, 'newloc'):
-                self.advance_to_line(ast.newloc[1])
+            self.advance_to_line(ast.newloc[1])
             self.indent()
             self.write('new "%s"' % string_escape(ast.new))
 
