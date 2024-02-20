@@ -1,13 +1,11 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
 name: Test build and run tests
 
 on:
   push:
-    branches: [ master, dev ]
+    branches: [ legacy, legacy-dev ]
   pull_request:
-    branches: [ master, dev ]
+    branches: [ legacy, legacy-dev ]
 
 jobs:
   tests-py2:

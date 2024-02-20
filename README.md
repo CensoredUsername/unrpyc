@@ -5,12 +5,13 @@ script files. It will not extract files from .rpa archives. For that, use
 [rpatool](https://github.com/Shizmob/rpatool) or
 [UnRPA](https://github.com/Lattyware/unrpa).
 
+You are viewing the legacy branch of the project, which supports ren'py 6 and 7.
 
 ## Status
 
-master:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+legacy:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-dev:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+legacy-dev:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
 ## Usage
 
