@@ -27,6 +27,7 @@ import glob
 import itertools
 import traceback
 import struct
+import zlib
 from operator import itemgetter
 
 try:
@@ -53,10 +54,10 @@ from decompiler import magic, astdump, translate
 SPECIAL_CLASSES = [set, frozenset]
 
 @SPECIAL_CLASSES.append
-class PyExpr(magic.FakeStrict, unicode):
+class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
     def __new__(cls, s, filename, linenumber, py=None):
-        self = unicode.__new__(cls, s)
+        self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
         self.py = py
@@ -64,9 +65,9 @@ class PyExpr(magic.FakeStrict, unicode):
 
     def __getnewargs__(self):
         if self.py is not None:
-            return unicode(self), self.filename, self.linenumber, self.py
+            return str(self), self.filename, self.linenumber, self.py
         else:
-            return unicode(self), self.filename, self.linenumber
+            return str(self), self.filename, self.linenumber
 
 @SPECIAL_CLASSES.append
 class PyCode(magic.FakeStrict):
@@ -126,7 +127,7 @@ def read_ast_from_file(in_file):
     raw_contents = in_file.read()
 
     # ren'py 8 only uses RPYC 2 files
-    if not raw_contents.startswith("RENPY RPC2"):
+    if not raw_contents.startswith(b"RENPY RPC2"):
         raise Exception("This isn't a normal rpyc file")
 
     # parse the archive structure
@@ -140,7 +141,7 @@ def read_ast_from_file(in_file):
 
         chunks[slot] = raw_contents[start: start + length]
 
-    raw_contents = chunks[1].decode('zlib')
+    raw_contents = zlib.decompress(chunks[1])
 
     # import pickletools
     # with open("huh.txt", "wb") as f:
@@ -268,7 +269,7 @@ def main():
                         help="instead of decompiling, pretty print the ast to a file")
 
     parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
-                        choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
+                        choices=list(range(1, cc_num)), default=cc_num - 1 if cc_num > 2 else 1,
                         help="use the specified number or processes to decompile."
                         "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
 
@@ -333,7 +334,7 @@ def main():
         if not retval:
             print("File not found: " + s)
         return retval
-    filesAndDirs = map(glob_or_complain, args.file)
+    filesAndDirs = [glob_or_complain(i) for i in args.file]
     # Concatenate lists
     filesAndDirs = list(itertools.chain(*filesAndDirs))
 
@@ -352,7 +353,7 @@ def main():
         print("No script files to decompile.")
         return
 
-    files = map(lambda x: (args, x, path.getsize(x)), files)
+    files = [(args, x, path.getsize(x)) for x in files]
     processes = int(args.processes)
     if processes > 1:
         # If a big file starts near the end, there could be a long time with
@@ -363,7 +364,7 @@ def main():
     else:
         # Decompile in the order Ren'Py loads in
         files.sort(key=itemgetter(1))
-        results = map(worker, files)
+        results = list(map(worker, files))
 
     if args.write_translation_file:
         print("Writing translations to %s..." % args.write_translation_file)

@@ -18,14 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from util import say_get_code
+from .util import say_get_code
 import renpy
 
 import hashlib
 import re
 from copy import copy
 
-class Translator(object):
+class Translator:
     def __init__(self, language, saving_translations=False):
         self.language = language
         self.saving_translations = saving_translations

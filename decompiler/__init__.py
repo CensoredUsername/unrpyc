@@ -18,23 +18,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
-from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
-                 reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher, \
-                 say_get_code, OptionBase
+from .util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
+                  reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher, \
+                  say_get_code, OptionBase
 
 from operator import itemgetter
-from StringIO import StringIO
+from io import StringIO
 
-import magic
-magic.fake_package(b"renpy")
+from . import magic
+magic.fake_package("renpy")
 import renpy
 
-import sl2decompiler
-import testcasedecompiler
-import atldecompiler
-import codegen
-import astdump
+from . import sl2decompiler
+from . import testcasedecompiler
+from . import atldecompiler
+from . import astdump
 
 __all__ = ["astdump", "codegen", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
 
@@ -147,7 +145,8 @@ class Decompiler(DecompilerBase):
         if len(imspec[6]) > 0:
             words.append("behind %s" % ', '.join(imspec[6]))
 
-        if isinstance(imspec[4], unicode):
+        # todo: this check probably doesn't work in ren'py 8
+        if isinstance(imspec[4], str):
             words.append("onlayer %s" % imspec[4])
 
         if imspec[5] is not None:
@@ -226,7 +225,8 @@ class Decompiler(DecompilerBase):
         self.write("scene")
 
         if ast.imspec is None:
-            if isinstance(ast.layer, unicode):
+            # todo: this check probably doesn't work in ren'py 8
+            if isinstance(ast.layer, str):
                 self.write(" onlayer %s" % ast.layer)
             needs_space = True
         else:
@@ -385,7 +385,7 @@ class Decompiler(DecompilerBase):
         for i, (condition, block) in enumerate(ast.entries):
             # The non-Unicode string "True" is the condition for else:.
             # todo: this probably isn't true anymore for 8.0/7.5 and upwards.
-            if (i + 1) == len(ast.entries) and not isinstance(condition, unicode):
+            if (i + 1) == len(ast.entries) and not isinstance(condition, str):
                 self.indent()
                 self.write("else:")
             else:
@@ -524,7 +524,8 @@ class Decompiler(DecompilerBase):
             self.write(reconstruct_arginfo(arguments))
 
         if block is not None:
-            if isinstance(condition, unicode):
+            # todo: this check probably doesn't work in ren'py 8
+            if isinstance(condition, str):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
@@ -559,8 +560,9 @@ class Decompiler(DecompilerBase):
 
                 # if the condition is a unicode subclass with a "linenumber" attribute it was script.
                 # If it isn't ren'py used to insert a "True" string. This string used to be of type str
-                # but nowadays it's of time unicode, just not of type PyExpr
-                if isinstance(condition, unicode) and hasattr(condition, "linenumber"):
+                # but nowadays it's of type unicode, just not of type PyExpr
+                # todo: this check probably doesn't work in ren'py 8
+                if isinstance(condition, str) and hasattr(condition, "linenumber"):
                     if self.say_inside_menu is not None and condition.linenumber > self.linenumber + 1:
                         # The easy case: we know the line number that the menu item is on, because the condition tells us
                         # So we put the say statement here if there's room for it, or don't if there's not
@@ -720,7 +722,7 @@ class Decompiler(DecompilerBase):
             if ast.variant.linenumber not in keywords:
                 keywords[ast.variant.linenumber] = WordConcatenator(False)
             keywords[ast.variant.linenumber].append("variant %s" % ast.variant)
-        for key, value in ast.properties.iteritems():
+        for key, value in ast.properties.items():
             if value.linenumber not in keywords:
                 keywords[value.linenumber] = WordConcatenator(False)
             keywords[value.linenumber].append("%s %s" % (key, value))

@@ -1,7 +1,4 @@
-
-
-from __future__ import unicode_literals
-from util import DecompilerBase, WordConcatenator, Dispatcher
+from .util import DecompilerBase, WordConcatenator, Dispatcher
 
 import renpy
 

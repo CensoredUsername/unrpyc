@@ -18,14 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
 import sys
 from operator import itemgetter
 
-from util import DecompilerBase, First, reconstruct_paraminfo, \
-                 reconstruct_arginfo, split_logical_lines, Dispatcher
+from .util import DecompilerBase, First, reconstruct_paraminfo, \
+                  reconstruct_arginfo, split_logical_lines, Dispatcher
 
-import atldecompiler
+from . import atldecompiler
 
 from renpy import ui, sl2
 from renpy.ast import PyExpr

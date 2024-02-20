@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from __future__ import unicode_literals
-
 import sys
 import inspect
 import ast as py_ast
@@ -40,7 +38,7 @@ class AstDumper(object):
     MAP_CLOSE = {list: ']', tuple: ')', set: '})', frozenset: '})'}
 
     def __init__(self, out_file=None, no_pyexpr=False,
-                 comparable=False, indentation=u'    '):
+                 comparable=False, indentation="    "):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
         self.comparable = comparable
@@ -70,9 +68,11 @@ class AstDumper(object):
             self.print_pyexpr(ast)
         elif isinstance(ast, dict):
             self.print_dict(ast)
-        elif isinstance(ast, (str, unicode)):
+        elif isinstance(ast, str):
             self.print_string(ast)
-        elif isinstance(ast, (int, long, bool)) or ast is None:
+        elif isinstance(ast, (bytes, bytearray)):
+            self.print_bytes(ast)
+        elif isinstance(ast, (int, bool)) or ast is None:
             self.print_other(ast)
         elif inspect.isclass(ast):
             self.print_class(ast)
@@ -135,7 +135,7 @@ class AstDumper(object):
             ast.col_offset = 0 # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
             name = ast.name[0]
-            if isinstance(name, unicode):
+            if isinstance(name, str):
                 name = name.encode('utf-8')
             ast.name = (name.split(b'/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
@@ -232,10 +232,8 @@ class AstDumper(object):
     def print_string(self, ast):
         # prints the representation of a string. If there are newlines in this string,
         # it will print it as a docstring.
-        if b'\n' in ast:
-            astlist = ast.split(b'\n')
-            if isinstance(ast, unicode):
-                self.p('u')
+        if '\n' in ast:
+            astlist = ast.split('\n')
             self.p('"""')
             self.p(self.escape_string(astlist.pop(0)))
             for i, item in enumerate(astlist):
@@ -247,12 +245,37 @@ class AstDumper(object):
         else:
             self.p(repr(ast))
 
+    def print_bytes(self, ast):
+        # prints the representation of a bytes object. If there are newlines in this string,
+        # it will print it as a docstring.
+        is_bytearray = isinstance(ast, bytearray)
+
+        if b'\n' in ast:
+            astlist = ast.split(b'\n')
+            if is_bytearray:
+                self.p('bytearray(')
+            self.p('b')
+            self.p('"""')
+            self.p(self.escape_string(astlist.pop(0)))
+            for i, item in enumerate(astlist):
+                self.p('\n')
+                self.p(self.escape_string(item))
+            self.p('"""')
+            if is_bytearray:
+                self.p(')')
+            self.ind()
+
+        else:
+            self.p(repr(ast))
+
     def escape_string(self, string):
         # essentially the representation of a string without the surrounding quotes
-        if isinstance(string, unicode):
-            return repr(string)[2:-1]
-        elif isinstance(string, str):
+        if isinstance(string, str):
             return repr(string)[1:-1]
+        elif isinstance(string, bytes):
+            return repr(string)[2:-1]
+        elif isinstance(string, bytearray):
+            return repr(bytes(string))[2:-1]
         else:
             return string
 
@@ -266,10 +289,10 @@ class AstDumper(object):
         # shouldn't indent in case there's only one or zero objects in this object to print
         if ast is None or len(ast) > 1:
             self.indent += diff_indent
-            self.p(u'\n' + self.indentation * self.indent)
+            self.p('\n' + self.indentation * self.indent)
 
     def p(self, string):
         # write the string to the stream
-        string = unicode(string)
+        string = str(string)
         self.linenumber += string.count('\n')
         self.out_file.write(string)
