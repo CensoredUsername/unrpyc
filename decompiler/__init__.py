@@ -30,29 +30,26 @@ import magic
 magic.fake_package(b"renpy")
 import renpy
 
-import screendecompiler
 import sl2decompiler
 import testcasedecompiler
 import atldecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
 
 # Main API
 
 # Object that carries configurable decompilation options
 class Options(OptionBase):
-    def __init__(self, indentation="    ", printlock=None, decompile_python=False,
-                 translator=None, init_offset=False, tag_outside_block=False,
+    def __init__(self, indentation="    ", printlock=None,
+                 translator=None, init_offset=False,
                  sl_custom_names=None):
         super(Options, self).__init__(indentation=indentation, printlock=printlock)
 
         # decompilation options
-        self.decompile_python = decompile_python
         self.translator = translator
         self.init_offset = init_offset
-        self.tag_outside_block = tag_outside_block
         self.sl_custom_names = sl_custom_names
 
 def pprint(out_file, ast, options=Options()):
@@ -817,14 +814,7 @@ class Decompiler(DecompilerBase):
     def print_screen(self, ast):
         self.require_init()
         screen = ast.screen
-        if isinstance(screen, renpy.screenlang.ScreenLangScreen):
-            self.linenumber = screendecompiler.pprint(
-                self.out_file, screen, self.options,
-                self.indent_level, self.linenumber, self.skip_indent_until_write
-            )
-            self.skip_indent_until_write = False
-
-        elif isinstance(screen, renpy.sl2.slast.SLScreen):
+        if isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(
                 self.out_file, screen, self.options,
                 self.indent_level, self.linenumber, self.skip_indent_until_write

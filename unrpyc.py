@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # Copyright (c) 2012 Yuri K. Schlesner
 #
@@ -87,34 +87,7 @@ class Sentinel(magic.FakeStrict, object):
         obj.name = name
         return obj
 
-# These used to live in renpy.python. They started appearing in ASTs after ren'py switched from
-# putting the unparsed contents of a user statement into the AST to putting the parsed result,
-# or when people define custom AST nodes in ren'py files.
-@SPECIAL_CLASSES.append
-class RevertableList(magic.FakeStrict, list):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return list.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableDict(magic.FakeStrict, dict):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return dict.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableSet(magic.FakeStrict, set):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return set.__new__(cls)
-
-    def __setstate__(self, state):
-        if isinstance(state, tuple):
-            self.update(state[0].keys())
-        else:
-            self.update(state)
-
-# But since 7.5 they live in renpy.revertable, so we have both
+# These appear in the parsed contents of user statements.
 @SPECIAL_CLASSES.append
 class RevertableList(magic.FakeStrict, list):
     __module__ = "renpy.revertable"
@@ -151,21 +124,24 @@ import deobfuscate
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
-    if raw_contents.startswith("RENPY RPC2"):
-        # parse the archive structure
-        position = 10
-        chunks = {}
-        while True:
-            slot, start, length = struct.unpack("III", raw_contents[position: position + 12])
-            if slot == 0:
-                break
-            position += 12
 
-            chunks[slot] = raw_contents[start: start + length]
+    # ren'py 8 only uses RPYC 2 files
+    if not raw_contents.startswith("RENPY RPC2"):
+        raise Exception("This isn't a normal rpyc file")
 
-        raw_contents = chunks[1]
+    # parse the archive structure
+    position = 10
+    chunks = {}
+    while True:
+        slot, start, length = struct.unpack("III", raw_contents[position: position + 12])
+        if slot == 0:
+            break
+        position += 12
 
-    raw_contents = raw_contents.decode('zlib')
+        chunks[slot] = raw_contents[start: start + length]
+
+    raw_contents = chunks[1].decode('zlib')
+
     # import pickletools
     # with open("huh.txt", "wb") as f:
     #     pickletools.dis(raw_contents, out=f)
@@ -174,8 +150,8 @@ def read_ast_from_file(in_file):
     return stmts
 
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
+def decompile_rpyc(input_filename, overwrite=False, dump=False, 
+                   comparable=False, no_pyexpr=False, translator=None,
                    init_offset=False, try_harder=False, sl_custom_names=None):
 
     # Output filename is input filename but with .rpy extension
@@ -205,8 +181,8 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
         else:
-            options = decompiler.Options(printlock=printlock, decompile_python=decompile_python, translator=translator,
-                                         tag_outside_block=tag_outside_block, init_offset=init_offset, sl_custom_names=sl_custom_names)
+            options = decompiler.Options(printlock=printlock, translator=translator,
+                                         init_offset=init_offset, sl_custom_names=sl_custom_names)
 
             decompiler.pprint(out_file, ast, options)
     return True
@@ -266,10 +242,10 @@ def worker(t):
                 translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, class_factory)
             else:
                 translator = None
-            return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
-                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
-                                  try_harder=args.try_harder, sl_custom_names=args.sl_custom_names)
+            return decompile_rpyc(filename, args.clobber, args.dump, no_pyexpr=args.no_pyexpr,
+                                  comparable=args.comparable, translator=translator,
+                                  init_offset=args.init_offset, try_harder=args.try_harder,
+                                  sl_custom_names=args.sl_custom_names)
     except Exception as e:
         with printlock:
             print("Error while decompiling %s:" % filename)
@@ -305,10 +281,6 @@ def main():
     parser.add_argument('-l', '--language', dest='language', action='store', default='english',
                         help="if writing a translation file, the language of the translations to write")
 
-    parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
-                        help="Only dumping and for decompiling screen language 1 screens. "
-                        "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
-
     parser.add_argument('--comparable', dest='comparable', action='store_true',
                         help="Only for dumping, remove several false differences when comparing dumps. "
                         "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
@@ -317,11 +289,6 @@ def main():
                         help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
                         "This is useful when comparing dumps from different versions of Ren'Py. "
                         "It should only be used if necessary, since it will cause loss of information such as line numbers.")
-
-    parser.add_argument('--tag-outside-block', dest='tag_outside_block', action='store_true',
-                        help="Always put SL2 'tag's on the same line as 'screen' rather than inside the block. "
-                        "This will break compiling with Ren'Py 7.3 and above, but is needed to get correct line numbers "
-                        "from some files compiled with older Ren'Py versions.")
 
     parser.add_argument('--init-offset', dest='init_offset', action='store_true',
                         help="Attempt to guess when init offset statements were used and insert them. "
