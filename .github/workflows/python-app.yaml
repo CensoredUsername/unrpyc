@@ -10,20 +10,18 @@ on:
     branches: [ master, dev ]
 
 jobs:
-  tests-py2:
-    name: Runs tests that require python 2
+  tests-py3:
+    name: Runs tests
     runs-on: ubuntu-latest
-    container:
-      image: python:2.7.18-buster
 
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    # - name: Set up Python 2.7
-    #   uses: actions/setup-python@v2
-    #   with:
-    #     python-version: "2.7"
+    - name: Set up Python 3
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
     - name: Test by decompiling a script and building un.rpyc
       run: |
         ./unrpyc.py --clobber testcases/script.rpyc
