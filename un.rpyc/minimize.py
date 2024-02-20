@@ -20,7 +20,6 @@
 
 import ast
 import sys
-sys.path.append("../decompiler")
 from codegen import SourceGenerator
 
 from collections import OrderedDict

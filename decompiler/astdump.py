@@ -22,14 +22,13 @@ from __future__ import unicode_literals
 
 import sys
 import inspect
-import codegen
 import ast as py_ast
 import renpy
 
-def pprint(out_file, ast, decompile_python=False, comparable=False, no_pyexpr=False):
+def pprint(out_file, ast, comparable=False, no_pyexpr=False):
     # The main function of this module, a wrapper which sets
     # the config and creates the AstDumper instance
-    AstDumper(out_file, decompile_python=decompile_python, comparable=comparable, no_pyexpr=no_pyexpr).dump(ast)
+    AstDumper(out_file, comparable=comparable, no_pyexpr=no_pyexpr).dump(ast)
 
 class AstDumper(object):
     """
@@ -40,11 +39,10 @@ class AstDumper(object):
     MAP_OPEN = {list: '[', tuple: '(', set: 'set({', frozenset: 'frozenset({'}
     MAP_CLOSE = {list: ']', tuple: ')', set: '})', frozenset: '})'}
 
-    def __init__(self, out_file=None, decompile_python=False, no_pyexpr=False,
+    def __init__(self, out_file=None, no_pyexpr=False,
                  comparable=False, indentation=u'    '):
         self.indentation = indentation
         self.out_file = out_file or sys.stdout
-        self.decompile_python = decompile_python
         self.comparable = comparable
         self.no_pyexpr = no_pyexpr
 
@@ -203,12 +201,6 @@ class AstDumper(object):
         # it will not print anything which is a bound method or starts with a _
         self.p('<')
         self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
-
-        if isinstance(ast, py_ast.Module) and self.decompile_python:
-            self.p('.code = ')
-            self.print_ast(codegen.to_source(ast, unicode(self.indentation)))
-            self.p('>')
-            return
 
         keys = list(i for i in dir(ast) if self.should_print_key(ast, i))
         if keys:

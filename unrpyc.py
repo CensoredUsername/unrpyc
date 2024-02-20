@@ -178,7 +178,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
-            astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
+            astdump.pprint(out_file, ast, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
         else:
             options = decompiler.Options(printlock=printlock, translator=translator,
