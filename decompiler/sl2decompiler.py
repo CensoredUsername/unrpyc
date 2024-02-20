@@ -195,7 +195,7 @@ class SL2Decompiler(DecompilerBase):
         else:
             self.write("%s" % ast.target)
 
-        self.write("%s" % reconstruct_arginfo(ast.args))
+        self.write("%s" % args)
         if hasattr(ast, 'id') and ast.id is not None:
             self.write(" id %s" % ast.id)
 
