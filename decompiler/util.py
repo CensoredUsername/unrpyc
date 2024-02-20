@@ -202,81 +202,56 @@ def reconstruct_paraminfo(paraminfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(paraminfo, "extrapos"):
-        # ren'py 7.4 and below, python 2 style
-        positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
-        nameonly = [i for i in paraminfo.parameters if i not in positional]
-        for parameter in positional:
-            rv.append(sep())
-            rv.append(parameter[0])
-            if parameter[1] is not None:
-                rv.append("=%s" % parameter[1])
-        if paraminfo.extrapos:
-            rv.append(sep())
-            rv.append("*%s" % paraminfo.extrapos)
-        if nameonly:
-            if not paraminfo.extrapos:
-                rv.append(sep())
-                rv.append("*")
-            for parameter in nameonly:
-                rv.append(sep())
-                rv.append(parameter[0])
-                if parameter[1] is not None:
-                    rv.append("=%s" % parameter[1])
-        if paraminfo.extrakw:
-            rv.append(sep())
-            rv.append("**%s" % paraminfo.extrakw)
-    else:
-        # ren'py 7.5 and above.
-        # positional only, /, positional or keyword, *, keyword only, ***
-        # prescence of the / is indicated by positional only arguments being present
-        # prescence of the * (if no *args) are present is indicated by keyword only args being present.
-        state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
+    # ren'py 7.5 and above.
+    # positional only, /, positional or keyword, *, keyword only, ***
+    # prescence of the / is indicated by positional only arguments being present
+    # prescence of the * (if no *args) are present is indicated by keyword only args being present.
+    state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
 
-        for parameter in paraminfo.parameters.values():
-            rv.append(sep())
-            if parameter.kind == 0:
-                # positional only
-                state = 0
+    for parameter in paraminfo.parameters.values():
+        rv.append(sep())
+        if parameter.kind == 0:
+            # positional only
+            state = 0
+
+            rv.append(parameter.name)
+            if parameter.default is not None:
+                rv.append("=%s" % parameter.default)
+
+        else:
+            if state == 0:
+                # insert the / if we had a positional only argument before.
+                state = 1
+                rv.append("/")
+                rv.append(sep())
+
+            if parameter.kind == 1:
+                # positional or keyword
+                rv.append(parameter.name)
+                if parameter.default is not None:
+                    rv.append("=%s" % parameter.default)
+
+            elif parameter.kind == 2:
+                # *positional
+                state = 2
+                rv.append("*%s" % parameter.name)
+
+            elif parameter.kind == 3:
+                # keyword only
+                if state == 1:
+                    # insert the * if we didn't have a *args before
+                    state = 2
+                    rv.append("*")
+                    rv.append(sep())
 
                 rv.append(parameter.name)
                 if parameter.default is not None:
                     rv.append("=%s" % parameter.default)
 
-            else:
-                if state == 0:
-                    # insert the / if we had a positional only argument before.
-                    state = 1
-                    rv.append("/")
-                    rv.append(sep())
-
-                if parameter.kind == 1:
-                    # positional or keyword
-                    rv.append(parameter.name)
-                    if parameter.default is not None:
-                        rv.append("=%s" % parameter.default)
-
-                elif parameter.kind == 2:
-                    # *positional
-                    state = 2
-                    rv.append("*%s" % parameter.name)
-
-                elif parameter.kind == 3:
-                    # keyword only
-                    if state == 1:
-                        # insert the * if we didn't have a *args before
-                        state = 2
-                        rv.append("*")
-                        rv.append(sep())
-
-                    rv.append(parameter.name)
-                    if parameter.default is not None:
-                        rv.append("=%s" % parameter.default)
-
-                elif parameter.kind == 4:
-                    # **keyword
-                    state = 3
-                    rv.append("**%s" % parameter.name)
+            elif parameter.kind == 4:
+                # **keyword
+                state = 3
+                rv.append("**%s" % parameter.name)
 
     rv.append(")")
 
@@ -288,30 +263,18 @@ def reconstruct_arginfo(arginfo):
 
     rv = ["("]
     sep = First("", ", ")
-    if hasattr(arginfo, "starred_indexes"):
-        # ren'py 7.5 and above, PEP 448 compliant
-        for i, (name, val) in enumerate(arginfo.arguments):
-            rv.append(sep())
-            if name is not None:
-                rv.append("%s=" % name)
-            elif i in arginfo.starred_indexes:
-                rv.append("*")
-            elif i in arginfo.doublestarred_indexes:
-                rv.append("**")
-            rv.append(val)
-    else:
-        # ren'py 7.4 and below, python 2 style
-        for (name, val) in arginfo.arguments:
-            rv.append(sep())
-            if name is not None:
-                rv.append("%s=" % name)
-            rv.append(val)
-        if arginfo.extrapos:
-            rv.append(sep())
-            rv.append("*%s" % arginfo.extrapos)
-        if arginfo.extrakw:
-            rv.append(sep())
-            rv.append("**%s" % arginfo.extrakw)
+
+    # ren'py 7.5 and above, PEP 448 compliant
+    for i, (name, val) in enumerate(arginfo.arguments):
+        rv.append(sep())
+        if name is not None:
+            rv.append("%s=" % name)
+        elif i in arginfo.starred_indexes:
+            rv.append("*")
+        elif i in arginfo.doublestarred_indexes:
+            rv.append("**")
+        rv.append(val)
+
     rv.append(")")
 
     return "".join(rv)
