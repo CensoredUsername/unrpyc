@@ -75,7 +75,6 @@ class Decompiler(DecompilerBase):
         self.in_init = False
         self.missing_init = False
         self.init_offset = 0
-        self.is_356c6e34_or_later = False
         self.most_lines_behind = 0
         self.last_lines_behind = 0
 
@@ -102,14 +101,6 @@ class Decompiler(DecompilerBase):
         super(Decompiler, self).rollback_state(state[0])
 
     def dump(self, ast):
-        if (isinstance(ast, (tuple, list)) and len(ast) > 1 and
-            isinstance(ast[-1], renpy.ast.Return) and
-            (not hasattr(ast[-1], 'expression') or ast[-1].expression is None) and
-            ast[-1].linenumber == ast[-2].linenumber):
-            # A very crude version check, but currently the best we can do.
-            # Note that this commit first appears in the 6.99 release.
-            self.is_356c6e34_or_later = True
-
         if self.options.translator:
             self.options.translator.translate_dialogue(ast)
 
@@ -447,7 +438,7 @@ class Decompiler(DecompilerBase):
                 elif isinstance(ast.block[0], renpy.ast.Testcase):
                     offset -= 500
                 elif isinstance(ast.block[0], renpy.ast.Image):
-                    offset -= 500 if self.is_356c6e34_or_later else 990
+                    offset -= 500
             votes[offset] = votes.get(offset, 0) + 1
         if votes:
             winner = max(votes, key=votes.get)
@@ -492,7 +483,7 @@ class Decompiler(DecompilerBase):
                 # detect is 356c6e34 (Ren'Py 6.99). For any versions in between these, we'll emit
                 # an unnecessary "init 990 " before image statements, but this doesn't affect the AST,
                 # and any other solution would result in incorrect code being generated in some cases.
-                (ast.priority == (500 if self.is_356c6e34_or_later else 990) + self.init_offset and isinstance(ast.block[0], renpy.ast.Image))) and not (
+                (ast.priority == 500 + self.init_offset and isinstance(ast.block[0], renpy.ast.Image))) and not (
                 self.should_come_before(ast, ast.block[0])):
                 # If they fulfill this criteria we just print the contained statement
                 self.print_nodes(ast.block)
