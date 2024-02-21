@@ -31,11 +31,7 @@ class ATLDecompiler(DecompilerBase):
         # Line advancement logic:
         if hasattr(ast, "loc"):
             if isinstance(ast, renpy.atl.RawBlock):
-                # note: the location property of a RawBlock points to the first line of the block,
-                # not the statement that created it.
-                # it can also contain the following nonsense if there was no block for some reason.
-                if ast.loc != ('', 0):
-                    self.advance_to_line(ast.loc[1] - 1)
+                self.advance_to_block(ast)
 
             else:
                 self.advance_to_line(ast.loc[1])
@@ -57,6 +53,13 @@ class ATLDecompiler(DecompilerBase):
                 # if there were no contents insert a pass node to keep syntax valid.
                 self.indent()
                 self.write("pass")
+
+    def advance_to_block(self, block):
+        # note: the location property of a RawBlock points to the first line of the block,
+        # not the statement that created it.
+        # it can also contain the following nonsense if there was no block for some reason.
+        if block.loc != ('', 0):
+            self.advance_to_line(block.loc[1] - 1)
 
     @dispatch(renpy.atl.RawMultipurpose)
     def print_atl_rawmulti(self, ast):
@@ -130,6 +133,7 @@ class ATLDecompiler(DecompilerBase):
     @dispatch(renpy.atl.RawChild)
     def print_atl_rawchild(self, ast):
         for child in ast.children:
+            self.advance_to_block(child)
             self.indent()
             self.write("contains:")
             self.print_block(child)
@@ -137,6 +141,7 @@ class ATLDecompiler(DecompilerBase):
     @dispatch(renpy.atl.RawChoice)
     def print_atl_rawchoice(self, ast):
         for chance, block in ast.choices:
+            self.advance_to_block(block)
             self.indent()
             self.write("choice")
             if chance != "1.0":
@@ -167,6 +172,7 @@ class ATLDecompiler(DecompilerBase):
     def print_atl_rawon(self, ast):
         for name, block in sorted(ast.handlers.items(),
                                   key=lambda i: i[1].loc[1]):
+            self.advance_to_block(block)
             self.indent()
             self.write("on %s:" % name)
             self.print_block(block)
@@ -174,6 +180,7 @@ class ATLDecompiler(DecompilerBase):
     @dispatch(renpy.atl.RawParallel)
     def print_atl_rawparallel(self, ast):
         for block in ast.blocks:
+            self.advance_to_block(block)
             self.indent()
             self.write("parallel:")
             self.print_block(block)
