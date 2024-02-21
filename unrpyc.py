@@ -53,6 +53,20 @@ from decompiler import magic, astdump, translate
 # these named classes need some special handling for us to be able to reconstruct ren'py ASTs from pickles
 SPECIAL_CLASSES = [set, frozenset]
 
+# ren'py _annoyingly_ enables fix_imports even in ren'py v8,and still defaults to pickle protocol 2.
+# so set/frozenset get mapped to the wrong location (__builtins__ instead of builtins)
+# we don't want to enable that option as we want control over what the pickler is allowed to unpickle
+# so here we define some proxies
+class oldset(set):
+    __module__ = "__builtin__"
+oldset.__name__ = "set"
+SPECIAL_CLASSES.append(oldset)
+
+class oldfrozenset(frozenset):
+    __module__ = "__builtin__"
+oldfrozenset.__name__ = "frozenset"
+SPECIAL_CLASSES.append(oldfrozenset)
+
 @SPECIAL_CLASSES.append
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
