@@ -145,7 +145,6 @@ class Decompiler(DecompilerBase):
         if len(imspec[6]) > 0:
             words.append("behind %s" % ', '.join(imspec[6]))
 
-        # todo: this check probably doesn't work in ren'py 8
         if isinstance(imspec[4], str):
             words.append("onlayer %s" % imspec[4])
 
@@ -225,7 +224,6 @@ class Decompiler(DecompilerBase):
         self.write("scene")
 
         if ast.imspec is None:
-            # todo: this check probably doesn't work in ren'py 8
             if isinstance(ast.layer, str):
                 self.write(" onlayer %s" % ast.layer)
             needs_space = True
@@ -383,9 +381,9 @@ class Decompiler(DecompilerBase):
         statement = First("if %s:", "elif %s:")
 
         for i, (condition, block) in enumerate(ast.entries):
-            # The non-Unicode string "True" is the condition for else:.
-            # todo: this probably isn't true anymore for 8.0/7.5 and upwards.
-            if (i + 1) == len(ast.entries) and not isinstance(condition, str):
+            # The unicode string "True" is used as the condition for else:.
+            # But if it's an actual expression, it's a renpy.ast.PyExpr
+            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
                 self.indent()
                 self.write("else:")
             else:
@@ -524,8 +522,8 @@ class Decompiler(DecompilerBase):
             self.write(reconstruct_arginfo(arguments))
 
         if block is not None:
-            # todo: this check probably doesn't work in ren'py 8
-            if isinstance(condition, str):
+            # ren'py uses the unicode string "True" as condition when there isn't one.
+            if isinstance(condition, renpy.ast.PyExpr):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
