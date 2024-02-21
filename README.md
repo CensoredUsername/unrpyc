@@ -71,9 +71,6 @@ optional arguments:
   -l LANGUAGE, --language LANGUAGE
                         if writing a translation file, the language of the
                         translations to write
-  --sl1-as-python       Only dumping and for decompiling screen language 1
-                        screens. Convert SL1 Python AST to Python code instead
-                        of dumping it or converting it to screenlang.
   --comparable          Only for dumping, remove several false differences
                         when comparing dumps. This suppresses attributes that
                         are different even when the code is identical, such as
@@ -83,11 +80,6 @@ optional arguments:
                         useful when comparing dumps from different versions of
                         Ren'Py. It should only be used if necessary, since it
                         will cause loss of information such as line numbers.
-  --tag-outside-block   Always put SL2 'tag's on the same line as 'screen'
-                        rather than inside the block. This will break
-                        compiling with Ren'Py 7.3 and above, but is needed to
-                        get correct line numbers from some files compiled with
-                        older Ren'Py versions.
   --init-offset         Attempt to guess when init offset statements were used
                         and insert them. This is always safe to enable if the
                         game's Ren'Py version supports init offset statements,
