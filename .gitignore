@@ -16,3 +16,6 @@
 /bintray.json
 
 unrpyc.sublime-*
+
+!testcases/originals/**/*.rpy
+!testcases/compiled/**/*.rpyc
