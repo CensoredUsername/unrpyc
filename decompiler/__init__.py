@@ -299,17 +299,28 @@ class Decompiler(DecompilerBase):
         # If a Call block preceded us, it printed us as "from"
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             return
-        remaining_blocks = len(self.block) - self.index
-        if remaining_blocks > 1:
-            next_ast = self.block[self.index + 1]
-            # See if we're the label for a menu, rather than a standalone label.
-            if (not ast.block and ast.parameters is None and
-                hasattr(next_ast, 'linenumber') and next_ast.linenumber == ast.linenumber and
-                (isinstance(next_ast, renpy.ast.Menu) or (remaining_blocks > 2 and
-                isinstance(next_ast, renpy.ast.Say) and
-                self.say_belongs_to_menu(next_ast, self.block[self.index + 2])))):
-                self.label_inside_menu = ast
-                return
+
+        # See if we're the label for a menu, rather than a standalone label.
+        if not ast.block and ast.parameters is None:
+            remaining_blocks = len(self.block) - self.index
+            if remaining_blocks > 1:
+                # Label followed by a menu
+                next_ast = self.block[self.index + 1]
+                if isinstance(next_ast, renpy.ast.Menu) and next_ast.linenumber == ast.linenumber:
+                    self.label_inside_menu = ast
+                    return
+
+            if remaining_blocks > 2:
+                # Label, followed by a say, followed by a menu
+                next_next_ast = self.block[self.index + 2]
+                if (isinstance(next_ast, renpy.ast.Say) and
+                    isinstance(next_next_ast, renpy.ast.Menu) and
+                    next_next_ast.linenumber == ast.linenumber and
+                    self.say_belongs_to_menu(next_ast, next_next_ast)):
+
+                    self.label_inside_menu = ast
+                    return
+
         self.advance_to_line(ast.linenumber)
         self.indent()
 
