@@ -201,56 +201,102 @@ def reconstruct_paraminfo(paraminfo):
     rv = ["("]
     sep = First("", ", ")
 
-    # ren'py 7.5 and above.
-    # positional only, /, positional or keyword, *, keyword only, ***
-    # prescence of the / is indicated by positional only arguments being present
-    # prescence of the * (if no *args) are present is indicated by keyword only args being present.
-    state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
+    if hasattr(paraminfo, "positional_only"):
+        # ren'py 7.5-7.6 and 8.0-8.1, a slightly changed variant of 7.4 and before
 
-    for parameter in paraminfo.parameters.values():
-        rv.append(sep())
-        if parameter.kind == 0:
-            # positional only
-            state = 0
+        already_accounted = set(name for name, default in paraminfo.positional_only)
+        already_accounted.update(name for name, default in paraminfo.keyword_only)
+        other = [(name, default) for name, default in paraminfo.parameters if name not in already_accounted]
 
-            rv.append(parameter.name)
-            if parameter.default is not None:
-                rv.append("=%s" % parameter.default)
+        for name, default in paraminfo.positional_only:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
 
-        else:
-            if state == 0:
-                # insert the / if we had a positional only argument before.
-                state = 1
-                rv.append("/")
-                rv.append(sep())
+        if paraminfo.positional_only:
+            rv.append(sep())
+            rv.append('/')
 
-            if parameter.kind == 1:
-                # positional or keyword
+        for name, default in other:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
+
+        if paraminfo.extrapos:
+            rv.append(sep())
+            rv.append("*")
+            rv.append(paraminfo.extrapos)
+        elif paraminfo.keyword_only:
+            rv.append(sep())
+            rv.append("*")
+
+        for name, default in paraminfo.keyword_only:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
+
+        if paraminfo.extrakw:
+            rv.append(sep())
+            rv.append("**")
+            rv.append(paraminfo.extrakw)
+
+    else:
+        # ren'py 7.7/8.2 and above.
+        # positional only, /, positional or keyword, *, keyword only, ***
+        # prescence of the / is indicated by positional only arguments being present
+        # prescence of the * (if no *args) are present is indicated by keyword only args being present.
+        state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
+
+        for parameter in paraminfo.parameters.values():
+            rv.append(sep())
+            if parameter.kind == 0:
+                # positional only
+                state = 0
+
                 rv.append(parameter.name)
                 if parameter.default is not None:
                     rv.append("=%s" % parameter.default)
 
-            elif parameter.kind == 2:
-                # *positional
-                state = 2
-                rv.append("*%s" % parameter.name)
-
-            elif parameter.kind == 3:
-                # keyword only
-                if state == 1:
-                    # insert the * if we didn't have a *args before
-                    state = 2
-                    rv.append("*")
+            else:
+                if state == 0:
+                    # insert the / if we had a positional only argument before.
+                    state = 1
+                    rv.append("/")
                     rv.append(sep())
 
-                rv.append(parameter.name)
-                if parameter.default is not None:
-                    rv.append("=%s" % parameter.default)
+                if parameter.kind == 1:
+                    # positional or keyword
+                    rv.append(parameter.name)
+                    if parameter.default is not None:
+                        rv.append("=%s" % parameter.default)
 
-            elif parameter.kind == 4:
-                # **keyword
-                state = 3
-                rv.append("**%s" % parameter.name)
+                elif parameter.kind == 2:
+                    # *positional
+                    state = 2
+                    rv.append("*%s" % parameter.name)
+
+                elif parameter.kind == 3:
+                    # keyword only
+                    if state == 1:
+                        # insert the * if we didn't have a *args before
+                        state = 2
+                        rv.append("*")
+                        rv.append(sep())
+
+                    rv.append(parameter.name)
+                    if parameter.default is not None:
+                        rv.append("=%s" % parameter.default)
+
+                elif parameter.kind == 4:
+                    # **keyword
+                    state = 3
+                    rv.append("**%s" % parameter.name)
 
     rv.append(")")
 
