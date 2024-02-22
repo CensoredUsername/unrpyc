@@ -1,5 +1,0 @@
-compiled/*.rpy
-stripped/*
-
-!originals/*.rpy
-!compiled/*.rpyc
