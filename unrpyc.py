@@ -305,10 +305,10 @@ def main():
                         "This is useful when comparing dumps from different versions of Ren'Py. "
                         "It should only be used if necessary, since it will cause loss of information such as line numbers.")
 
-    parser.add_argument('--init-offset', dest='init_offset', action='store_true',
-                        help="Attempt to guess when init offset statements were used and insert them. "
-                        "This is always safe to enable if the game's Ren'Py version supports init offset statements, "
-                        "and the generated code is exactly equivalent, only less cluttered.")
+    parser.add_argument('--no-init-offset', dest='init_offset', action='store_false',
+                        help="By default, unrpyc attempt to guess when init offset statements were used and insert them. "
+                        "This is always safe to do for ren'py 8, but as it is based on a heuristic it can be disabled. "
+                        "The generated code is exactly equivalent, only slightly more cluttered.")
 
     parser.add_argument('file', type=str, nargs='+',
                         help="The filenames to decompile. "

@@ -59,7 +59,7 @@ optional arguments:
   -d, --dump            instead of decompiling, pretty print the ast to a file
   -p, --processes
                         use the specified number or processes to
-                        decompile.Defaults to the amount of hw threads
+                        decompile. Defaults to the amount of hw threads
                         available minus one, disabled when muliprocessing is
                         unavailable.
   -t TRANSLATION_FILE, --translation-file TRANSLATION_FILE
@@ -80,11 +80,11 @@ optional arguments:
                         useful when comparing dumps from different versions of
                         Ren'Py. It should only be used if necessary, since it
                         will cause loss of information such as line numbers.
-  --init-offset         Attempt to guess when init offset statements were used
-                        and insert them. This is always safe to enable if the
-                        game's Ren'Py version supports init offset statements,
-                        and the generated code is exactly equivalent, only
-                        less cluttered.
+  --no-init-offset      By default, unrpyc attempt to guess when init offset
+                        statements were used and insert them. This is always safe
+                        to do for ren'py 8, but as it is based on a heuristic it
+                        can be disabled.
+                        The generated code is exactly equivalent, only slightly more cluttered.
   --try-harder          Tries some workarounds against common obfuscation
                         methods. This is a lot slower.
   --register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]
