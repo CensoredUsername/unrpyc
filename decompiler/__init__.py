@@ -282,7 +282,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("camera")
 
-        if ast.name != "master":
+        if ast.layer != "master":
             self.write(" %s" % ast.name)
 
         if ast.at_list:
