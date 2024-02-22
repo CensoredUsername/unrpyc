@@ -57,7 +57,7 @@ class ATLDecompiler(DecompilerBase):
                 self.indent()
                 self.write("pass")
 
-   def advance_to_block(self, block):
+    def advance_to_block(self, block):
         # note: the location property of a RawBlock points to the first line of the block,
         # not the statement that created it.
         # it can also contain the following nonsense if there was no block for some reason.

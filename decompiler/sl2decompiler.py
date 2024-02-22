@@ -534,7 +534,7 @@ class SL2Decompiler(DecompilerBase):
                 contents_grouped.insert(0, (block_lineno + 1, "keywords", [("as", keyword_as)]))
 
             # we can also put it on the start line if that one is available
-            elif contents_grouped[0][0] > start_line:
+            elif contents_grouped[0][0] > start_lineno:
                 contents_grouped.insert(0, (start_lineno, "keywords", [("as", keyword_as)]))
 
             else:
