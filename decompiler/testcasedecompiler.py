@@ -130,6 +130,11 @@ class TestcaseDecompiler(DecompilerBase):
         if hasattr(ast, 'always') and ast.always:
             self.write(' always')
 
+    @dispatch(testast.Scroll)
+    def print_scroll(self, ast):
+        self.indent()
+        self.write('scroll "%s"' % string_escape(ast.pattern))
+
     @dispatch(testast.Until)
     def print_until(self, ast):
         if hasattr(ast.right, 'linenumber'):
