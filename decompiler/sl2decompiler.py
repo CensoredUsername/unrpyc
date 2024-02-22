@@ -500,7 +500,7 @@ class SL2Decompiler(DecompilerBase):
                 # try to find a line with keywords that we can merge it into
                 for entry in contents_grouped:
                     if entry[1].startswith("keywords"):
-                        entry[2].extend(("tag", keyword_tag))
+                        entry[2].append(("tag", keyword_tag))
                         break
 
                 # just force it in there. this might disturb linenumbers but it's
@@ -519,14 +519,14 @@ class SL2Decompiler(DecompilerBase):
                 contents_grouped.insert(0, (block_lineno + 1, "keywords", [("as", keyword_as)]))
 
             # we can also put it on the start line if that one is available
-            elif contents_grouped[0][0] > start_line:
+            elif contents_grouped[0][0] > start_lineno:
                 contents_grouped.insert(0, (start_lineno, "keywords", [("as", keyword_as)]))
 
             else:
                 # try to find a line with keywords that we can merge it into
                 for entry in contents_grouped:
                     if entry[1].startswith("keywords"):
-                        entry[2].extend(("as", keyword_as))
+                        entry[2].append(("as", keyword_as))
                         break
 
                 # just force it in there. this might disturb linenumbers but it's
