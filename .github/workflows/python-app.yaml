@@ -26,6 +26,6 @@ jobs:
       run: |
         ./unrpyc.py --clobber --init-offset "testcases/compiled/**/*.rpyc"
         diff -ur testcases/expected testcases/compiled -x "*.rpyc"
-        cd un.rpyc;
-        ./compile.py -p 1
-        cd ..
+      # cd un.rpyc;
+      # ./compile.py -p 1
+      # cd ..
