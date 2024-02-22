@@ -202,7 +202,52 @@ def reconstruct_paraminfo(paraminfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(paraminfo, "extrapos"):
+    if hasattr(paraminfo, "positional_only"):
+        # ren'py 7.5-7.6 and 8.0-8.1, a slightly changed variant of 7.4 and before
+
+        already_accounted = set(name for name, default in paraminfo.positional_only)
+        already_accounted.update(name for name, default in paraminfo.keyword_only)
+        other = [(name, default) for name, default in paraminfo.parameters if name not in already_accounted]
+
+        for name, default in paraminfo.positional_only:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
+
+        if paraminfo.positional_only:
+            rv.append(sep())
+            rv.append('/')
+
+        for name, default in other:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
+
+        if paraminfo.extrapos:
+            rv.append(sep())
+            rv.append("*")
+            rv.append(paraminfo.extrapos)
+        elif paraminfo.keyword_only:
+            rv.append(sep())
+            rv.append("*")
+
+        for name, default in paraminfo.keyword_only:
+            rv.append(sep())
+            rv.append(name)
+            if default is not None:
+                rv.append("=")
+                rv.append(default)
+
+        if paraminfo.extrakw:
+            rv.append(sep())
+            rv.append("**")
+            rv.append(paraminfo.extrakw)
+
+    elif hasattr(paraminfo, "extrapos"):
         # ren'py 7.4 and below, python 2 style
         positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
         nameonly = [i for i in paraminfo.parameters if i not in positional]
@@ -226,8 +271,9 @@ def reconstruct_paraminfo(paraminfo):
         if paraminfo.extrakw:
             rv.append(sep())
             rv.append("**%s" % paraminfo.extrakw)
+
     else:
-        # ren'py 7.5 and above.
+        # ren'py 7.7/8.2 and above.
         # positional only, /, positional or keyword, *, keyword only, ***
         # prescence of the / is indicated by positional only arguments being present
         # prescence of the * (if no *args) are present is indicated by keyword only args being present.
