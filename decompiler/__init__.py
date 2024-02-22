@@ -406,8 +406,9 @@ class Decompiler(DecompilerBase):
         statement = First("if %s:", "elif %s:")
 
         for i, (condition, block) in enumerate(ast.entries):
-            # The non-Unicode string "True" is the condition for else:.
-            if (i + 1) == len(ast.entries) and not isinstance(condition, unicode):
+            # The unicode string "True" is used as the condition for else:.
+            # But if it's an actual expression, it's a renpy.ast.PyExpr
+            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
                 self.indent()
                 self.write("else:")
             else:
@@ -546,7 +547,8 @@ class Decompiler(DecompilerBase):
             self.write(reconstruct_arginfo(arguments))
 
         if block is not None:
-            if isinstance(condition, unicode):
+            # ren'py uses the unicode string "True" as condition when there isn't one.
+            if isinstance(condition, renpy.ast.PyExpr):
                 self.write(" if %s" % condition)
             self.write(":")
             self.print_nodes(block, 1)
