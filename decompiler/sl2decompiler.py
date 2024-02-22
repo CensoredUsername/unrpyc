@@ -352,16 +352,9 @@ class SL2Decompiler(DecompilerBase):
         start_lineno = (block_lineno + 1) if immediate_block else block_lineno
 
         # these ones are optional
-        tag = getattr(node, "tag", None) # only used by SLScreen
-        variable = getattr(node, "variable", None) # only used by SLDisplayable
+        keyword_tag = getattr(node, "tag", None) # only used by SLScreen
+        keyword_as = getattr(node, "variable", None) # only used by SLDisplayable
         atl_transform = getattr(node, "atl_transform", None) # all three can have it, but it is an optional property anyway
-
-        # keywords that we have no location info over
-        keywords_somewhere = []
-        if variable is not None:
-            keywords_somewhere.append(("as", variable))
-        if tag is not None:
-            keywords_somewhere.append(("tag", tag))
 
         # keywords
         # pre 7.7/8.2: keywords at the end of a line could not have an argument and the parser was okay with that.
@@ -483,34 +476,66 @@ class SL2Decompiler(DecompilerBase):
 
                 contents_grouped[i] = (lineno, "keywords_broken", [], contents)
 
-        # and insert keywords_somewhere.. somewhere. It'd be pretty to insert them on a separate line,
-        # but otherwise shoving them in any keywords line will do.
-        # If there are none, we need to insert one. Inserting it at the start is preferable.
-        if keywords_somewhere:
-            # if we have no contents: put them on the first line available
-            # same if --tag-outside-block is used.
+        # these two keywords have no lineno information with them
+        # additionally, since 7.3 upwards, tag cannot be placed on the same line as `screen` for
+        # whatever reason.
+        # it is currently impossible to have both an `as` and a `tag` keyword in the same displayble
+        # `as` is only used for displayables, `tag` for screens.
+        # strategies:
+        # - if there's several empty lines before any line, we can make some new lines for them
+        # - if the first line is a keyword line, we can merge them with it
+        # - for 'as', we can put it on the first line as well
+        if keyword_tag:
+            # if there's no content, we can (strangely enough) put it on the first line,
+            # because a screen without content doesn't start a block. but for sanity sake
+            # we'll put it on the first line afterwards
             if not contents_grouped:
-                contents_grouped.append((start_lineno, "keywords", keywords_somewhere))
+                contents_grouped.append((block_lineno + 1, "keywords", [("tag", keyword_tag)]))
 
-            # if there's multiple empty lines after the statement, fill them with it
-            elif contents_grouped[0][0] >= block_lineno + len(keywords_somewhere) + 1:
-                prefix = [(block_lineno + i + 1, "keywords", [content]) for i, content in enumerate(keywords_somewhere)]
-                contents_grouped = prefix + contents_grouped
-
-            # if the start line is available, put them there
-            elif contents_grouped[0][0] > start_lineno:
-                contents_grouped.insert(0, (start_lineno, "keywords", keywords_somewhere))
+            # or if the first line of the block is empty, put it there
+            elif contents_grouped[0][0] > block_lineno + 1:
+                contents_grouped.insert(0, (block_lineno + 1, "keywords", [("tag", keyword_tag)]))
 
             else:
-                # otherwise, just put them after some existing keywords node
+                # try to find a line with keywords that we can merge it into
                 for entry in contents_grouped:
                     if entry[1].startswith("keywords"):
-                        entry[2].extend(keywords_somewhere)
+                        entry[2].extend(("tag", keyword_tag))
                         break
 
-                # otherwise, just force them first at the start line
+                # just force it in there. this might disturb linenumbers but it's
+                # really hard to know where inbetween children it'd be safe
+                # to put it in
                 else:
-                    contents_grouped.insert(0, (start_lineno, "keywords", keywords_somewhere))
+                    contents_grouped.insert(0, (block_lineno + 1, "keywords", [("tag", keyword_tag)]))
+
+        if keyword_as:
+            # if there's no content, put it on the first available line
+            if not contents_grouped:
+                contents_grouped.append((start_lineno, "keywords", [("as", keyword_as)]))
+
+            # or if the first line of the block is empty, put it there
+            elif contents_grouped[0][0] > block_lineno + 1:
+                contents_grouped.insert(0, (block_lineno + 1, "keywords", [("as", keyword_as)]))
+
+            # we can also put it on the start line if that one is available
+            elif contents_grouped[0][0] > start_line:
+                contents_grouped.insert(0, (start_lineno, "keywords", [("as", keyword_as)]))
+
+            else:
+                # try to find a line with keywords that we can merge it into
+                for entry in contents_grouped:
+                    if entry[1].startswith("keywords"):
+                        entry[2].extend(("as", keyword_as))
+                        break
+
+                # just force it in there. this might disturb linenumbers but it's
+                # really hard to know where inbetween children it'd be safe
+                # to put it in
+                else:
+                    contents_grouped.insert(0, (start_lineno, "keywords", [("as", keyword_as)]))
+
+
 
         # if there's no content on the first line, insert an empty line, to make processing easier.
         if immediate_block or not contents_grouped or contents_grouped[0][0] != block_lineno:
