@@ -353,7 +353,7 @@ class ScopeAnalyzer(ast.NodeTransformer):
 
     def visit_Name(self, node, protected=False):
         if self.stage == self.ANALYZE:
-            if isinstance(node.ctx, (ast.Store, ast.AugStore, ast.Param)):
+            if isinstance(node.ctx, ast.Store):
                 self.scope.write(node.id, protected)
             else:
                 self.scope.read(node.id)
@@ -436,25 +436,45 @@ class ScopeAnalyzer(ast.NodeTransformer):
 
     # function arguments
 
+    def visit_arg(self, node, protected=False):
+        if self.stage == self.ANALYZE:
+            self.scope.write(node.arg, protected)
+        else:
+            node.arg = self.new_name(node.arg)
+
+        if node.annotation:
+            self.visit(annotation)
+
+        return node
+
     def visit_arguments(self, node):
         if self.stage == self.ANALYZE:
-            freelen = len(node.args) - len(node.defaults)
-            for i, arg in enumerate(node.args):
-                self.visit_Name(arg, i >= freelen)
+            freelen = len(node.args) + len(node.posonlyargs) - len(node.defaults)
+            args = []
+            args.extend(node.posonlyargs)
+            args.extend(node.args)
+
+            # cannot change the name of anything that could be
+            # referred to by keyword
+            for i, arg in enumerate(args):
+                self.visit_arg(arg, i >= freelen)
+
+            for arg in node.kwonlyargs:
+                self.visit_arg(arg, True)
+
+            if node.vararg:
+                self.visit_arg(node.vararg)
+            if node.kwarg:
+                self.visit_arg(node.kwarg)
 
             for default in node.defaults:
                 self.visit(default)
+            for default in node.kw_defaults:
+                self.visit(default)
 
-            if node.vararg:
-                self.scope.write(node.vararg)
-            if node.kwarg:
-                self.scope.write(node.kwarg)
         else:
             self.generic_visit(node)
-            if node.vararg:
-                node.vararg = self.new_name(node.vararg)
-            if node.kwarg:
-                node.kwarg = self.new_name(node.kwarg)
+
         return node
 
 # code rewriting implementation
