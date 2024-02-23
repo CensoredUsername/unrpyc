@@ -24,8 +24,8 @@ jobs:
     #     python-version: "2.7"
     - name: Test by decompiling a script and building un.rpyc
       run: |
-        ./unrpyc.py --clobber testcases/script.rpyc
-        diff -u testcases/script.orig.rpy testcases/script.rpy
+        ./unrpyc.py --clobber --init-offset "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
         cd un.rpyc;
         ./compile.py -p 1
         cd ..
