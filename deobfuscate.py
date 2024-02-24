@@ -192,7 +192,7 @@ def decrypt_zlib(data, count):
 
 @decryptor
 def decrypt_hex(data, count):
-    if not all(i in "abcdefABCDEF0123456789" for i in count.keys()):
+    if not all(i in b"abcdefABCDEF0123456789" for i in count.keys()):
         return None
     try:
         return data.decode("hex")
@@ -201,7 +201,7 @@ def decrypt_hex(data, count):
 
 @decryptor
 def decrypt_base64(data, count):
-    if not all(i in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
+    if not all(i in b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
         return None
     try:
         return base64.b64decode(data)
@@ -213,7 +213,7 @@ def decrypt_string_escape(data, count):
     if not all(ord(i) >= 0x20 and ord(i) < 0x80 for i in count.keys()):
         return None
     try:
-        newdata = data.decode("string-escape")
+        newdata = data.decode("unicode-escape").encode('latin1')
     except Exception:
         return None
     if newdata == data:
@@ -286,7 +286,7 @@ def read_ast(f):
         try:
             data = extractor(f, 1)
         except ValueError as e:
-            diagnosis.append("strategy %s failed: %s" % (extractor.__name__, e.message))
+            diagnosis.append("strategy %s failed: %s" % (extractor.__name__, "\n".join(e.args)))
         else:
             diagnosis.append("strategy %s success" % extractor.__name__)
             raw_datas.add(data)
