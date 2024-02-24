@@ -265,7 +265,7 @@ unrpy = rpy_base.format(
 with (PACK_FOLDER / "un.rpyc").open("wb") as f:
     f.write(unrpyc)
 
-with (PACK_FOLDER / "bytecode.rpyb").open("wb") as f:
+with (PACK_FOLDER / "bytecode-39.rpyb").open("wb") as f:
     f.write(bytecoderpyb)
 
 with (PACK_FOLDER / "un.rpy").open("w", encoding="utf-8") as f:
