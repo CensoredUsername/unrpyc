@@ -98,7 +98,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
     out_filename = input_filename.with_suffix(ext)
 
     with printlock:
-        print("Decompiling %s to %s..." % (input_filename, out_filename))
+        print(f"Decompiling {input_filename} to {out_filename}...")
 
         if not overwrite and out_filename.exists():
             print("Output file already exists and is skipped. Pass --clobber"
@@ -124,7 +124,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
 
 def extract_translations(input_filename, language):
     with printlock:
-        print("Extracting translations from %s..." % input_filename)
+        print(f"Extracting translations from {input_filename}...")
 
     with input_filename.open('rb') as in_file:
         ast = read_ast_from_file(in_file)
@@ -141,7 +141,7 @@ def parse_sl_custom_names(unparsed_arguments):
     for argument in unparsed_arguments:
         content = argument.split("=")
         if len(content) != 2:
-            raise Exception("Bad format in custom sl displayable registration: '{}'".format(argument))
+            raise Exception(f"Bad format in custom sl displayable registration: '{argument}'")
 
         classname, name = content
         split = name.split("-")
@@ -157,10 +157,11 @@ def parse_sl_custom_names(unparsed_arguments):
             elif amount == "many":
                 pass
             else:
-                raise Exception("Bad child node count in custom sl displayable registration: '{}'".format(argument))
+                raise Exception(
+                    f"Bad child node count in custom sl displayable registration: '{argument}'")
 
         else:
-            raise Exception("Bad format in custom sl displayable registration: '{}'".format(argument))
+            raise Exception(f"Bad format in custom sl displayable registration: '{argument}'")
 
         parsed_arguments[classname] = (name, amount)
 
@@ -182,10 +183,9 @@ def worker(args, filename):
                                   comparable=args.comparable, translator=translator,
                                   init_offset=args.init_offset, try_harder=args.try_harder,
                                   sl_custom_names=args.sl_custom_names)
-    except Exception as e:
+    except Exception:
         with printlock:
-            print("Error while decompiling %s:" % filename)
-            print(traceback.format_exc())
+            print(f"Error while decompiling {filename}: \n{traceback.format_exc()}")
         return False
 
 
@@ -362,7 +362,7 @@ def main(args):
         results = list(map(partial(worker, args), files))
 
     if args.write_translation_file:
-        print("Writing translations to %s..." % args.write_translation_file)
+        print(f"Writing translations to {args.write_translation_file}...")
         translated_dialogue = {}
         translated_strings = {}
         good = 0
@@ -382,12 +382,16 @@ def main(args):
         good = results.count(True)
         bad = results.count(False)
 
+    def numeri(inp):
+        return 's' if inp > 1 else ''
+
     if bad == 0:
-        print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))
+        print(f"Decompilation of {good} script file{numeri(good)} successful.")
     elif good == 0:
-        print("Decompilation of %d file%s failed" % (bad, 's' if bad>1 else ''))
+        print(f"Decompilation of {bad} file{numeri(bad)} failed.")
     else:
-        print("Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else ''))
+        print(f"Decompilation of {good} file{numeri(good)} successful,"
+              f" but decompilation of {bad} file{numeri(bad)} failed.")
 
 if __name__ == '__main__':
     main(_parse_args())
