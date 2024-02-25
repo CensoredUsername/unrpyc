@@ -21,14 +21,11 @@
 # SOFTWARE.
 
 import argparse
-from os import path, walk
-import codecs
-import glob
-import itertools
+from pathlib import Path as pt
+from functools import partial
 import traceback
 import struct
 import zlib
-from operator import itemgetter
 
 try:
     from multiprocessing import Pool, Lock, cpu_count
@@ -56,11 +53,13 @@ import deobfuscate  # noqa
 
 printlock = Lock()
 
-# needs class_factory
-import deobfuscate
+
+def sharelock(lock):
+    global printlock
+    printlock = lock
+
 
 # API
-
 def read_ast_from_file(in_file):
     # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
     raw_contents = in_file.read()
@@ -89,29 +88,29 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
                    comparable=False, no_pyexpr=False, translator=None,
                    init_offset=False, try_harder=False, sl_custom_names=None):
 
-    # Output filename is input filename but with .rpy extension
-    filepath, ext = path.splitext(input_filename)
     if dump:
-        out_filename = filepath + ".txt"
-    elif ext == ".rpymc":
-        out_filename = filepath + ".rpym"
-    else:
-        out_filename = filepath + ".rpy"
+        ext = '.txt'
+    elif input_filename.suffix == ('.rpyc'):
+        ext = '.rpy'
+    elif input_filename.suffix == ('.rpymc'):
+        ext = '.rpym'
+    out_filename = input_filename.with_suffix(ext)
 
     with printlock:
         print("Decompiling %s to %s..." % (input_filename, out_filename))
 
-        if not overwrite and path.exists(out_filename):
-            print("Output file already exists. Pass --clobber to overwrite.")
-            return False # Don't stop decompiling if one file already exists
+        if not overwrite and out_filename.exists():
+            print("Output file already exists and is skipped. Pass --clobber"
+                  " to overwrite.")
 
-    with open(input_filename, 'rb') as in_file:
+    with input_filename.open('rb') as in_file:
         if try_harder:
             ast = deobfuscate.read_ast(in_file)
         else:
             ast = read_ast_from_file(in_file)
 
-    with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
+    # NOTE: PY3 'codecs' is not necessary
+    with out_filename.open('w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
@@ -126,7 +125,7 @@ def extract_translations(input_filename, language):
     with printlock:
         print("Extracting translations from %s..." % input_filename)
 
-    with open(input_filename, 'rb') as in_file:
+    with input_filename.open('rb') as in_file:
         ast = read_ast_from_file(in_file)
 
     translator = translate.Translator(language, True)
@@ -166,8 +165,9 @@ def parse_sl_custom_names(unparsed_arguments):
 
     return parsed_arguments
 
-def worker(t):
-    (args, filename, filesize) = t
+
+def worker(args, filename):
+
     try:
         if args.write_translation_file:
             return extract_translations(filename, args.language)
@@ -187,9 +187,9 @@ def worker(t):
             print(traceback.format_exc())
         return False
 
-def sharelock(lock):
-    global printlock
-    printlock = lock
+def check_inpath(inp, strict=True):
+    """Helper to check if given path exists and cast it to pathlikes."""
+    return pt(inp).resolve(strict)
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
@@ -230,7 +230,7 @@ def main():
                         "This is always safe to do for ren'py 8, but as it is based on a heuristic it can be disabled. "
                         "The generated code is exactly equivalent, only slightly more cluttered.")
 
-    parser.add_argument('file', type=str, nargs='+',
+    parser.add_argument('file', type=check_inpath, nargs='+',
                         help="The filenames to decompile. "
                         "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
 
@@ -246,13 +246,13 @@ def main():
 
     args = parser.parse_args()
 
-    if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
+    if (args.write_translation_file and not args.clobber and args.write_translation_file.exists()):
         # Fail early to avoid wasting time going through the files
         print("Output translation file already exists. Pass --clobber to overwrite.")
         return
 
     if args.translation_file:
-        with open(args.translation_file, 'rb') as in_file:
+        with args.translation_file.open('rb') as in_file:
             args.translations = in_file.read()
 
     if args.sl_custom_names is not None:
@@ -262,43 +262,34 @@ def main():
             print("\n".join(e.args))
             return
 
-    # Expand wildcards
-    def glob_or_complain(s):
-        retval = glob.glob(s)
-        if not retval:
-            print("File not found: " + s)
-        return retval
-    filesAndDirs = [glob_or_complain(i) for i in args.file]
-    # Concatenate lists
-    filesAndDirs = list(itertools.chain(*filesAndDirs))
+    def rpyc_check(inp):
+        return bool(inp.suffix in ('.rpyc', '.rpymc') and inp.is_file())
 
-    # Recursively add .rpyc files from any directories passed
-    files = []
-    for i in filesAndDirs:
-        if path.isdir(i):
-            for dirpath, dirnames, filenames in walk(i):
-                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpymc')))
-        else:
-            files.append(i)
+    files = list()
+    for item in args.file:
+        if item.is_dir():
+            for entry in item.rglob('*'):
+                if rpyc_check(entry):
+                    files.append(entry)
+        elif rpyc_check(item):
+            files.append(item)
 
-    # Check if we actually have files. Don't worry about
-    # no parameters passed, since ArgumentParser catches that
-    if len(files) == 0:
-        print("No script files to decompile.")
+    # Check if we actually have files. Don't worry about no parameters passed,
+    # since ArgumentParser catches that
+    if not files:
+        print("Found no script files to decompile.")
         return
 
-    files = [(args, x, path.getsize(x)) for x in files]
-    processes = int(args.processes)
-    if processes > 1:
-        # If a big file starts near the end, there could be a long time with
-        # only one thread running, which is inefficient. Avoid this by starting
-        # big files first.
-        files.sort(key=itemgetter(2), reverse=True)
-        results = Pool(int(args.processes), sharelock, [printlock]).map(worker, files, 1)
+    files.sort(key=lambda x: x.stat().st_size, reverse=True)
+
+    # changes: contextmanager; passing filesize over is unneeded; only use multiprocessing if
+    # enough work
+    if len(files) > 5:
+        with Pool(args.processes, sharelock, [printlock]) as pool:
+            results = pool.map(partial(worker, args), files, 1)
+
     else:
-        # Decompile in the order Ren'Py loads in
-        files.sort(key=itemgetter(1))
-        results = list(map(worker, files))
+        results = list(map(partial(worker, args), files))
 
     if args.write_translation_file:
         print("Writing translations to %s..." % args.write_translation_file)
