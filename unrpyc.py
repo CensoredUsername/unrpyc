@@ -22,7 +22,6 @@
 
 import argparse
 from os import path, walk
-import codecs
 import glob
 import itertools
 import traceback
@@ -109,7 +108,7 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
         else:
             ast = read_ast_from_file(in_file)
 
-    with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
+    with open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
