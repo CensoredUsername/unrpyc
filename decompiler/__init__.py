@@ -21,20 +21,17 @@
 from .util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
                   reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher, \
                   say_get_code, OptionBase
+from .renpycompat import renpy
 
 from operator import itemgetter
 from io import StringIO
-
-from . import magic
-magic.fake_package("renpy")
-import renpy
 
 from . import sl2decompiler
 from . import testcasedecompiler
 from . import atldecompiler
 from . import astdump
 
-__all__ = ["astdump", "codegen", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
+__all__ = ["astdump", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler", "renpycompat"]
 
 # Main API
 
