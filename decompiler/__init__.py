@@ -22,13 +22,10 @@ from __future__ import unicode_literals
 from util import DecompilerBase, First, WordConcatenator, reconstruct_paraminfo, \
                  reconstruct_arginfo, string_escape, split_logical_lines, Dispatcher, \
                  say_get_code, OptionBase
+from renpycompat import renpy
 
 from operator import itemgetter
 from StringIO import StringIO
-
-import magic
-magic.fake_package(b"renpy")
-import renpy
 
 import screendecompiler
 import sl2decompiler
@@ -37,7 +34,8 @@ import atldecompiler
 import codegen
 import astdump
 
-__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler"]
+__all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options", "pprint", "Decompiler", "renpycompat"]
+
 
 # Main API
 

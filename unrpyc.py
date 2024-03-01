@@ -27,6 +27,7 @@ import glob
 import itertools
 import traceback
 import struct
+import zlib
 from operator import itemgetter
 
 try:
@@ -47,104 +48,14 @@ except ImportError:
             pass
 
 import decompiler
-from decompiler import magic, astdump, translate
+import deobfuscate
+from decompiler import astdump, translate
+from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle_safe_dump,
+                                    pickle_loads)
 
-# these named classes need some special handling for us to be able to reconstruct ren'py ASTs from pickles
-SPECIAL_CLASSES = [set, frozenset]
-
-@SPECIAL_CLASSES.append
-class PyExpr(magic.FakeStrict, unicode):
-    __module__ = "renpy.ast"
-    def __new__(cls, s, filename, linenumber, py=None):
-        self = unicode.__new__(cls, s)
-        self.filename = filename
-        self.linenumber = linenumber
-        self.py = py
-        return self
-
-    def __getnewargs__(self):
-        if self.py is not None:
-            return unicode(self), self.filename, self.linenumber, self.py
-        else:
-            return unicode(self), self.filename, self.linenumber
-
-@SPECIAL_CLASSES.append
-class PyCode(magic.FakeStrict):
-    __module__ = "renpy.ast"
-    def __setstate__(self, state):
-        if len(state) == 4:
-            (_, self.source, self.location, self.mode) = state
-            self.py = None
-        else:
-            (_, self.source, self.location, self.mode, self.py) = state
-        self.bytecode = None
-
-@SPECIAL_CLASSES.append
-class Sentinel(magic.FakeStrict, object):
-    __module__ = "renpy.object"
-    def __new__(cls, name):
-        obj = object.__new__(cls)
-        obj.name = name
-        return obj
-
-# These used to live in renpy.python. They started appearing in ASTs after ren'py switched from
-# putting the unparsed contents of a user statement into the AST to putting the parsed result,
-# or when people define custom AST nodes in ren'py files.
-@SPECIAL_CLASSES.append
-class RevertableList(magic.FakeStrict, list):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return list.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableDict(magic.FakeStrict, dict):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return dict.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableSet(magic.FakeStrict, set):
-    __module__ = "renpy.python"
-    def __new__(cls):
-        return set.__new__(cls)
-
-    def __setstate__(self, state):
-        if isinstance(state, tuple):
-            self.update(state[0].keys())
-        else:
-            self.update(state)
-
-# But since 7.5 they live in renpy.revertable, so we have both
-@SPECIAL_CLASSES.append
-class RevertableList(magic.FakeStrict, list):
-    __module__ = "renpy.revertable"
-    def __new__(cls):
-        return list.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableDict(magic.FakeStrict, dict):
-    __module__ = "renpy.revertable"
-    def __new__(cls):
-        return dict.__new__(cls)
-
-@SPECIAL_CLASSES.append
-class RevertableSet(magic.FakeStrict, set):
-    __module__ = "renpy.revertable"
-    def __new__(cls):
-        return set.__new__(cls)
-
-    def __setstate__(self, state):
-        if isinstance(state, tuple):
-            self.update(state[0].keys())
-        else:
-            self.update(state)
-
-class_factory = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 printlock = Lock()
 
-# needs class_factory
-import deobfuscate
 
 # API
 
@@ -165,12 +76,8 @@ def read_ast_from_file(in_file):
 
         raw_contents = chunks[1]
 
-    raw_contents = raw_contents.decode('zlib')
-    # import pickletools
-    # with open("huh.txt", "wb") as f:
-    #     pickletools.dis(raw_contents, out=f)
-
-    data, stmts = magic.safe_loads(raw_contents, class_factory, {"_ast", "collections"})
+    raw_contents = zlib.decompress(raw_contents)
+    _, stmts = pickle_safe_loads(raw_contents)
     return stmts
 
 
@@ -221,7 +128,8 @@ def extract_translations(input_filename, language):
     translator = translate.Translator(language, True)
     translator.translate_dialogue(ast)
     # we pickle and unpickle this manually because the regular unpickler will choke on it
-    return magic.safe_dumps(translator.dialogue), translator.strings
+    return pickle_safe_dumps(translator.dialogue), translator.strings
+
 
 def parse_sl_custom_names(unparsed_arguments):
     # parse a list of strings in the format
@@ -263,7 +171,8 @@ def worker(t):
         else:
             if args.translation_file is not None:
                 translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = magic.loads(args.translations, class_factory)
+                translator.language, translator.dialogue, translator.strings = (
+                    pickle_loads(args.translations))
             else:
                 translator = None
             return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
@@ -409,10 +318,10 @@ def main():
                 bad += 1
                 continue
             good += 1
-            translated_dialogue.update(magic.loads(result[0], class_factory))
+            translated_dialogue.update(pickle_loads(result[0]))
             translated_strings.update(result[1])
         with open(args.write_translation_file, 'wb') as out_file:
-            magic.safe_dump((args.language, translated_dialogue, translated_strings), out_file)
+            pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
     else:
         # Check per file if everything went well and report back
