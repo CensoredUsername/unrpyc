@@ -37,7 +37,7 @@ import zlib
 import struct
 import base64
 from collections import Counter
-from decompiler import magic
+from decompiler.renpycompat import pickle_safe_loads
 import unrpyc
 
 
@@ -321,7 +321,7 @@ def try_decrypt_section(raw_data):
     while layers < 10:
         # can we load it yet?
         try:
-            data, stmts = magic.safe_loads(raw_data, unrpyc.class_factory, {"_ast", "collections"})
+            data, stmts = pickle_safe_loads(raw_data)
         except Exception:
             pass
         else:
