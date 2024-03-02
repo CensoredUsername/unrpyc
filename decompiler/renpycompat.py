@@ -1,8 +1,8 @@
 # This module holds some special classes and shorthand functions for support of renpy compatiblity.
-# They're separate so there will be less code duplication, simpler dependencys between files and
+# They're separate so there will be less code duplication, simpler dependencies between files and
 # to avoid middle-of-file imports.
 
-from . import magic
+import magic
 magic.fake_package("renpy")
 import renpy  # noqa
 

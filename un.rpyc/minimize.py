@@ -27,13 +27,14 @@ from collections import OrderedDict
 
 # Main API
 
-def minimize(code, remove_docstrings=True, obfuscate_globals=False,
+def minimize(code, remove_docs=True, obfuscate_globals=False,
              obfuscate_builtins=False, obfuscate_imports=False):
     # convert the code to an AST
     tree = ast.parse(code)
-    if remove_docstrings:
+    if remove_docs:
         # optimize the ast by removing docstrings
         tree = DocstringRemover().visit(tree)
+        # also remove annotations
     # perform variable name optimization
     tree = ScopeAnalyzer().analyze(
         tree, not obfuscate_globals, not obfuscate_builtins,
@@ -50,6 +51,11 @@ class DocstringRemover(ast.NodeTransformer):
             return None
         else:
             return self.generic_visit(node)
+
+    def visit_arg(self, node):
+        # also remove annotations
+        node.annotation = None
+        return node
 
 # Scope analysis implementation
 
@@ -436,6 +442,17 @@ class ScopeAnalyzer(ast.NodeTransformer):
         return node
 
     # function arguments
+
+    def visit_arg(self, node, protected=False):
+        if self.stage == self.ANALYZE:
+            self.scope.write(node.arg, protected)
+        else:
+            node.arg = self.new_name(node.arg)
+
+        if node.annotation:
+            self.visit(node.annotation)
+
+        return node
 
     def visit_arguments(self, node):
         if self.stage == self.ANALYZE:
