@@ -1,5 +1,5 @@
 # This module holds some special classes and shorthand functions for support of renpy compatiblity.
-# They're separate so there will be less code duplication, simpler dependencys between files and
+# They're separate so there will be less code duplication, simpler dependencies between files and
 # to avoid middle-of-file imports.
 
 from . import magic
@@ -12,7 +12,7 @@ import renpy  # noqa
 SPECIAL_CLASSES = [set, frozenset]
 
 
-# ren'py _annoyingly_ enables fix_imports even in ren'py v8,and still defaults to pickle protocol 2.
+# ren'py _annoyingly_ enables fix_imports even in ren'py v8 and still defaults to pickle protocol 2.
 # so set/frozenset get mapped to the wrong location (__builtins__ instead of builtins)
 # we don't want to enable that option as we want control over what the pickler is allowed to
 # unpickle

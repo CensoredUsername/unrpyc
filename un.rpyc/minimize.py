@@ -26,13 +26,14 @@ from collections import OrderedDict
 
 # Main API
 
-def minimize(code, remove_docstrings=True, obfuscate_globals=False,
+def minimize(code, remove_docs=True, obfuscate_globals=False,
              obfuscate_builtins=False, obfuscate_imports=False):
     # convert the code to an AST
     tree = ast.parse(code)
-    if remove_docstrings:
+    if remove_docs:
         # optimize the ast by removing docstrings
         tree = DocstringRemover().visit(tree)
+        # also remove annotations
     # perform variable name optimization
     tree = ScopeAnalyzer().analyze(
         tree, not obfuscate_globals, not obfuscate_builtins,
@@ -49,6 +50,11 @@ class DocstringRemover(ast.NodeTransformer):
             return None
         else:
             return self.generic_visit(node)
+
+    def visit_arg(self, node):
+        # also remove annotations
+        node.annotation = None
+        return node
 
 # Scope analysis implementation
 
@@ -283,7 +289,7 @@ class ScopeAnalyzer(ast.NodeTransformer):
         if not protect_builtins:
             # append the nodes to rename builtins
             extra_nodes = [ast.Assign([ast.Name(value, ast.Store())], ast.Name(key, ast.Load()))
-                           for key, value in self.builtin_scope.bound_vars.iteritems() if key != value]
+                           for key, value in self.builtin_scope.bound_vars.items() if key != value]
             # ensure any "from __future__ import thing" statements are at the start of the
             futures = [future for future in node.body if
                        isinstance(future, ast.ImportFrom) and future.module == "__future__"]
@@ -443,7 +449,7 @@ class ScopeAnalyzer(ast.NodeTransformer):
             node.arg = self.new_name(node.arg)
 
         if node.annotation:
-            self.visit(annotation)
+            self.visit(node.annotation)
 
         return node
 

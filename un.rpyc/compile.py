@@ -114,12 +114,6 @@ for (dir, fn) in files:
                 sys.files.append((abspath, fn, dir, bindata))
 ''', globals())
 
-_0 # decompiler shim
-_1 # decompiler.translate shim
-_2 # decompiler.astdump shim
-_3 # decompiler.util
-_4 # decompiler.magic
-
 renpy_modules = modules.copy()
 
 exec('''
@@ -133,21 +127,22 @@ renpy_loader = meta_path.pop()
 package = __package__
 __package__ = ""
 
-import traceback as traceback
-import codecs as codecs
-
-from decompiler.magic import fake_package, remove_fake_package
-# fake the prescense of renpy
-fake_package("renpy")
-
-_5 # decompiler.testcasedecompiler
-_6 # decompiler.atldecompiler
-_7 # decompiler.sl2decompiler
-_8 # decompiler
-_9 # unrpyc
+_0 # decompiler shim
+_1 # decompiler.translate shim
+_2 # decompiler.astdump shim
+_3 # decompiler.util
+_4 # decompiler.magic
+_5 # decompiler.renpycompat
+_6 # decompiler.testcasedecompiler
+_7 # decompiler.atldecompiler
+_8 # decompiler.sl2decompiler
+_9 # decompiler
+_10 # unrpyc
 
 from unrpyc import decompile_game
 decompile_game()
+
+from decompiler.magic import remove_fake_package
 remove_fake_package("renpy")
 
 modules.update(renpy_modules)
@@ -161,6 +156,7 @@ decompiler_items = (
     p.DeclareModule("decompiler.astdump"),
     Module("decompiler.util", BASE_FOLDER / "decompiler/util.py"),
     Module("decompiler.magic", BASE_FOLDER / "decompiler/magic.py", False),
+    Module("decompiler.renpycompat", BASE_FOLDER / "decompiler/renpycompat.py"),
     Module("decompiler.testcasedecompiler", BASE_FOLDER / "decompiler/testcasedecompiler.py"),
     Module("decompiler.atldecompiler", BASE_FOLDER / "decompiler/atldecompiler.py"),
     Module("decompiler.sl2decompiler", BASE_FOLDER / "decompiler/sl2decompiler.py"),
@@ -176,15 +172,13 @@ from renpy.game import script
 
 decompiler_rpyb = p.ExecTranspile(base + "(None, [])", decompiler_items)
 
-rpy_one = p.GetItem(p.Sequence(
+rpy_items = p.GetItem(p.Sequence(
     p.DeclareModule("decompiler"),
     p.DeclareModule("decompiler.translate"),
     p.DeclareModule("decompiler.astdump"),
     Module("decompiler.util", BASE_FOLDER / "decompiler/util.py"),
     Module("decompiler.magic", BASE_FOLDER / "decompiler/magic.py", False),
-), "decompiler.magic")
-
-rpy_two = p.GetItem(p.Sequence(
+    Module("decompiler.renpycompat", BASE_FOLDER / "decompiler/renpycompat.py"),
     Module("decompiler.testcasedecompiler", BASE_FOLDER / "decompiler/testcasedecompiler.py"),
     Module("decompiler.atldecompiler", BASE_FOLDER / "decompiler/atldecompiler.py"),
     Module("decompiler.sl2decompiler", BASE_FOLDER / "decompiler/sl2decompiler.py"),
@@ -221,10 +215,6 @@ init python early hide:
                     bindata = renpy.game.script.read_rpyc_data(file, 1)
                     sys.files.append((abspath, fn, dir, bindata))
 
-    # ???
-
-    magic = pickle.loads(base64.b64decode({}))
-
     renpy_modules = sys.modules.copy()
     for i in renpy_modules:
         if "renpy" in i and not "renpy.execution" in i:
@@ -232,13 +222,12 @@ init python early hide:
 
     renpy_loader = sys.meta_path.pop()
 
-    magic.fake_package("renpy")
-
     # ?????????
     unrpyc = pickle.loads(base64.b64decode({}))
     unrpyc.decompile_game()
 
-    magic.remove_fake_package("renpy")
+    from decompiler.magic import remove_fake_package
+    remove_fake_package("renpy")
 
     sys.modules.update(renpy_modules)
     sys.meta_path.append(renpy_loader)
@@ -257,8 +246,7 @@ bytecoderpyb = zlib.compress(
 9)
 
 unrpy = rpy_base.format(
-    repr(base64.b64encode(p.optimize(p.dumps(rpy_one, protocol), protocol))),
-    repr(base64.b64encode(p.optimize(p.dumps(rpy_two, protocol), protocol)))
+    repr(base64.b64encode(p.optimize(p.dumps(rpy_items, protocol), protocol)))
 )
 
 
@@ -299,9 +287,6 @@ if args.debug:
     with (PACK_FOLDER / "un.dis3").open("w", encoding="utf-8") as f:
         p.pprint(decompiler_rpyc, f)
 
-    with (PACK_FOLDER / "un.rpy.dis1").open("w", encoding="utf-8") as f:
-        pickletools.dis(p.dumps(rpy_one, protocol), f)
-
-    with (PACK_FOLDER / "un.rpy.dis2").open("w", encoding="utf-8") as f:
-        pickletools.dis(p.dumps(rpy_one, protocol), f)
+    with (PACK_FOLDER / "un.rpy.dis").open("w", encoding="utf-8") as f:
+        pickletools.dis(p.dumps(rpy_items, protocol), f)
 
