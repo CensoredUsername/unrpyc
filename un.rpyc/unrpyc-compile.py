@@ -32,8 +32,8 @@ def read_ast_from_file(raw_contents):
 
 def ensure_dir(filename):
     dir_name = Path(filename).parent
-    if dir_name and not dir_name.exists():
-        dir_name.makedir()
+    if dir_name:
+        dir_name.mkdir(parents=True, exist_ok=True)
 
 def decompile_rpyc(data, fullpath):
     # Output filename is input filename but with .rpy extension
@@ -54,7 +54,7 @@ def decompile_game():
     with logfile.open("w") as f:
         f.write("Beginning decompiling\n")
 
-        for fullpath, fn, dir_name, data in sys.files:
+        for fullpath, _, _, data in sys.files:
             try:
                 decompile_rpyc(data, fullpath)
             except Exception as e:
