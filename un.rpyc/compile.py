@@ -61,8 +61,14 @@ def Module(name, filename, munge_globals=True, retval=False, package=None):
         # in modules only locals are worth optimizing
         code = minimize.minimize(code, True, args.obfuscate and munge_globals, args.obfuscate, args.obfuscate)
     if package:
-        code = "__package__={}\n".format(repr(package)) + code
-    return p.Module(name, code, retval=retval)
+        return p.Sequence(
+            p.DeclareModule(name, retval=retval),
+            p.SetItem(p.Imports(name, "__dict__"), "__package__", package),
+            p.DefineModule(name, code),
+            reversed=True
+        )
+    else:
+        return p.Module(name, code, retval=retval)
 
 def Exec(code):
     if args.minimize:
