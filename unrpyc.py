@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import sys
 import argparse
 from os import path, walk
 import codecs
@@ -55,6 +56,11 @@ from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle
 
 
 printlock = Lock()
+
+
+def sharelock(lock):
+    global printlock
+    printlock = lock
 
 
 # API
@@ -187,64 +193,116 @@ def worker(t):
             print(traceback.format_exc())
         return False
 
-def sharelock(lock):
-    global printlock
-    printlock = lock
 
 def main():
-    # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
+    if not sys.version_info[:2] >= (3, 9):
+        raise Exception("Must be executed in Python 3.9 or later.\n"
+                        f"You are running {sys.version}")
+
+    # argparse usage: python3 unrpyc.py [-c] [--try-harder] [-d] [-p] file [file ...]
     cc_num = cpu_count()
-    parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
+    ap = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
 
-    parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
-                        help="overwrites existing output files")
+    ap.add_argument(
+        'file',
+        type=str,
+        nargs='+',
+        help="The filenames to decompile. "
+        "All .rpyc files in any sub-/directories passed will also be decompiled.")
 
-    parser.add_argument('-d', '--dump', dest='dump', action='store_true',
-                        help="instead of decompiling, pretty print the ast to a file")
+    ap.add_argument(
+        '-c',
+        '--clobber',
+        dest='clobber',
+        action='store_true',
+        help="Overwrites output files if they already exist.")
 
-    parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
-                        choices=list(range(1, cc_num)), default=cc_num - 1 if cc_num > 2 else 1,
-                        help="use the specified number or processes to decompile."
-                        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
+    ap.add_argument(
+        '--try-harder',
+        dest="try_harder",
+        action="store_true",
+        help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
-    parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
-                        help="use the specified file to translate during decompilation")
+    ap.add_argument(
+        '-d',
+        '--dump',
+        dest='dump',
+        action='store_true',
+        help="Instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('-T', '--write-translation-file', dest='write_translation_file', action='store', default=None,
-                        help="store translations in the specified file instead of decompiling")
+    ap.add_argument(
+        '-p',
+        '--processes',
+        dest='processes',
+        action='store',
+        type=int,
+        choices=list(range(1, cc_num)),
+        default=cc_num - 1 if cc_num > 2 else 1,
+        help="Use the specified number or processes to decompile."
+        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing "
+        "unavailable is.")
 
-    parser.add_argument('-l', '--language', dest='language', action='store', default='english',
-                        help="if writing a translation file, the language of the translations to write")
+    ap.add_argument(
+        '-t',
+        '--translation-file',
+        dest='translation_file',
+        action='store',
+        default=None,
+        help="Use the specified file to translate during decompilation")
 
-    parser.add_argument('--comparable', dest='comparable', action='store_true',
-                        help="Only for dumping, remove several false differences when comparing dumps. "
-                        "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
+    ap.add_argument(
+        '-T',
+        '--write-translation-file',
+        dest='write_translation_file',
+        action='store',
+        default=None,
+        help="Store translations in the specified file instead of decompiling")
 
-    parser.add_argument('--no-pyexpr', dest='no_pyexpr', action='store_true',
-                        help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
-                        "This is useful when comparing dumps from different versions of Ren'Py. "
-                        "It should only be used if necessary, since it will cause loss of information such as line numbers.")
+    ap.add_argument(
+        '-l',
+        '--language',
+        dest='language',
+        action='store',
+        default='english',
+        help="If writing a translation file, the language of the translations to write")
 
-    parser.add_argument('--no-init-offset', dest='init_offset', action='store_false',
-                        help="By default, unrpyc attempt to guess when init offset statements were used and insert them. "
-                        "This is always safe to do for ren'py 8, but as it is based on a heuristic it can be disabled. "
-                        "The generated code is exactly equivalent, only slightly more cluttered.")
+    ap.add_argument(
+        '--comparable',
+        dest='comparable',
+        action='store_true',
+        help="Only for dumping, remove several false differences when comparing dumps. "
+        "This suppresses attributes that are different even when the code is identical, such as "
+        "file modification times. ")
 
-    parser.add_argument('file', type=str, nargs='+',
-                        help="The filenames to decompile. "
-                        "All .rpyc files in any directories passed or their subdirectories will also be decompiled.")
+    ap.add_argument(
+        '--no-pyexpr',
+        dest='no_pyexpr',
+        action='store_true',
+        help="Only for dumping, disable special handling of PyExpr objects, instead printing them "
+        "as strings. This is useful when comparing dumps from different versions of Ren'Py. It "
+        "should only be used if necessary, since it will cause loss of information such as line "
+        "numbers.")
 
-    parser.add_argument('--try-harder', dest="try_harder", action="store_true",
-                        help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
+    ap.add_argument(
+        '--no-init-offset',
+        dest='init_offset',
+        action='store_false',
+        help="By default, unrpyc attempt to guess when init offset statements were used and insert "
+        "them. This is always safe to do for ren'py 8, but as it is based on a heuristic it can be "
+        "disabled. The generated code is exactly equivalent, only slightly more cluttered.")
 
-    parser.add_argument('--register-sl-displayable', dest="sl_custom_names", type=str, nargs='+',
-                        help="Accepts mapping separated by '=', "
-                        "where the first argument is the name of the user-defined displayable object, "
-                        "and the second argument is a string containing the name of the displayable,"
-                        "potentially followed by a '-', and the amount of children the displayable takes"
-                        "(valid options are '0', '1' or 'many', with 'many' being the default)")
+    ap.add_argument(
+        '--register-sl-displayable',
+        dest="sl_custom_names",
+        type=str,
+        nargs='+',
+        help="Accepts mapping separated by '=', "
+        "where the first argument is the name of the user-defined displayable object, "
+        "and the second argument is a string containing the name of the displayable,"
+        "potentially followed by a '-', and the amount of children the displayable takes"
+        "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
-    args = parser.parse_args()
+    args = ap.parse_args()
 
     if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
         # Fail early to avoid wasting time going through the files
