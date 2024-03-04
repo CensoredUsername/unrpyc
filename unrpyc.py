@@ -238,7 +238,7 @@ def main():
         type=int,
         choices=list(range(1, cc_num)),
         default=cc_num - 1 if cc_num > 2 else 1,
-        help="Use the specified number or processes to decompile."
+        help="Use the specified number or processes to decompile. "
         "Defaults to the amount of hw threads available minus one, disabled when muliprocessing "
         "unavailable is.")
 
@@ -298,7 +298,7 @@ def main():
         nargs='+',
         help="Accepts mapping separated by '=', "
         "where the first argument is the name of the user-defined displayable object, "
-        "and the second argument is a string containing the name of the displayable,"
+        "and the second argument is a string containing the name of the displayable, "
         "potentially followed by a '-', and the amount of children the displayable takes"
         "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
