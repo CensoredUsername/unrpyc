@@ -18,8 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import os
-import os.path as path
+import sys
+from pathlib import Path
 import traceback
 import struct
 
@@ -31,40 +31,38 @@ def read_ast_from_file(raw_contents):
     return stmts
 
 def ensure_dir(filename):
-    dir = path.dirname(filename)
-    if dir and not path.exists(dir):
-        os.makedirs(dir)
+    dir_name = Path(filename).parent
+    if dir_name:
+        dir_name.mkdir(parents=True, exist_ok=True)
 
-def decompile_rpyc(data, abspath):
+def decompile_rpyc(data, fullpath):
     # Output filename is input filename but with .rpy extension
-    filepath, ext = path.splitext(abspath)
-    out_filename = filepath + ('.rpym' if ext == ".rpymc" else ".rpy")
+    out_filename = fullpath.with_suffix('.rpy' if fullpath.suffix == '.rpyc' else '.rpym')
 
     ast = read_ast_from_file(data)
 
     ensure_dir(out_filename)
-    with open(out_filename, 'w', encoding='utf-8') as out_file:
+    with out_filename.open('w', encoding='utf-8') as out_file:
         options = decompiler.Options(init_offset=True)
         decompiler.pprint(out_file, ast, options)
     return True
 
 def decompile_game():
-    import sys
 
-    logfile = path.join(os.getcwd(), "game/unrpyc.log.txt")
+    logfile = Path.cwd().joinpath("game/unrpyc.log.txt")
     ensure_dir(logfile)
-    with open(logfile, "w") as f:
+    with logfile.open("w") as f:
         f.write("Beginning decompiling\n")
 
-        for abspath, fn, dir, data in sys.files:
+        for fullpath, _, _, data in sys.files:
             try:
-                decompile_rpyc(data, abspath)
+                decompile_rpyc(data, fullpath)
             except Exception as e:
-                f.write("\nFailed at decompiling {0}\n".format(abspath))
+                f.write("\nFailed at decompiling {0}\n".format(fullpath))
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
-                f.write("\nDecompiled {0}\n".format(abspath))
+                f.write("\nDecompiled {0}\n".format(fullpath))
 
         f.write("\nend decompiling\n")
 
