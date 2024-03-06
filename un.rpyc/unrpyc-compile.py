@@ -51,10 +51,10 @@ def decompile_game():
 
     logfile = Path.cwd().joinpath("game/unrpyc.log.txt")
     ensure_dir(logfile)
-    with logfile.open("w") as f:
+    with logfile.open("w", encoding="utf-8") as f:
         f.write("Beginning decompiling\n")
 
-        for fullpath, _, _, data in sys.files:
+        for fullpath, data in sys.files:
             try:
                 decompile_rpyc(data, fullpath)
             except Exception as e:
