@@ -24,8 +24,17 @@ jobs:
         python-version: "3.9"
     - name: Test by decompiling a script and building un.rpyc
       run: |
+        # test the command line tool
         ./unrpyc.py --clobber "testcases/compiled/**/*.rpyc"
         diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+        # compile un.rpyc/rpy/rpyb
         cd un.rpyc;
         ./compile.py -p 1
         cd ..
+        # test all the different iterations of it
+        ./testcases/test_un_rpyc.py --unrpyc un.rpyc/un.rpyc "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+        ./testcases/test_un_rpyc.py --unrpyb un.rpyc/bytecode-39.rpyb "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+        ./testcases/test_un_rpyc.py --unrpy un.rpyc/un.rpy "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
