@@ -133,7 +133,7 @@ import sys
 for i in sys.modules.copy():
     if "renpy" in i and not "renpy.execution" in i:
         sys.modules.pop(i)
-sys.meta_path[:] = [i for i in sys.meta_path if "renpy" in i.__class__.__module__]
+sys.meta_path[:] = [i for i in sys.meta_path if "renpy" not in i.__class__.__module__]
 ''', globals())
 
 # decompiler injection
@@ -209,7 +209,7 @@ init python early hide:
     for i in renpy_modules:
         if "renpy" in i and not "renpy.execution" in i:
             sys.modules.pop(i)
-    sys.meta_path[:] = [i for i in sys.meta_path if "renpy" in i.__class__.__module__]
+    sys.meta_path[:] = [i for i in sys.meta_path if "renpy" not in i.__class__.__module__]
 
     # ?????????
     unrpyc = pickle.loads(base64.b64decode({}))
