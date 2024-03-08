@@ -6,6 +6,8 @@ from . import magic
 magic.fake_package("renpy")
 import renpy  # noqa
 
+import pickletools
+
 
 # these named classes need some special handling for us to be able to reconstruct ren'py ASTs from
 # pickles
@@ -109,7 +111,7 @@ CLASS_FACTORY = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 
 def pickle_safe_loads(buffer: bytes):
-    return magic.safe_loads(buffer, CLASS_FACTORY, {"_ast", "collections"})
+    return magic.safe_loads(buffer, CLASS_FACTORY, {"collections",}, encoding="ASCII", errors="strict")
 
 
 def pickle_safe_dumps(buffer: bytes):
@@ -123,3 +125,34 @@ def pickle_safe_dump(buffer: bytes, outfile):
 
 def pickle_loads(buffer: bytes):
     return magic.loads(buffer, CLASS_FACTORY)
+
+
+def pickle_detect_python2(buffer: bytes):
+    # When objects get pickled in protocol 2, python 2 will
+    # normally emit BINSTRING/SHORT_BINSTRING opcodes for any attribute
+    # names / binary strings.
+    # protocol 2 in python 3 however, will never use BINSTRING/SHORT_BINSTRING
+    # so presence of these opcodes is a tell that this file was not from renpy 8
+    # even when recording a bytestring in python 3, it will not use BINSTRING/SHORT_BINSTRING
+    # instead choosing to encode it into a BINUNICODE object
+    #
+    # caveat:
+    # if a file uses `from __future__ import unicode_literals`
+    # combined with __slots__ that are entered as plain "strings"
+    # then attributes will use BINUNICODE instead (like py3)
+    # Most ren'py AST classes do use __slots__ so that's a bit annoying
+
+    for opcode, arg, pos in pickletools.genops(buffer):
+        if opcode.code == "\x80":
+            # from what I know ren'py for now always uses protocol 2,
+            # but it might've been different in the past, and change in the future
+            if arg < 2:
+                return True
+
+            elif arg > 2:
+                return False
+
+        if opcode.code in "TU":
+            return True
+
+    return False
