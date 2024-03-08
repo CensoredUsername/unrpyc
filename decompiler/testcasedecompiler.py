@@ -55,6 +55,12 @@ class TestcaseDecompiler(DecompilerBase):
         else:
             self.write("$ %s" % code)
 
+    @dispatch(testast.If)
+    def print_if(self, ast):
+        self.indent()
+        self.write('if %s:' % ast.condition)
+        self.print_nodes(ast.block, extra_indent=1)
+
     @dispatch(testast.Assert)
     def print_assert(self, ast):
         self.indent()
