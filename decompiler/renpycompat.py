@@ -106,6 +106,36 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
+# Before ren'py 7.5/8.0 they lived in renpy.python, so for compatibility we keep it here.
+@SPECIAL_CLASSES.append
+class RevertableList(magic.FakeStrict, list):
+    __module__ = "renpy.python"
+
+    def __new__(cls):
+        return list.__new__(cls)
+
+
+@SPECIAL_CLASSES.append
+class RevertableDict(magic.FakeStrict, dict):
+    __module__ = "renpy.python"
+
+    def __new__(cls):
+        return dict.__new__(cls)
+
+
+@SPECIAL_CLASSES.append
+class RevertableSet(magic.FakeStrict, set):
+    __module__ = "renpy.python"
+
+    def __new__(cls):
+        return set.__new__(cls)
+
+    def __setstate__(self, state):
+        if isinstance(state, tuple):
+            self.update(state[0].keys())
+        else:
+            self.update(state)
+
 
 CLASS_FACTORY = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
