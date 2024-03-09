@@ -181,6 +181,7 @@ class Decompiler(DecompilerBase):
         if ast.parameters is not None:
             self.write(reconstruct_paraminfo(ast.parameters))
 
+        # atl attribute: since 6.10
         if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
@@ -199,6 +200,7 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % self.paired_with)
             self.paired_with = True
 
+        # atl attribute: since 6.10
         if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
@@ -234,6 +236,7 @@ class Decompiler(DecompilerBase):
             self.write("with %s" % self.paired_with)
             self.paired_with = True
 
+        # atl attribute: since 6.10
         if ast.atl is not None:
             self.write(":")
             self.print_atl(ast.atl)
@@ -263,6 +266,7 @@ class Decompiler(DecompilerBase):
 
             self.paired_with = ast.paired
 
+        # paired_with attribute since 6.7.1
         elif self.paired_with:
             # Check if it was consumed by a show/scene statement
             if self.paired_with is not True:
@@ -332,7 +336,7 @@ class Decompiler(DecompilerBase):
             self.write("label %s%s%s:" % (
                 ast.name,
                 reconstruct_paraminfo(ast.parameters),
-                " hide" if ast.hide else ""))
+                " hide" if getattr(ast, "hide", False) else ""))
             self.print_nodes(ast.block, 1)
         finally:
             if self.missing_init:
@@ -544,7 +548,8 @@ class Decompiler(DecompilerBase):
             self.write(" %s" % self.label_inside_menu.name)
             self.label_inside_menu = None
 
-        if ast.arguments is not None:
+        # arguments attribute added in 7.1.4
+        if getattr(ast, "arguments", None) is not None:
             self.write(reconstruct_arginfo(ast.arguments))
 
         self.write(":")
@@ -558,7 +563,13 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("set %s" % ast.set)
 
-            for (label, condition, block), arguments in zip(ast.items, ast.item_arguments):
+            # item_arguments attribute since 7.1.4
+            if hasattr(ast, "item_arguments"):
+                item_arguments = ast.item_arguments
+            else:
+                item_arguments = [None] * len(ast.items)
+
+            for (label, condition, block), arguments in zip(ast.items, item_arguments):
                 if self.options.translator:
                     label = self.options.translator.strings.get(label, label)
 
@@ -611,7 +622,8 @@ class Decompiler(DecompilerBase):
                 self.write(" early")
             if ast.hide:
                 self.write(" hide")
-            if ast.store != "store":
+            # store attribute added in 6.14
+            if getattr(ast, "store", "store") != "store":
                 self.write(" in ")
                 # Strip prepended "store."
                 self.write(ast.store[6:])
@@ -640,13 +652,18 @@ class Decompiler(DecompilerBase):
                 priority = " %d" % (init.priority - self.init_offset)
 
         index = ""
-        if ast.index is not None:
+        # index attribute added in 7.4
+        if getattr(ast, "index", None) is not None:
             index = "[%s]" % ast.index.source
 
-        if ast.store == "store":
-            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, ast.operator, ast.code.source))
+        # operator attribute added in 7.4
+        operator = getattr(ast, "operator", "=")
+
+        # store attribute added in 6.18.2
+        if getattr(ast, "store", "store") == "store":
+            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, operator, ast.code.source))
         else:
-            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, ast.operator, ast.code.source))
+            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
 
     @dispatch(renpy.ast.Default)
     def print_default(self, ast):
@@ -695,7 +712,8 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write(ast.line)
 
-        if ast.block:
+        # block attribute since 6.13.0
+        if getattr(ast, "block", None):
             with self.increase_indent():
                 self.print_lex(ast.block)
 
@@ -777,7 +795,9 @@ class Decompiler(DecompilerBase):
             self.advance_to_line(ast.linenumber)
             self.indent()
             self.write('old "%s"' % string_escape(ast.old))
-            self.advance_to_line(ast.newloc[1])
+            # newlock attribute since 6.99
+            if hasattr(ast, "newloc"):
+                self.advance_to_line(ast.newloc[1])
             self.indent()
             self.write('new "%s"' % string_escape(ast.new))
 
@@ -804,6 +824,12 @@ class Decompiler(DecompilerBase):
     def print_screen(self, ast):
         self.require_init()
         screen = ast.screen
+        if isinstance(screen, renpy.screenlang.ScreenLangScreen):
+            raise Exception(
+                "Decompiling screen language version 1 screens is no longer supported. "
+                "use the legacy branch of unrpyc if this is required"
+            )
+
         if isinstance(screen, renpy.sl2.slast.SLScreen):
             self.linenumber = sl2decompiler.pprint(
                 self.out_file, screen, self.options,
