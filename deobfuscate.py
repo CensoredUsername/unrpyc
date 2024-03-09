@@ -32,7 +32,6 @@
 # being layers of base64, string-escape, hex-encoding, zlib-compression, etc.
 # We handle this by just trying these by checking if they fit.
 
-import os
 import zlib
 import struct
 import base64

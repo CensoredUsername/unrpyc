@@ -22,9 +22,7 @@
 
 import zlib
 import argparse
-import os, sys
 import base64
-from os import path
 from pathlib import Path
 
 from corrupy import pickleast as p, minimize

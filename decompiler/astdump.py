@@ -20,7 +20,6 @@
 
 import sys
 import inspect
-import ast as py_ast
 import renpy
 
 def pprint(out_file, ast, comparable=False, no_pyexpr=False):

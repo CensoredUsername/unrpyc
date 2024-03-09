@@ -18,9 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
-from operator import itemgetter
-
 from .util import DecompilerBase, First, reconstruct_paraminfo, \
                   reconstruct_arginfo, split_logical_lines, Dispatcher
 

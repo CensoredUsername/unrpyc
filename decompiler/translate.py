@@ -22,7 +22,6 @@ from .util import say_get_code
 import renpy
 
 import hashlib
-import re
 from copy import copy
 
 class Translator:
