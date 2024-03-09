@@ -357,7 +357,9 @@ def main():
     def glob_or_complain(inpath):
         """Expands wildcards and casts output to pathlike state."""
         retval = [Path(elem).resolve(strict=True) for elem in glob.glob(inpath)]
-        return retval if retval else print(f"File not found: {inpath}")
+        if not retval:
+            print(f"Input path not found: {inpath}")
+        return retval
 
     def traverse(inpath):
         """
