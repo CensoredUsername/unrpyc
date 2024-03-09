@@ -246,6 +246,31 @@ def reconstruct_paraminfo(paraminfo):
             rv.append("**")
             rv.append(paraminfo.extrakw)
 
+    elif hasattr(paraminfo, "extrapos"):
+        # ren'py 7.4 and below, python 2 style
+        positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
+        nameonly = [i for i in paraminfo.parameters if i not in positional]
+        for parameter in positional:
+            rv.append(sep())
+            rv.append(parameter[0])
+            if parameter[1] is not None:
+                rv.append("=%s" % parameter[1])
+        if paraminfo.extrapos:
+            rv.append(sep())
+            rv.append("*%s" % paraminfo.extrapos)
+        if nameonly:
+            if not paraminfo.extrapos:
+                rv.append(sep())
+                rv.append("*")
+            for parameter in nameonly:
+                rv.append(sep())
+                rv.append(parameter[0])
+                if parameter[1] is not None:
+                    rv.append("=%s" % parameter[1])
+        if paraminfo.extrakw:
+            rv.append(sep())
+            rv.append("**%s" % paraminfo.extrakw)
+
     else:
         # ren'py 7.7/8.2 and above.
         # positional only, /, positional or keyword, *, keyword only, ***
@@ -309,16 +334,31 @@ def reconstruct_arginfo(arginfo):
     rv = ["("]
     sep = First("", ", ")
 
-    # ren'py 7.5 and above, PEP 448 compliant
-    for i, (name, val) in enumerate(arginfo.arguments):
-        rv.append(sep())
-        if name is not None:
-            rv.append("%s=" % name)
-        elif i in arginfo.starred_indexes:
-            rv.append("*")
-        elif i in arginfo.doublestarred_indexes:
-            rv.append("**")
-        rv.append(val)
+    if hasattr(arginfo, "starred_indexes"):
+        # ren'py 7.5 and above, PEP 448 compliant
+        for i, (name, val) in enumerate(arginfo.arguments):
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            elif i in arginfo.starred_indexes:
+                rv.append("*")
+            elif i in arginfo.doublestarred_indexes:
+                rv.append("**")
+            rv.append(val)
+
+    else:
+        # ren'py 7.4 and below, python 2 style
+        for (name, val) in arginfo.arguments:
+            rv.append(sep())
+            if name is not None:
+                rv.append("%s=" % name)
+            rv.append(val)
+        if arginfo.extrapos:
+            rv.append(sep())
+            rv.append("*%s" % arginfo.extrapos)
+        if arginfo.extrakw:
+            rv.append(sep())
+            rv.append("**%s" % arginfo.extrakw)
 
     rv.append(")")
 
