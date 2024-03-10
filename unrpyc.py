@@ -278,6 +278,7 @@ def main():
         '-t',
         '--translation-file',
         dest='translation_file',
+        type=Path,
         action='store',
         default=None,
         help="Use the specified file to translate during decompilation")
@@ -286,6 +287,7 @@ def main():
         '-T',
         '--write-translation-file',
         dest='write_translation_file',
+        type=Path,
         action='store',
         default=None,
         help="Store translations in the specified file instead of decompiling")
@@ -410,7 +412,7 @@ def main():
             good += 1
             translated_dialogue.update(pickle_loads(result[0]))
             translated_strings.update(result[1])
-        with args.translation_file.open('wb') as out_file:
+        with args.write_translation_file.open('wb') as out_file:
             pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
     else:
