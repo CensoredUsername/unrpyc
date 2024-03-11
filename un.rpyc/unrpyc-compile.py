@@ -57,7 +57,7 @@ def decompile_game():
     with open(logfile, "w") as f:
         f.write("Beginning decompiling\n")
 
-        for abspath, fn, dir, data in sys.files:
+        for abspath, data in sys.files:
             try:
                 decompile_rpyc(data, abspath, sys.init_offset)
             except Exception, e:

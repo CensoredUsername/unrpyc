@@ -91,6 +91,12 @@ global basepath
 global files
 global __package__
 
+# backup the local environment
+renpy_modules = modules.copy()
+renpy_meta_path = meta_path[:]
+pickle_package = __package__
+__package__ = ""
+
 # an easter egg
 exec '''
 import StringIO
@@ -117,35 +123,20 @@ for (dir, fn) in files:
             abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
             with renpy.loader.load(fn) as file:
                 bindata = renpy.game.script.read_rpyc_data(file, 1)
-                sys.files.append((abspath, fn, dir, bindata))
+                sys.files.append((abspath, bindata))
 ''' in globals()
 
-renpy_modules = modules.copy()
-
+# tear down the renpy environment
 exec '''
 import sys
 for i in sys.modules.copy():
     if "renpy" in i and not "renpy.execution" in i:
         sys.modules.pop(i)
+sys.meta_path[:] = [i for i in sys.meta_path if "renpy" not in i.__class__.__module__]
 ''' in globals()
 
-renpy_loader = meta_path.pop()
-package = __package__
-__package__ = ""
-
-_0 # decompiler shim
-_1 # decompiler.translate shim
-_2 # decompiler.astdump shim
-_3 # decompiler.util
-_4 # decompiler.magic
-_5 # decompiler.codegen
-_6 # decompiler.renpycompat
-_7 # decompiler.testcasedecompiler
-_8 # decompiler.screendecompiler
-_9 # decompiler.atldecompiler
-_10 # decompiler.sl2decompiler
-_11 # decompiler
-_12 # unrpyc
+# decompiler injection
+_0
 
 from unrpyc import decompile_game
 decompile_game()
@@ -153,36 +144,13 @@ decompile_game()
 from decompiler.magic import remove_fake_package
 remove_fake_package("renpy")
 
+modules.clear()
 modules.update(renpy_modules)
-meta_path.append(renpy_loader)
-__package__ = package
+meta_path[:] = renpy_meta_path
+__package__ = pickle_package
 """
 
-decompiler_items = (
-    p.DeclareModule("decompiler"),
-    p.DeclareModule("decompiler.translate"),
-    p.DeclareModule("decompiler.astdump"),
-    Module("decompiler.util", path.join(base_folder, "decompiler/util.py")),
-    Module("decompiler.magic", path.join(base_folder, "decompiler/magic.py"), False),
-    Module("decompiler.codegen", path.join(base_folder, "decompiler/codegen.py")),
-    Module("decompiler.renpycompat", path.join(base_folder, "decompiler/renpycompat.py")),
-    Module("decompiler.testcasedecompiler", path.join(base_folder, "decompiler/testcasedecompiler.py")),
-    Module("decompiler.screendecompiler", path.join(base_folder, "decompiler/screendecompiler.py")),
-    Module("decompiler.atldecompiler", path.join(base_folder, "decompiler/atldecompiler.py")),
-    Module("decompiler.sl2decompiler", path.join(base_folder, "decompiler/sl2decompiler.py")),
-    Module("decompiler", path.join(base_folder, "decompiler/__init__.py"), package="decompiler"),
-    Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
-)
-
-decompiler_rpyc = p.ExecTranspile(base + """
-from renpy import script_version
-from renpy.game import script
-({'version': script_version, 'key': script.key}, [])
-""", decompiler_items)
-
-decompiler_rpyb = p.ExecTranspile(base + "(None, [])", decompiler_items)
-
-rpy_items = p.GetItem(p.Sequence(
+decompiler_items = p.GetItem(p.Sequence(
     p.DeclareModule("decompiler"),
     p.DeclareModule("decompiler.translate"),
     p.DeclareModule("decompiler.astdump"),
@@ -198,13 +166,24 @@ rpy_items = p.GetItem(p.Sequence(
     Module("unrpyc", path.join(pack_folder, "unrpyc-compile.py"))
 ), "unrpyc")
 
+decompiler_rpyc = p.ExecTranspile(base + """
+from renpy import script_version
+from renpy.game import script
+({'version': script_version, 'key': script.key}, [])
+""", (decompiler_items,))
+
+decompiler_rpyb = p.ExecTranspile(base + "(None, [])", (decompiler_items,))
+
 rpy_base = """
 init python early hide:
+
+    import sys
+    renpy_modules = sys.modules.copy()
+    renpy_meta_path = sys.meta_path[:]
 
     # Set up the namespace
     import os
     import os.path
-    import sys
     import renpy
     import renpy.loader
     import base64
@@ -226,14 +205,12 @@ init python early hide:
                 abspath = os.path.join(dir, fn) if dir else os.path.join(basepath, fn)
                 with renpy.loader.load(fn) as file:
                     bindata = renpy.game.script.read_rpyc_data(file, 1)
-                    sys.files.append((abspath, fn, dir, bindata))
+                    sys.files.append((abspath, bindata))
 
-    renpy_modules = sys.modules.copy()
     for i in renpy_modules:
         if b"renpy" in i and not b"renpy.execution" in i:
             sys.modules.pop(i)
-
-    renpy_loader = sys.meta_path.pop()
+    sys.meta_path[:] = [i for i in sys.meta_path if "renpy" not in i.__class__.__module__]
 
     # ?????????
     unrpyc = pickle.loads(base64.b64decode({}))
@@ -242,8 +219,9 @@ init python early hide:
     from decompiler.magic import remove_fake_package
     remove_fake_package(b"renpy")
 
+    sys.modules.clear()
     sys.modules.update(renpy_modules)
-    sys.meta_path.append(renpy_loader)
+    sys.meta_path[:] = renpy_meta_path
 """
 
 unrpyc = zlib.compress(
@@ -259,7 +237,7 @@ bytecoderpyb = zlib.compress(
 9)
 
 unrpy = rpy_base.format(
-    repr(base64.b64encode(p.optimize(p.dumps(rpy_items, protocol), protocol)))
+    repr(base64.b64encode(p.optimize(p.dumps(decompiler_items, protocol), protocol)))
 )
 
 
@@ -301,4 +279,4 @@ if args.debug:
         p.pprint(decompiler_rpyc, f)
 
     with open(path.join(pack_folder, "un.rpy.dis"), "wb" if p.PY2 else "w") as f:
-        pickletools.dis(p.dumps(rpy_items, protocol), f)
+        pickletools.dis(p.dumps(decompiler_items, protocol), f)
