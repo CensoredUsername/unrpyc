@@ -24,8 +24,24 @@ jobs:
     #     python-version: "2.7"
     - name: Test by decompiling a script and building un.rpyc
       run: |
+        echo "Testing the command line tool"
         ./unrpyc.py --clobber --init-offset "testcases/compiled/**/*.rpyc"
         diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+
+        echo "Compiling un.rpyc"
         cd un.rpyc;
         ./compile.py -p 1
         cd ..
+
+        # test all the different iterations of it
+        echo "Testing un.rpyc"
+        ./testcases/test_un_rpyc.py --unrpyc un.rpyc/un.rpyc "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+
+        echo "Testing bytecode.rpyb"
+        ./testcases/test_un_rpyc.py --unrpyb un.rpyc/bytecode.rpyb "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
+
+        echo "Testing un.rpy"
+        ./testcases/test_un_rpyc.py --unrpy un.rpyc/un.rpy "testcases/compiled/**/*.rpyc"
+        diff -ur testcases/expected testcases/compiled -x "*.rpyc"
