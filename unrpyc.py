@@ -20,6 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
+__title__ = "Unrpyc"
+__version__ = 'v2.1.dev'
+__url__ = "https://github.com/CensoredUsername/unrpyc"
+
+
 import sys
 import argparse
 from pathlib import Path
@@ -234,8 +240,9 @@ def worker(arg_tup):
 
 def main():
     if not sys.version_info[:2] >= (3, 9):
-        raise Exception("Must be executed in Python 3.9 or later.\n"
-                        f"You are running {sys.version}")
+        raise RuntimeError(
+            f"'{__title__} {__version__}' must be executed in Python 3.9 or later.\n"
+            f"You are running {sys.version}")
 
     # argparse usage: python3 unrpyc.py [-c] [--try-harder] [-d] [-p] file [file ...]
     cc_num = cpu_count()
@@ -341,6 +348,11 @@ def main():
         "and the second argument is a string containing the name of the displayable, "
         "potentially followed by a '-', and the amount of children the displayable takes"
         "(valid options are '0', '1' or 'many', with 'many' being the default)")
+
+    ap.add_argument(
+        '--version',
+        action='version',
+        version=f"{__title__} {__version__}")
 
     args = ap.parse_args()
 
