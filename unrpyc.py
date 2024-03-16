@@ -60,24 +60,54 @@ printlock = Lock()
 # API
 
 def read_ast_from_file(in_file):
-    # .rpyc files are just zlib compressed pickles of a tuple of some data and the actual AST of the file
+    # Reads rpyc v1 or v2 file
+    # v1 files are just a zlib compressed pickle blob containing some data and the ast
+    # v2 files contain a basic archive structure that can be parsed to find the same blob
     raw_contents = in_file.read()
-    if raw_contents.startswith("RENPY RPC2"):
+
+    if not raw_contents.startswith("RENPY RPC2"):
+        # if the header isn't present, it should be a RPYC V1 file, which is just the blob
+        contents = raw_contents
+
+    else:
         # parse the archive structure
         position = 10
         chunks = {}
-        while True:
+        have_errored = False
+
+        for expected_slot in xrange(1, 0x7FFFFFFF):
             slot, start, length = struct.unpack("III", raw_contents[position: position + 12])
+
             if slot == 0:
                 break
+
+            if slot != expected_slot and not have_errored:
+                have_errored = True
+
+                with printlock:
+                    print(
+                        "Warning: encountered an unexpected slot structure. It is possible the \n"
+                        "    file header structure has been changed.")
+
             position += 12
 
             chunks[slot] = raw_contents[start: start + length]
 
-        raw_contents = chunks[1]
+        if not 1 in chunks:
+            raise Exception(
+                "Unable to find the right slot to load from the rpyc file. The file header "
+                "structure has been changed.")
 
-    raw_contents = zlib.decompress(raw_contents)
-    _, stmts = pickle_safe_loads(raw_contents)
+        contents = chunks[1]
+
+    try:
+        contents = zlib.decompress(contents)
+    except Exception:
+        raise Exception(
+            "Did not find a zlib compressed blob where it was expected. Either the header has been "
+            "modified or the file structure has been changed.")
+
+    _, stmts = pickle_safe_loads(contents)
     return stmts
 
 
