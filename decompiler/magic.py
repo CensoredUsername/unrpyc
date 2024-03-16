@@ -522,7 +522,16 @@ class SafePickler(pickle.Pickler if PY2 else pickle._Pickler):
 
     def save_global(self, obj, name=None, pack=struct.pack):
         if isinstance(obj, FakeClassType):
-            self.write(pickle.GLOBAL + obj.__module__ + '\n' + obj.__name__ + '\n')
+            if PY2:
+                self.write(pickle.GLOBAL + obj.__module__ + '\n' + obj.__name__ + '\n')
+            elif self.proto >= 4:
+                self.save(obj.__module__)
+                self.save(obj.__name__)
+                self.write(STACK_GLOBAL)
+            else:
+                self.write(pickle.GLOBAL +
+                    (obj.__module__ + '\n' + obj.__name__ + '\n').decode("utf-8")
+                )
             self.memoize(obj)
             return
 
