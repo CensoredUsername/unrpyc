@@ -446,12 +446,12 @@ class SL2Decompiler(DecompilerBase):
                         current_keyword_line = (lineno, "keywords", [content])
 
                 elif ty == "broken":
-                    contents_grouped.append(current_keyword_line[0], "keywords_broken", current_keyword_line[2], content)
+                    contents_grouped.append((current_keyword_line[0], "keywords_broken", current_keyword_line[2], content))
                     current_keyword_line = None
 
                 elif ty == "atl":
                     if current_keyword_line[0] == lineno:
-                        contents_grouped.append(lineno, "keywords_atl", current_keyword_line[2], content)
+                        contents_grouped.append((lineno, "keywords_atl", current_keyword_line[2], content))
                         current_keyword_line = None
                     else:
                         contents_grouped.append(current_keyword_line)
