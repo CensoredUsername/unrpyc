@@ -106,7 +106,12 @@ def read_ast_from_file(in_file):
 
         contents = chunks[1]
 
-    contents = zlib.decompress(contents)
+    try:
+        contents = zlib.decompress(contents)
+    except Exception as e:
+        raise Exception(
+            "Did not find a zlib compressed blob where it was expected. Either the header has been "
+            "modified or the file structure has been changed.") from None
 
     # add some detection of ren'py 7 files
     if is_rpyc_v1 or pickle_detect_python2(contents):
