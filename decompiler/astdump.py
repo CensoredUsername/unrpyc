@@ -1,4 +1,4 @@
-# Copyright (c) 2013 CensoredUsername
+# Copyright (c) 2013-2024 CensoredUsername, Jackmcbarn
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
