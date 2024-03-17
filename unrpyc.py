@@ -69,9 +69,13 @@ class BrokenHeaderError(Exception):
     """A rpy(m)c-file header is incorrect."""
 
 
+class DeobfuscationError(Exception):
+    """A attempt to deobfuscate failed."""
+
+
 manager = Manager()
 printlock = manager.Lock()
-result_count = manager.dict({'total': 0, 'ok': 0, 'fail': 0, 'skip': 0, 'hdr_fail': 0})
+result_count = manager.dict({'total': 0, 'ok': 0, 'fail': 0, 'skip': 0, 'spoofed': 0})
 
 
 # API
@@ -251,18 +255,19 @@ def worker(arg_tup):
         with printlock:
             print("Error while trying to read the header of %s:" % filename)
             print(traceback.format_exc())
-
-            result_count['hdr_fail'] += 1
-
+            result_count['spoofed'] += 1
         return
-
+    except DeobfuscationError:
+        with printlock:
+            print("Error while trying to deobfuscate %s:" % filename)
+            print(traceback.format_exc())
+            result_count['spoofed'] += 1
+        return
     except Exception:
         with printlock:
             print("Error while decompiling %s:" % filename)
             print(traceback.format_exc())
-
             result_count['fail'] += 1
-
         return
 
 
@@ -464,19 +469,21 @@ def main():
         return f"{inp} file{'s'[:inp^1]}"
 
     if not args.write_translation_file:
-        endreport = f"""
-    This decompile run of Unrpyc has the following outcome:
-    {55 * '-'}
-        A total of {plural_fmt(result_count['total'])} to decompile where found.
-        > {plural_fmt(result_count['ok'])} could be successful decompiled.
-        > {plural_fmt(result_count['fail'])} failed due to errors.
-        > {plural_fmt(result_count['hdr_fail'])} with wrong header string.
-        > {plural_fmt(result_count['skip'])} where skipped because they existed already.
-          {'(use option --clopper to overwrite)' if result_count['skip'] != 0 else ''}
-    """
+        skiped = ("To overwrite existing files use option '--clopper'. "
+                  if result_count['skip'] != 0 else "")
+        spoofed = ("For manipulations can option '--try-harder' attempted."
+                   if result_count['spoofed'] != 0 else "")
+        endreport = (
+            "\nThis decompile run of Unrpyc has the following outcome:\n"
+            f"{55 * '-'}\n"
+            f"  A total of {plural_fmt(result_count['total'])} to decompile where found.\n"
+            f"  > {plural_fmt(result_count['ok'])} could be successful decompiled.\n"
+            f"  > {plural_fmt(result_count['fail'])} failed due to errors.\n"
+            f"  > {plural_fmt(result_count['spoofed'])} with wrong header or other manipulation.\n"
+            f"  > {plural_fmt(result_count['skip'])} already exist and have been skipped.\n"
+            f"{skiped}{spoofed}")
     else:
         endreport = "Writing of translation file done."
-
     print(endreport)
 
 

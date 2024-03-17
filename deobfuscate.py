@@ -38,7 +38,7 @@ import struct
 import base64
 from collections import Counter
 from decompiler.renpycompat import pickle_safe_loads
-import unrpyc
+from unrpyc import DeobfuscationError, printlock
 
 
 # Extractors are simple functions of (fobj, slotno) -> bytes
@@ -293,7 +293,7 @@ def read_ast(f):
 
     if not raw_datas:
         diagnosis.append("All strategies failed. Unable to extract data")
-        raise ValueError("\n".join(diagnosis))
+        raise DeobfuscationError("\n  ".join(diagnosis))
 
     if len(raw_datas) != 1:
         diagnosis.append("Strategies produced different results. Trying all options")
@@ -306,12 +306,12 @@ def read_ast(f):
             diagnosis.append(e.message)
         else:
             diagnosis.extend(d)
-            with unrpyc.printlock:
-                print("\n".join(diagnosis))
+            with printlock:
+                print("\n  ".join(diagnosis))
             return stmts
 
     diagnosis.append("All strategies failed. Unable to deobfuscate data")
-    raise ValueError("\n".join(diagnosis))
+    raise DeobfuscationError("\n".join(diagnosis))
 
 
 def try_decrypt_section(raw_data):
