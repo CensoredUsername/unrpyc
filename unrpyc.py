@@ -37,9 +37,14 @@ import zlib
 try:
     from multiprocessing import Pool, Lock, Manager, cpu_count
 except ImportError:
+    traceback.print_exc()
+
     # Mock required support when multiprocessing is unavailable
     def cpu_count():
         return 1
+
+    def Manager():
+        return sys.modules[__name__]
 
     class Lock:
         def __enter__(self):
@@ -50,6 +55,8 @@ except ImportError:
             pass
         def release(self):
             pass
+
+    dict = dict
 
 import decompiler
 import deobfuscate
