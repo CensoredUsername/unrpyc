@@ -250,7 +250,7 @@ with (PACK_FOLDER / "un.rpy").open("w", encoding="utf-8") as f:
     f.write(unrpy)
 
 if args.debug:
-    print("File length = {0}".format(len(unrpyc)))
+    print(f'File length = {len(unrpyc)}')
 
     import pickletools
 
@@ -279,4 +279,3 @@ if args.debug:
 
     with (PACK_FOLDER / "un.rpy.dis").open("w", encoding="utf-8") as f:
         pickletools.dis(p.dumps(decompiler_items, protocol), f)
-
