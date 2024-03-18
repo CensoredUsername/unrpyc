@@ -53,92 +53,92 @@ class TestcaseDecompiler(DecompilerBase):
             with self.increase_indent():
                 self.write_lines(split_logical_lines(code[1:]))
         else:
-            self.write("$ %s" % code)
+            self.write(f'$ {code}')
 
     @dispatch(testast.If)
     def print_if(self, ast):
         self.indent()
-        self.write('if %s:' % ast.condition)
+        self.write(f'if {ast.condition}:')
         self.print_nodes(ast.block, extra_indent=1)
 
     @dispatch(testast.Assert)
     def print_assert(self, ast):
         self.indent()
-        self.write('assert %s' % ast.expr)
+        self.write(f'assert {ast.expr}')
 
     @dispatch(testast.Jump)
     def print_jump(self, ast):
         self.indent()
-        self.write('jump %s' % ast.target)
+        self.write(f'jump {ast.target}')
 
     @dispatch(testast.Call)
     def print_call(self, ast):
         self.indent()
-        self.write('call %s' % ast.target)
+        self.write(f'call {ast.target}')
 
     @dispatch(testast.Action)
     def print_action(self, ast):
         self.indent()
-        self.write('run %s' % ast.expr)
+        self.write(f'run {ast.expr}')
 
     @dispatch(testast.Pause)
     def print_pause(self, ast):
         self.indent()
-        self.write('pause %s' % ast.expr)
+        self.write(f'pause {ast.expr}')
 
     @dispatch(testast.Label)
     def print_label(self, ast):
         self.indent()
-        self.write('label %s' % ast.name)
+        self.write(f'label {ast.name}')
 
     @dispatch(testast.Type)
     def print_type(self, ast):
         self.indent()
         if len(ast.keys[0]) == 1:
-            self.write('type "%s"' % string_escape(''.join(ast.keys)))
+            self.write(f'type "{string_escape("".join(ast.keys))}"')
         else:
-            self.write('type %s' % ast.keys[0])
+            self.write(f'type {ast.keys[0]}')
         if ast.pattern is not None:
-            self.write(' pattern "%s"' % string_escape(ast.pattern))
+            self.write(f' pattern "{string_escape(ast.pattern)}"')
         if hasattr(ast, 'position') and ast.position is not None:
-            self.write(' pos %s' % ast.position)
+            self.write(f' pos {ast.position}')
 
     @dispatch(testast.Drag)
     def print_drag(self, ast):
         self.indent()
-        self.write('drag %s' % ast.points)
+        self.write(f'drag {ast.points}')
         if ast.button != 1:
-            self.write(' button %d' % ast.button)
+            self.write(f' button {ast.button}')
         if ast.pattern is not None:
-            self.write(' pattern "%s"' % string_escape(ast.pattern))
+            self.write(f' pattern "{string_escape(ast.pattern)}"')
         if ast.steps != 10:
-            self.write(' steps %d' % ast.steps)
+            self.write(f' steps {ast.steps}')
 
     @dispatch(testast.Move)
     def print_move(self, ast):
         self.indent()
-        self.write('move %s' % ast.position)
+        self.write(f'move {ast.position}')
         if ast.pattern is not None:
-            self.write(' pattern "%s"' % string_escape(ast.pattern))
+            self.write(f' pattern "{string_escape(ast.pattern)}"')
 
     @dispatch(testast.Click)
     def print_click(self, ast):
         self.indent()
         if ast.pattern is not None:
-            self.write('"%s"' % string_escape(ast.pattern))
+            self.write(f'"{string_escape(ast.pattern)}"')
         else:
-            self.write('click')
+            self.write("click")
         if hasattr(ast, 'button') and ast.button != 1:
-            self.write(' button %d' % ast.button)
+            self.write(f' button {ast.button}')
         if hasattr(ast, 'position') and ast.position is not None:
-            self.write(' pos %s' % ast.position)
+            self.write(f' pos {ast.position}')
         if hasattr(ast, 'always') and ast.always:
-            self.write(' always')
+            self.write(" always")
 
     @dispatch(testast.Scroll)
     def print_scroll(self, ast):
         self.indent()
-        self.write('scroll "%s"' % string_escape(ast.pattern))
+        self.write(f'scroll "{string_escape(ast.pattern)}"')
 
     @dispatch(testast.Until)
     def print_until(self, ast):
@@ -147,6 +147,6 @@ class TestcaseDecompiler(DecompilerBase):
             # Go to right's line number now since we can't go to it after we print left.
             self.advance_to_line(ast.right.linenumber)
         self.print_node(ast.left)
-        self.write(' until ')
+        self.write(" until ")
         self.skip_indent_until_write = True
         self.print_node(ast.right)

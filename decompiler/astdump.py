@@ -58,7 +58,7 @@ class AstDumper(object):
         except ValueError:
             pass
         else:
-            self.p('<circular reference to object on line %d>' % self.passed_where[i])
+            self.p(f'<circular reference to object on line {self.passed_where[i]}>')
             return
         self.passed.append(ast)
         self.passed_where.append(self.linenumber)

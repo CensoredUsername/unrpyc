@@ -1,7 +1,7 @@
 # Copyright (c) 2014-2024 CensoredUsername, Jackmcbarn
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
+# of this software and associated documentation files (the "Software'), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
@@ -189,11 +189,11 @@ class DecompilerBase:
     def write_failure(self, message):
         self.print_debug(message)
         self.indent()
-        self.write("pass # <<<COULD NOT DECOMPILE: %s>>>" % message)
+        self.write(f'pass # <<<COULD NOT DECOMPILE: {message}>>>')
 
     def print_unknown(self, ast):
         # If we encounter a placeholder note, print a warning and insert a placeholder
-        self.write_failure("Unknown AST node: %s" % str(type(ast)))
+        self.write_failure(f'Unknown AST node: {str(type(ast))}')
 
     def print_node(self, ast):
         raise NotImplementedError()
@@ -222,7 +222,7 @@ def reconstruct_paraminfo(paraminfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(paraminfo, "positional_only"):
+    if hasattr(paraminfo, 'positional_only'):
         # ren'py 7.5-7.6 and 8.0-8.1, a slightly changed variant of 7.4 and before
 
         already_accounted = set(name for name, default in paraminfo.positional_only)
@@ -267,7 +267,7 @@ def reconstruct_paraminfo(paraminfo):
             rv.append("**")
             rv.append(paraminfo.extrakw)
 
-    elif hasattr(paraminfo, "extrapos"):
+    elif hasattr(paraminfo, 'extrapos'):
         # ren'py 7.4 and below, python 2 style
         positional = [i for i in paraminfo.parameters if i[0] in paraminfo.positional]
         nameonly = [i for i in paraminfo.parameters if i not in positional]
@@ -275,10 +275,10 @@ def reconstruct_paraminfo(paraminfo):
             rv.append(sep())
             rv.append(parameter[0])
             if parameter[1] is not None:
-                rv.append("=%s" % parameter[1])
+                rv.append(f'={parameter[1]}')
         if paraminfo.extrapos:
             rv.append(sep())
-            rv.append("*%s" % paraminfo.extrapos)
+            rv.append(f'*{paraminfo.extrapos}')
         if nameonly:
             if not paraminfo.extrapos:
                 rv.append(sep())
@@ -287,10 +287,10 @@ def reconstruct_paraminfo(paraminfo):
                 rv.append(sep())
                 rv.append(parameter[0])
                 if parameter[1] is not None:
-                    rv.append("=%s" % parameter[1])
+                    rv.append(f'={parameter[1]}')
         if paraminfo.extrakw:
             rv.append(sep())
-            rv.append("**%s" % paraminfo.extrakw)
+            rv.append(f'**{paraminfo.extrakw}')
 
     else:
         # ren'py 7.7/8.2 and above.
@@ -307,7 +307,7 @@ def reconstruct_paraminfo(paraminfo):
 
                 rv.append(parameter.name)
                 if parameter.default is not None:
-                    rv.append("=%s" % parameter.default)
+                    rv.append(f'={parameter.default}')
 
             else:
                 if state == 0:
@@ -320,29 +320,29 @@ def reconstruct_paraminfo(paraminfo):
                     # positional or keyword
                     rv.append(parameter.name)
                     if parameter.default is not None:
-                        rv.append("=%s" % parameter.default)
+                        rv.append(f'={parameter.default}')
 
                 elif parameter.kind == 2:
                     # *positional
                     state = 2
-                    rv.append("*%s" % parameter.name)
+                    rv.append(f'*{parameter.name}')
 
                 elif parameter.kind == 3:
                     # keyword only
                     if state == 1:
                         # insert the * if we didn't have a *args before
                         state = 2
-                        rv.append("*")
+                        rv.append('*')
                         rv.append(sep())
 
                     rv.append(parameter.name)
                     if parameter.default is not None:
-                        rv.append("=%s" % parameter.default)
+                        rv.append(f'={parameter.default}')
 
                 elif parameter.kind == 4:
                     # **keyword
                     state = 3
-                    rv.append("**%s" % parameter.name)
+                    rv.append(f'**{parameter.name}')
 
     rv.append(")")
 
@@ -355,16 +355,16 @@ def reconstruct_arginfo(arginfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(arginfo, "starred_indexes"):
+    if hasattr(arginfo, 'starred_indexes'):
         # ren'py 7.5 and above, PEP 448 compliant
         for i, (name, val) in enumerate(arginfo.arguments):
             rv.append(sep())
             if name is not None:
-                rv.append("%s=" % name)
+                rv.append(f'{name}=')
             elif i in arginfo.starred_indexes:
-                rv.append("*")
+                rv.append('*')
             elif i in arginfo.doublestarred_indexes:
-                rv.append("**")
+                rv.append('**')
             rv.append(val)
 
     else:
@@ -372,14 +372,14 @@ def reconstruct_arginfo(arginfo):
         for (name, val) in arginfo.arguments:
             rv.append(sep())
             if name is not None:
-                rv.append("%s=" % name)
+                rv.append(f'{name}=')
             rv.append(val)
         if arginfo.extrapos:
             rv.append(sep())
-            rv.append("*%s" % arginfo.extrapos)
+            rv.append(f'*{arginfo.extrapos}')
         if arginfo.extrakw:
             rv.append(sep())
-            rv.append("**%s" % arginfo.extrakw)
+            rv.append(f'**{arginfo.extrakw}')
 
     rv.append(")")
 
@@ -412,7 +412,7 @@ def simple_expression_guard(s):
     if Lexer(s).simple_expression():
         return s
     else:
-        return "(%s)" % s
+        return f'({s})'
 
 def split_logical_lines(s):
     return Lexer(s).split_logical_lines()
@@ -649,12 +649,12 @@ def say_get_code(ast, inmenu=False):
         rv.append("nointeract")
 
     # explicit_identifier was only added in 7.7/8.2.
-    if hasattr(ast, "explicit_identifier") and ast.explicit_identifier:
+    if hasattr(ast, 'explicit_identifier') and ast.explicit_identifier:
         rv.append("id")
         rv.append(ast.identifier)
     # identifier was added in 7.4.1. But the way ren'py processed it
     # means it doesn't stored it in the pickle unless explicitly set
-    elif hasattr(ast, "identifier") and ast.identifier is not None:
+    elif hasattr(ast, 'identifier') and ast.identifier is not None:
         rv.append("id")
         rv.append(ast.identifier)
 

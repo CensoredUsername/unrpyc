@@ -104,7 +104,7 @@ class ATLDecompiler(DecompilerBase):
 
         # circles
         if ast.circles != "0":
-            words.append("circles %s" % ast.circles)
+            words.append(f'circles {ast.circles}')
 
         # splines
         spline_words = WordConcatenator(False)
@@ -165,7 +165,7 @@ class ATLDecompiler(DecompilerBase):
             self.indent()
             self.write("choice")
             if chance != "1.0":
-                self.write(" %s" % chance)
+                self.write(f' {chance}')
             self.write(":")
             self.print_block(block)
         if (self.index + 1 < len(self.block) and
@@ -176,17 +176,17 @@ class ATLDecompiler(DecompilerBase):
     @dispatch(renpy.atl.RawContainsExpr)
     def print_atl_rawcontainsexpr(self, ast):
         self.indent()
-        self.write("contains %s" % ast.expression)
+        self.write(f'contains {ast.expression}')
 
     @dispatch(renpy.atl.RawEvent)
     def print_atl_rawevent(self, ast):
         self.indent()
-        self.write("event %s" % ast.name)
+        self.write(f'event {ast.name}')
 
     @dispatch(renpy.atl.RawFunction)
     def print_atl_rawfunction(self, ast):
         self.indent()
-        self.write("function %s" % ast.expr)
+        self.write(f'function {ast.expr}')
 
     @dispatch(renpy.atl.RawOn)
     def print_atl_rawon(self, ast):
@@ -194,7 +194,7 @@ class ATLDecompiler(DecompilerBase):
                                   key=lambda i: i[1].loc[1]):
             self.advance_to_block(block)
             self.indent()
-            self.write("on %s:" % name)
+            self.write(f'on {name}:')
             self.print_block(block)
 
     @dispatch(renpy.atl.RawParallel)
@@ -214,9 +214,9 @@ class ATLDecompiler(DecompilerBase):
         self.indent()
         self.write("repeat")
         if ast.repeats:
-            self.write(" %s" % ast.repeats) # not sure if this is even a string
+            self.write(f' {ast.repeats}')  # not sure if this is even a string
 
     @dispatch(renpy.atl.RawTime)
     def print_atl_rawtime(self, ast):
         self.indent()
-        self.write("time %s" % ast.time)
+        self.write(f'time {ast.time}')

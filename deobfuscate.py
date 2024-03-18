@@ -286,9 +286,11 @@ def read_ast(f):
         try:
             data = extractor(f, 1)
         except ValueError as e:
-            diagnosis.append("strategy %s failed: %s" % (extractor.__name__, "\n".join(e.args)))
+            # inside f-string braces "\" are not allowed before py3.12, so we use chr() till
+            # this our minimum py is
+            diagnosis.append(f'strategy {extractor.__name__} failed: {chr(10).join(e.args)}')
         else:
-            diagnosis.append("strategy %s success" % extractor.__name__)
+            diagnosis.append(f'strategy {extractor.__name__} success')
             raw_datas.add(data)
 
     if not raw_datas:
@@ -336,7 +338,7 @@ def try_decrypt_section(raw_data):
                 continue
             else:
                 raw_data = newdata
-                diagnosis.append("performed a round of %s" % decryptor.__name__)
+                diagnosis.append(f'performed a round of {decryptor.__name__}')
                 break
         else:
             break

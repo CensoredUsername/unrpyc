@@ -131,25 +131,25 @@ class Decompiler(DecompilerBase):
 
     def print_imspec(self, imspec):
         if imspec[1] is not None:
-            begin = "expression %s" % imspec[1]
+            begin = f'expression {imspec[1]}'
         else:
             begin = " ".join(imspec[0])
 
         words = WordConcatenator(begin and begin[-1] != ' ', True)
         if imspec[2] is not None:
-            words.append("as %s" % imspec[2])
+            words.append(f'as {imspec[2]}')
 
         if len(imspec[6]) > 0:
-            words.append("behind %s" % ', '.join(imspec[6]))
+            words.append(f'behind {", ".join(imspec[6])}')
 
         if isinstance(imspec[4], str):
-            words.append("onlayer %s" % imspec[4])
+            words.append(f'onlayer {imspec[4]}')
 
         if imspec[5] is not None:
-            words.append("zorder %s" % imspec[5])
+            words.append(f'zorder {imspec[5]}')
 
         if len(imspec[3]) > 0:
-            words.append("at %s" % ', '.join(imspec[3]))
+            words.append(f'at {", ".join(imspec[3])}')
 
         self.write(begin + words.join())
         return words.needs_space
@@ -158,9 +158,9 @@ class Decompiler(DecompilerBase):
     def print_image(self, ast):
         self.require_init()
         self.indent()
-        self.write("image %s" % ' '.join(ast.imgname))
+        self.write(f'image {" ".join(ast.imgname)}')
         if ast.code is not None:
-            self.write(" = %s" % ast.code.source)
+            self.write(f' = {ast.code.source}')
         else:
             if ast.atl is not None:
                 self.write(":")
@@ -176,8 +176,8 @@ class Decompiler(DecompilerBase):
         if isinstance(self.parent, renpy.ast.Init):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
-                priority = " %d" % (init.priority - self.init_offset)
-        self.write("transform%s %s" % (priority, ast.varname))
+                priority = f' {init.priority - self.init_offset}'
+        self.write(f'transform{priority} {ast.varname}')
         if ast.parameters is not None:
             self.write(reconstruct_paraminfo(ast.parameters))
 
@@ -197,7 +197,7 @@ class Decompiler(DecompilerBase):
         if self.paired_with:
             if needs_space:
                 self.write(" ")
-            self.write("with %s" % self.paired_with)
+            self.write(f'with {self.paired_with}')
             self.paired_with = True
 
         # atl attribute: since 6.10
@@ -208,10 +208,10 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.ShowLayer)
     def print_showlayer(self, ast):
         self.indent()
-        self.write("show layer %s" % ast.layer)
+        self.write(f'show layer {ast.layer}')
 
         if ast.at_list:
-            self.write(" at %s" % ', '.join(ast.at_list))
+            self.write(f' at {", ".join(ast.at_list)}')
 
         if ast.atl is not None:
             self.write(":")
@@ -224,7 +224,7 @@ class Decompiler(DecompilerBase):
 
         if ast.imspec is None:
             if isinstance(ast.layer, str):
-                self.write(" onlayer %s" % ast.layer)
+                self.write(f' onlayer {ast.layer}')
             needs_space = True
         else:
             self.write(" ")
@@ -233,7 +233,7 @@ class Decompiler(DecompilerBase):
         if self.paired_with:
             if needs_space:
                 self.write(" ")
-            self.write("with %s" % self.paired_with)
+            self.write(f'with {self.paired_with}')
             self.paired_with = True
 
         # atl attribute: since 6.10
@@ -249,7 +249,7 @@ class Decompiler(DecompilerBase):
         if self.paired_with:
             if needs_space:
                 self.write(" ")
-            self.write("with %s" % self.paired_with)
+            self.write(f'with {self.paired_with}')
             self.paired_with = True
 
     @dispatch(renpy.ast.With)
@@ -261,8 +261,8 @@ class Decompiler(DecompilerBase):
             # Sanity check. check if there's a matching with statement two nodes further
             if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
                    self.block[self.index + 2].expr == ast.paired):
-                raise Exception("Unmatched paired with {0} != {1}".format(
-                                repr(self.paired_with), repr(ast.expr)))
+                raise Exception(
+                    f'Unmatched paired with {repr(self.paired_with)} != {repr(ast.expr)}')
 
             self.paired_with = ast.paired
 
@@ -270,12 +270,12 @@ class Decompiler(DecompilerBase):
         elif self.paired_with:
             # Check if it was consumed by a show/scene statement
             if self.paired_with is not True:
-                self.write(" with %s" % ast.expr)
+                self.write(f' with {ast.expr}')
             self.paired_with = False
         else:
             self.advance_to_line(ast.linenumber)
             self.indent()
-            self.write("with %s" % ast.expr)
+            self.write(f'with {ast.expr}')
             self.paired_with = False
 
     @dispatch(renpy.ast.Camera)
@@ -284,10 +284,10 @@ class Decompiler(DecompilerBase):
         self.write("camera")
 
         if ast.layer != "master":
-            self.write(" %s" % ast.name)
+            self.write(f' {ast.name}')
 
         if ast.at_list:
-            self.write(" at %s" % ", ".join(ast.at_list))
+            self.write(f' at {", ".join(ast.at_list)}')
 
         if ast.atl is not None:
             self.write(":")
@@ -333,10 +333,8 @@ class Decompiler(DecompilerBase):
         missing_init = self.missing_init
         self.missing_init = False
         try:
-            self.write("label %s%s%s:" % (
-                ast.name,
-                reconstruct_paraminfo(ast.parameters),
-                " hide" if getattr(ast, "hide", False) else ""))
+            self.write(f'label {ast.name}{reconstruct_paraminfo(ast.parameters)}'
+                       f'{" hide" if getattr(ast, "hide", False) else ""}:')
             self.print_nodes(ast.block, 1)
         finally:
             if self.missing_init:
@@ -348,7 +346,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast):
         self.indent()
-        self.write("jump %s%s" % ("expression " if ast.expression else "", ast.target))
+        self.write(f'jump {"expression " if ast.expression else ""}{ast.target}')
 
     @dispatch(renpy.ast.Call)
     def print_call(self, ast):
@@ -368,7 +366,7 @@ class Decompiler(DecompilerBase):
         # since a Label or a Pass is always emitted after a Call.
         next_block = self.block[self.index + 1]
         if isinstance(next_block, renpy.ast.Label):
-            words.append("from %s" % next_block.name)
+            words.append(f'from {next_block.name}')
 
         self.write(words.join())
 
@@ -386,11 +384,11 @@ class Decompiler(DecompilerBase):
         self.write("return")
 
         if ast.expression is not None:
-            self.write(" %s" % ast.expression)
+            self.write(f' {ast.expression}')
 
     @dispatch(renpy.ast.If)
     def print_if(self, ast):
-        statement = First("if %s:", "elif %s:")
+        statement = First("if", "elif")
 
         for i, (condition, block) in enumerate(ast.entries):
             # The unicode string "True" is used as the condition for else:.
@@ -402,14 +400,14 @@ class Decompiler(DecompilerBase):
                 if(hasattr(condition, 'linenumber')):
                     self.advance_to_line(condition.linenumber)
                 self.indent()
-                self.write(statement() % condition)
+                self.write(f'{statement()} {condition}:')
 
             self.print_nodes(block, 1)
 
     @dispatch(renpy.ast.While)
     def print_while(self, ast):
         self.indent()
-        self.write("while %s:" % ast.condition)
+        self.write(f'while {ast.condition}:')
 
         self.print_nodes(ast.block, 1)
 
@@ -466,7 +464,7 @@ class Decompiler(DecompilerBase):
                 return True
             if offset != self.init_offset:
                 self.indent()
-                self.write("init offset = %s" % offset)
+                self.write(f'init offset = {offset}')
                 self.init_offset = offset
             return False
 
@@ -510,7 +508,7 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("init")
                 if ast.priority != self.init_offset:
-                    self.write(" %d" % (ast.priority - self.init_offset))
+                    self.write(f' {ast.priority - self.init_offset}')
 
                 if len(ast.block) == 1 and not self.should_come_before(ast, ast.block[0]):
                     self.write(" ")
@@ -528,7 +526,7 @@ class Decompiler(DecompilerBase):
 
     def print_menu_item(self, label, condition, block, arguments):
         self.indent()
-        self.write('"%s"' % string_escape(label))
+        self.write(f'"{string_escape(label)}"')
 
         if arguments is not None:
             self.write(reconstruct_arginfo(arguments))
@@ -536,7 +534,7 @@ class Decompiler(DecompilerBase):
         if block is not None:
             # ren'py uses the unicode string "True" as condition when there isn't one.
             if isinstance(condition, renpy.ast.PyExpr):
-                self.write(" if %s" % condition)
+                self.write(f' if {condition}')
             self.write(":")
             self.print_nodes(block, 1)
 
@@ -545,7 +543,7 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("menu")
         if self.label_inside_menu is not None:
-            self.write(" %s" % self.label_inside_menu.name)
+            self.write(f' {self.label_inside_menu.name}')
             self.label_inside_menu = None
 
         # arguments attribute added in 7.1.4
@@ -557,14 +555,14 @@ class Decompiler(DecompilerBase):
         with self.increase_indent():
             if ast.with_ is not None:
                 self.indent()
-                self.write("with %s" % ast.with_)
+                self.write(f'with {ast.with_}')
 
             if ast.set is not None:
                 self.indent()
-                self.write("set %s" % ast.set)
+                self.write(f'set {ast.set}')
 
             # item_arguments attribute since 7.1.4
-            if hasattr(ast, "item_arguments"):
+            if hasattr(ast, 'item_arguments'):
                 item_arguments = ast.item_arguments
             else:
                 item_arguments = [None] * len(ast.items)
@@ -633,7 +631,7 @@ class Decompiler(DecompilerBase):
                 self.write_lines(split_logical_lines(code))
 
         else:
-            self.write("$ %s" % code)
+            self.write(f'$ {code}')
 
     @dispatch(renpy.ast.EarlyPython)
     def print_earlypython(self, ast):
@@ -649,21 +647,23 @@ class Decompiler(DecompilerBase):
         if isinstance(self.parent, renpy.ast.Init):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
-                priority = " %d" % (init.priority - self.init_offset)
+                priority = f' {init.priority - self.init_offset}'
 
         index = ""
         # index attribute added in 7.4
         if getattr(ast, "index", None) is not None:
-            index = "[%s]" % ast.index.source
+            index = f'[{ast.index.source}]'
 
         # operator attribute added in 7.4
         operator = getattr(ast, "operator", "=")
 
         # store attribute added in 6.18.2
         if getattr(ast, "store", "store") == "store":
-            self.write("define%s %s%s %s %s" % (priority, ast.varname, index, operator, ast.code.source))
+            self.write(f'define{priority} {ast.varname}{index} {operator} {ast.code.source}')
         else:
-            self.write("define%s %s.%s%s %s %s" % (priority, ast.store[6:], ast.varname, index, operator, ast.code.source))
+            self.write(
+                f'define{priority} {ast.store[6:]}.{ast.varname}{index} {operator} '
+                f'{ast.code.source}')
 
     @dispatch(renpy.ast.Default)
     def print_default(self, ast):
@@ -675,12 +675,12 @@ class Decompiler(DecompilerBase):
         if isinstance(self.parent, renpy.ast.Init):
             init = self.parent
             if init.priority != self.init_offset and len(init.block) == 1 and not self.should_come_before(init, ast):
-                priority = " %d" % (init.priority - self.init_offset)
+                priority = f' {init.priority - self.init_offset}'
 
         if ast.store == "store":
-            self.write("default%s %s = %s" % (priority, ast.varname, ast.code.source))
+            self.write(f'default{priority} {ast.varname} = {ast.code.source}')
         else:
-            self.write("default%s %s.%s = %s" % (priority, ast.store[6:], ast.varname, ast.code.source))
+            self.write(f'default{priority} {ast.store[6:]}.{ast.varname} = {ast.code.source}')
 
     # Specials
 
@@ -688,7 +688,7 @@ class Decompiler(DecompilerBase):
     # actually belongs inside of the Menu statement.
     def say_belongs_to_menu(self, say, menu):
         return (not say.interact and say.who is not None and
-            say.with_ is None and 
+            say.with_ is None and
             say.attributes is None and
             isinstance(menu, renpy.ast.Menu) and
             menu.items[0][2] is not None and
@@ -733,30 +733,30 @@ class Decompiler(DecompilerBase):
 
         # These don't store a line number, so just put them on the first line
         if ast.parent is not None:
-            keywords[ast.linenumber].append("is %s" % ast.parent)
+            keywords[ast.linenumber].append(f'is {ast.parent}')
         if ast.clear:
             keywords[ast.linenumber].append("clear")
         if ast.take is not None:
-            keywords[ast.linenumber].append("take %s" % ast.take)
+            keywords[ast.linenumber].append(f'take {ast.take}')
         for delname in ast.delattr:
-            keywords[ast.linenumber].append("del %s" % delname)
+            keywords[ast.linenumber].append(f'del {delname}')
 
         # These do store a line number
         if ast.variant is not None:
             if ast.variant.linenumber not in keywords:
                 keywords[ast.variant.linenumber] = WordConcatenator(False)
-            keywords[ast.variant.linenumber].append("variant %s" % ast.variant)
+            keywords[ast.variant.linenumber].append(f'variant {ast.variant}')
         for key, value in ast.properties.items():
             if value.linenumber not in keywords:
                 keywords[value.linenumber] = WordConcatenator(False)
-            keywords[value.linenumber].append("%s %s" % (key, value))
+            keywords[value.linenumber].append(f'{key} {value}')
 
         keywords = sorted([(k, v.join()) for k, v in keywords.items()],
                           key=itemgetter(0))
         self.indent()
-        self.write("style %s" % ast.style_name)
+        self.write(f'style {ast.style_name}')
         if keywords[0][1]:
-            self.write(" %s" % keywords[0][1])
+            self.write(f' {keywords[0][1]}')
         if len(keywords) > 1:
             self.write(":")
             with self.increase_indent():
@@ -770,7 +770,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Translate)
     def print_translate(self, ast):
         self.indent()
-        self.write("translate %s %s:" % (ast.language or "None", ast.identifier))
+        self.write(f'translate {ast.language or "None"} {ast.identifier}:')
 
         self.print_nodes(ast.block, 1)
 
@@ -787,25 +787,25 @@ class Decompiler(DecompilerBase):
                isinstance(self.block[self.index - 1], renpy.ast.TranslateString) and
                self.block[self.index - 1].language == ast.language):
             self.indent()
-            self.write("translate %s strings:" % ast.language or "None")
+            self.write(f'translate {ast.language or "None"} strings:')
 
         # TranslateString's linenumber refers to the line with "old", not to the
-        # line with "translate %s strings:"
+        # line with "translate ... strings: (above)"
         with self.increase_indent():
             self.advance_to_line(ast.linenumber)
             self.indent()
-            self.write('old "%s"' % string_escape(ast.old))
+            self.write(f'old "{string_escape(ast.old)}"')
             # newlock attribute since 6.99
             if hasattr(ast, "newloc"):
                 self.advance_to_line(ast.newloc[1])
             self.indent()
-            self.write('new "%s"' % string_escape(ast.new))
+            self.write(f'new "{string_escape(ast.new)}"')
 
     @dispatch(renpy.ast.TranslateBlock)
     @dispatch(renpy.ast.TranslateEarlyBlock)
     def print_translateblock(self, ast):
         self.indent()
-        self.write("translate %s " % (ast.language or "None"))
+        self.write(f'translate {ast.language or "None"} ')
 
         self.skip_indent_until_write = True
 
@@ -845,7 +845,7 @@ class Decompiler(DecompilerBase):
     def print_testcase(self, ast):
         self.require_init()
         self.indent()
-        self.write('testcase %s:' % ast.label)
+        self.write(f'testcase {ast.label}:')
         self.linenumber = testcasedecompiler.pprint(
             self.out_file, ast.test.block, self.options,
             self.indent_level + 1, self.linenumber, self.skip_indent_until_write
@@ -857,4 +857,4 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.RPY)
     def print_rpy_python(self, ast):
         self.indent()
-        self.write("rpy python %s" % ast.rest)
+        self.write(f'rpy python {ast.rest}')
