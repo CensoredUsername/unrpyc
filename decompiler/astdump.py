@@ -199,7 +199,7 @@ class AstDumper(object):
         # prints the values of relevant attributes in a dictionary-like way
         # it will not print anything which is a bound method or starts with a _
         self.p('<')
-        self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
+        self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__') else str(ast))
 
         keys = list(i for i in dir(ast) if self.should_print_key(ast, i))
         if keys:

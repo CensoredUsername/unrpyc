@@ -503,15 +503,12 @@ class Lexer:
         return word
 
     def simple_expression(self):
-        # test if the start string was a simple expression
-        start = self.pos
-
         # check if there's anything in here acctually
         if self.eol():
             return False
 
         # parse anything which can be called or have attributes requested
-        if not(self.python_string() or
+        if not (self.python_string() or
                self.number() or
                self.container() or
                self.name()):
@@ -629,7 +626,7 @@ def encode_say_string(s):
 
 # Adapted from Ren'Py's Say.get_code
 def say_get_code(ast, inmenu=False):
-    rv = [ ]
+    rv = []
 
     if ast.who:
         rv.append(ast.who)

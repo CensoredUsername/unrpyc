@@ -109,8 +109,8 @@ class Translator:
 
     # Adapted from Ren'Py's Restructurer.callback
     def translate_dialogue(self, children):
-        new_children = [ ]
-        group = [ ]
+        new_children = []
+        group = []
 
         for i in children:
 
@@ -136,7 +136,7 @@ class Translator:
                 group.append(i)
                 tl = self.create_translate(group)
                 new_children.extend(tl)
-                group = [ ]
+                group = []
 
             elif hasattr(i, 'translatable') and i.translatable:
                 group.append(i)
@@ -145,13 +145,13 @@ class Translator:
                 if group:
                     tl = self.create_translate(group)
                     new_children.extend(tl)
-                    group = [ ]
+                    group = []
 
                 new_children.append(i)
 
         if group:
             nodes = self.create_translate(group)
             new_children.extend(nodes)
-            group = [ ]
+            group = []
 
         children[:] = new_children

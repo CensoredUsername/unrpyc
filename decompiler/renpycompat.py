@@ -161,7 +161,7 @@ CLASS_FACTORY = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
 
 def pickle_safe_loads(buffer: bytes):
-    return magic.safe_loads(buffer, CLASS_FACTORY, {"collections",}, encoding="ASCII", errors="strict")
+    return magic.safe_loads(buffer, CLASS_FACTORY, {"collections"}, encoding="ASCII", errors="strict")
 
 
 def pickle_safe_dumps(buffer: bytes):

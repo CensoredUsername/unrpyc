@@ -259,7 +259,7 @@ class Decompiler(DecompilerBase):
         # with statement. detect this and process it properly
         if ast.paired is not None:
             # Sanity check. check if there's a matching with statement two nodes further
-            if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
+            if not (isinstance(self.block[self.index + 2], renpy.ast.With) and
                    self.block[self.index + 2].expr == ast.paired):
                 raise Exception(f'Unmatched paired with {self.paired_with!r} != {ast.expr!r}')
 
@@ -396,7 +396,7 @@ class Decompiler(DecompilerBase):
                 self.indent()
                 self.write("else:")
             else:
-                if(hasattr(condition, 'linenumber')):
+                if (hasattr(condition, 'linenumber')):
                     self.advance_to_line(condition.linenumber)
                 self.indent()
                 self.write(f'{statement()} {condition}:')
@@ -782,7 +782,7 @@ class Decompiler(DecompilerBase):
     def print_translatestring(self, ast):
         self.require_init()
         # Was the last node a translatestrings node?
-        if not(self.index and
+        if not (self.index and
                isinstance(self.block[self.index - 1], renpy.ast.TranslateString) and
                self.block[self.index - 1].language == ast.language):
             self.indent()

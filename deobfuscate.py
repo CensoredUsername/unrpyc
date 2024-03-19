@@ -120,9 +120,9 @@ def extract_slot_headerscan(f, slot):
 
     position = 0
     while position + 36 < len(data):
-        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", data[position : position + 36])
+        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", data[position:position + 36])
         if a == 1 and d == 2 and g == 0 and b + c == e:
-            break;
+            break
         position += 1
 
     else:
@@ -253,7 +253,7 @@ def assert_is_normal_rpyc(f):
             # 10 bytes header + 4 * 9 bytes content table
             return ValueError("File too short")
 
-        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", header[10: 46])
+        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", header[10:46])
 
         # does the header format match default ren'py generated files?
         if not (a == 1 and b == 46 and d == 2 and (g, h, i) == (0, 0, 0) and b + c == e):
