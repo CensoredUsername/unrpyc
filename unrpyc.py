@@ -99,7 +99,7 @@ def read_ast_from_file(in_file):
 
             chunks[slot] = raw_contents[start: start + length]
 
-        if not 1 in chunks:
+        if 1 not in chunks:
             raise Exception(
                 "Unable to find the right slot to load from the rpyc file. The file header "
                 "structure has been changed.")

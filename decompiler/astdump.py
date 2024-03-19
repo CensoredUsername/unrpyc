@@ -107,7 +107,7 @@ class AstDumper(object):
 
     def print_dict(self, ast):
         # handles the printing of dictionaries
-        if type(ast) != dict:
+        if type(ast) is not dict:
             self.p(repr(type(ast)))
 
         self.p('{')
@@ -132,19 +132,19 @@ class AstDumper(object):
             ast.serial = 0
         elif key == 'col_offset':
             ast.col_offset = 0 # TODO maybe make this match?
-        elif key == 'name' and type(ast.name) == tuple:
+        elif key == 'name' and type(ast.name) is tuple:
             name = ast.name[0]
             if isinstance(name, str):
                 name = name.encode('utf-8')
             ast.name = (name.split(b'/')[-1], 0, 0)
-        elif key == 'location' and type(ast.location) == tuple:
+        elif key == 'location' and type(ast.location) is tuple:
             if len(ast.location) == 4:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
             elif len(ast.location) == 3:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], 0)
             elif len(ast.location) == 2:
                 ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1])
-        elif key == 'loc' and type(ast.loc) == tuple:
+        elif key == 'loc' and type(ast.loc) is tuple:
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
@@ -153,7 +153,7 @@ class AstDumper(object):
             # When no parameters exist, some versions of Ren'Py set parameters
             # to None and some don't set it at all.
             return False
-        elif (key == 'hide' and ast.hide == False and
+        elif (key == 'hide' and ast.hide is False and
             (isinstance(ast, renpy.ast.Python) or
             isinstance(ast, renpy.ast.Label))):
             # When hide isn't set, some versions of Ren'Py set it to False and
