@@ -534,6 +534,8 @@ class DenseSourceGenerator(SourceGenerator):
         SourceGenerator.__init__(self, " ", False, False)
 
     def process(self, node):
+        self.analyze_fstrings(node)
+
         self.new_line = True
         self.visit(node)
 

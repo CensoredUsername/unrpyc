@@ -42,6 +42,16 @@ Try = TryExcept = TryFinally = YieldFrom = MatMult = Await = type(None)
 
 from ast import *
 
+if PY3:
+    unicode = str
+else:
+    bytes = str
+    str = unicode
+
+# for 3.6-3.11 f-strings get lexed really weirdly and need additional effort.
+BROKEN_FSTRINGS = (3, 12) > sys.version_info >= (3, 6)
+
+
 class Sep(object):
     # Performs the common pattern of returning a different symbol the first
     # time the object is called
@@ -80,6 +90,113 @@ def to_source(node, indent_with=' ' * 4, add_line_information=False, correct_lin
             return SourceGenerator(indent_with, add_line_information, True).process(node)
     else:
         return SourceGenerator(indent_with, add_line_information).process(node)
+
+
+class QuoteAnalyzer(NodeVisitor):
+    """python 3.6 introduced format strings. Which are really nice, except for that it disallowed
+    reusing the quote symbol used to open format strings. So now we need to figure out which
+    quotes need to be used where, often before the child contents are analyzed."""
+
+    QUOTES = ('"', "'", '"""', "'''")
+
+    def __init__(self):
+        # stack of sets of disallowed quotes
+        self.disallowed_quote_stack = []
+
+    def process(self, node):
+        self.quote_queue = []
+        self.visit(node)
+        self.quote_queue.reverse()
+        return self.quote_queue
+
+    # since 3.6
+    def visit_FormattedValue(self, node):
+        self.handle_fstring([node])
+
+    # since 3.6
+    def visit_JoinedStr(self, node):
+        self.handle_fstring(node.values)
+
+    def handle_fstring(self, contents):
+        # contents of either a JoinedStr node or a lone FormattedValue node
+        # we need to read these out in order, so we push a result obj first
+        result = []
+        self.quote_queue.append(result)
+
+        # push a set onto our stack
+        string_contents = []
+        self.disallowed_quote_stack.append(set())
+
+        # visit expression nodes, and collect string segments
+        self.fstring_visit_children(contents, string_contents)
+
+        string_contents = "".join(string_contents)
+        disallowed_quotes = self.disallowed_quote_stack.pop()
+
+        if self.disallowed_quote_stack:
+            # outermost f-string can use escapes in its string parts
+            # others cannot so we need to also exempt any quotes used in them
+            disallowed_quotes.add(i for i in self.QUOTES if i in string_contents)
+            can_escape = False
+        else:
+            can_escape = True
+
+        # disallow use of any quotes used in this string as delimiter in surrounding f-strings
+        for delimiter in self.QUOTES:
+            if delimiter in string_contents:
+                for entry in self.disallowed_quote_stack:
+                    entry.add(delimiter)
+
+        try:
+            delimiter = next(i for i in self.QUOTES if i not in disallowed_quotes)
+        except StopIteration:
+            raise ValueError("Unrepresentable AST given (3.6-3.11 limit nesting of f-strings)")
+
+        result[:] = (delimiter, can_escape)
+
+    def fstring_visit_children(self, children, string_contents):
+        # this is separated out as it recurses during format_spec handling
+        for child in children:
+            if child.__class__.__name__ == "FormattedValue":
+                # visit the expression
+                self.visit(child.value)
+
+                # and visit format_spec. Format_spec is weird.
+                # format_spec is itself also a JoinedStr, so we get to do this dance again
+                if child.format_spec:
+                    self.fstring_visit_children(child.format_spec.values, string_contents)
+
+            else:
+                # Constant node, possibly containing quotes
+                string_contents.append(child.value)
+
+    # leaf string nodes
+
+    # until 3.8
+    def visit_Str(self, node):
+        self.handle_leaf(node.s)
+
+    # until 3.8
+    def visit_Bytes(self, node):
+        self.handle_leaf(node.s)
+
+    # since 3.6
+    def visit_Constant(self, node):
+        self.handle_leaf(node.value)
+
+    def handle_leaf(self, content):
+        if not self.disallowed_quote_stack:
+            # not inside an f-string, we don't care
+            return
+
+        stringified = repr(content)
+
+        assert "\\" not in stringified, "Cannot use escapes inside an f-string expression?"
+
+        for delimiter in self.QUOTES:
+            if delimiter in stringified:
+                for entry in self.disallowed_quote_stack:
+                    entry.add(delimiter)
 
 
 class SourceGenerator(NodeVisitor):
@@ -166,12 +283,24 @@ class SourceGenerator(NodeVisitor):
         self.newlines = 0
         # force the printing of a proper newline (and not a semicolon)
         self.force_newline = False
+        # Python 3.6-3.11: f-strings aren't properly recursive, so we need to analyze them if they
+        # appear
+        self.quote_analysis = None
+        # keep track if we're inside an fstring
+        self.fstring_depth = 0
+
 
     def process(self, node):
+        self.analyze_fstrings(node)
+
         self.visit(node)
         result = ''.join(self.result)
         self.result = []
         return result
+
+    def analyze_fstrings(self, node):
+        if BROKEN_FSTRINGS:
+            self.quote_analysis = QuoteAnalyzer().process(node)
 
     # Precedence management
 
@@ -789,13 +918,53 @@ class SourceGenerator(NodeVisitor):
         self.maybe_break(node)
         self.write(node.id)
 
+    # new in 3.6.
+    def visit_Constant(self, node):
+        # catchall for ast.Num/ast.Str/ast.Bytes/ast.NameConstant/ast.Ellipsis
+        self.maybe_break(node)
+        # a bunch of these get special behaviour.
+        if isinstance(node, str):
+            self.handle_string(node.value, False)
+        elif isinstance(node, bytes):
+            self.handle_string(node.value, True)
+        elif isinstance(node, (int, complex)):
+            self.handle_num(node.value)
+        else:
+            # NameConstant, Ellipsis
+            self.write(repr(node.value))
+
+    # introduced 3.4. Deprecated 3.8
     def visit_NameConstant(self, node):
         self.maybe_break(node)
         self.write(repr(node.value))
 
-    def visit_Str(self, node, frombytes=False):
+    # deprecated in 3.8. contains both bytes/unicode in py2, only unicode in py3
+    def visit_Str(self, node):
         self.maybe_break(node)
-        if frombytes:
+        self.handle_string(node.s, False)
+
+    # introduced 3.0. Deprecated 3.8
+    def visit_Bytes(self, node):
+        self.maybe_break(node)
+        self.handle_string(node.s, True)
+
+    # deprecated 3.8
+    def visit_Num(self, node):
+        self.maybe_break(node)
+        self.handle_num(node.n)
+
+    # deprecated 3.8
+    def visit_Ellipsis(self, node):
+        # Ellipsis has no lineno information
+        self.write('...')
+
+    def handle_string(self, string, isbytes=False):
+        if self.fstring_depth and BROKEN_FSTRINGS:
+            # avoid anything fancy inside f-strings
+            self.write(repr(node.s))
+            return
+
+        if isbytes:
             newline_count = node.s.count('\n'.encode('utf-8'))
         else:
             newline_count = node.s.count('\n')
@@ -836,28 +1005,87 @@ class SourceGenerator(NodeVisitor):
         else:
             self.write(repr(node.s))
 
-    def visit_Bytes(self, node):
-        self.visit_Str(node, True)
-
-    def visit_Num(self, node):
-        self.maybe_break(node)
-
-        negative = (node.n.imag or node.n.real) < 0 and not PY3
+    def handle_num(self, n):
+        negative = (n.imag or n.real) < 0 and not PY3
         if negative:
             self.prec_start(self.UNARYOP_SYMBOLS[USub][1])
 
         # 1e999 and related friends are parsed into inf
-        if abs(node.n) == 1e999:
+        if abs(n) == 1e999:
             if negative:
                 self.write('-')
             self.write('1e999')
-            if node.n.imag:
+            if n.imag:
                 self.write('j')
         else:
-            self.write(repr(node.n))
+            self.write(repr(n))
 
         if negative:
             self.prec_end()
+
+    def visit_JoinedStr(self, node):
+        # representation of an f-string. Contains only ast.Constant and ast.FormattedValue
+        self.maybe_break(node)
+        self.handle_fstring(node.values)
+
+    def visit_FormattedValue(self, node):
+        # this can appear bare, in which case it was the only thing inside an fstring
+        # we still need to print the fstring though, so we just proxy it here
+        self.maybe_break(node)
+        self.handle_fstring([node])
+
+    def handle_fstring(self, contents):
+        # get data from analysis
+        if BROKEN_FSTRINGS:
+            delimiter, can_escape = self.quote_analysis.pop()
+        else:
+            delimiter, can_escape = '"', True
+
+        # we don't do straight writes as we want to not output complete "segments" of string
+        self.fstring = []
+        self.fstring.append("f")
+        self.fstring.append(delimiter)
+
+        self.fstring_depth += 1
+        self.handle_fstring_contents(contents, can_escape)
+        self.fstring_depth -= 1
+
+        self.fstring.append(delimiter)
+        self.write("".join(self.fstring))
+        self.fstring = []
+
+    def handle_fstring_contents(self, children, can_escape):
+        for child in children:
+            if child.__class__.__name__ == "FormattedValue":
+                self.fstring.append("{")
+                self.write("".join(self.fstring))
+                self.fstring = []
+
+                self.visit(child.value)
+
+                if child.conversion != -1:
+                    self.fstring.append("!")
+                    self.fstring.append(chr(child.conversion))
+
+                if child.format_spec:
+                    self.fstring.append(":")
+                    self.handle_fstring_contents(child.format_spec.values, can_escape)
+
+                self.fstring.append("}")
+
+            else:
+                # child is a Constant node containing a string
+                content = child.value
+                if can_escape:
+                    # we want to escape both types of quote. Insert a `"` to force repr
+                    # to surround the result in single quotes, escaping any single quotes contained
+                    # we strip that and the surrounding quotes as well, and then can escape any
+                    # double quotes as well.
+                    content = repr('"' + content)[2:-1].replace('"', '\\"')
+
+                content = content.replace("{", "{{").replace("}", "}}")
+
+                self.fstring.append(content)
 
     def visit_Tuple(self, node, guard=True):
         if guard or not node.elts:
@@ -983,10 +1211,6 @@ class SourceGenerator(NodeVisitor):
             self.write(':')
             if not (isinstance(node.step, Name) and node.step.id == 'None'):
                 self.visit(node.step)
-
-    def visit_Ellipsis(self, node):
-        # Ellipsis has no lineno information
-        self.write('...')
 
     def visit_ExtSlice(self, node):
         # Extslice has no lineno information
