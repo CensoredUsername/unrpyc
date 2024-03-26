@@ -20,6 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
+__title__ = "Unrpyc"
+__version__ = 'v2.1.dev'
+__url__ = "https://github.com/CensoredUsername/unrpyc"
+
+
 import sys
 import argparse
 from pathlib import Path
@@ -29,11 +35,16 @@ import struct
 import zlib
 
 try:
-    from multiprocessing import Pool, Lock, cpu_count
+    from multiprocessing import Pool, Lock, Manager, cpu_count
 except ImportError:
+    traceback.print_exc()
+
     # Mock required support when multiprocessing is unavailable
     def cpu_count():
         return 1
+
+    def Manager():
+        return sys.modules[__name__]
 
     class Lock:
         def __enter__(self):
@@ -45,6 +56,8 @@ except ImportError:
         def release(self):
             pass
 
+    dict = dict
+
 import decompiler
 import deobfuscate
 from decompiler import astdump, translate
@@ -52,12 +65,17 @@ from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle
                                     pickle_loads, pickle_detect_python2)
 
 
-printlock = Lock()
+class BrokenHeaderError(Exception):
+    """A rpy(m)c-file header is incorrect."""
 
 
-def sharelock(lock):
-    global printlock
-    printlock = lock
+class DeobfuscationError(Exception):
+    """A attempt to deobfuscate failed."""
+
+
+manager = Manager()
+printlock = manager.Lock()
+result_count = manager.dict({'total': 0, 'ok': 0, 'fail': 0, 'skip': 0, 'spoofed': 0})
 
 
 # API
@@ -67,7 +85,7 @@ def read_ast_from_file(in_file):
     # v1 files are just a zlib compressed pickle blob containing some data and the ast
     # v2 files contain a basic archive structure that can be parsed to find the same blob
     raw_contents = in_file.read()
-
+    l1_start = raw_contents[:50]
     is_rpyc_v1 = False
 
     if not raw_contents.startswith(b"RENPY RPC2"):
@@ -100,9 +118,10 @@ def read_ast_from_file(in_file):
             chunks[slot] = raw_contents[start: start + length]
 
         if not 1 in chunks:
-            raise Exception(
+            raise BrokenHeaderError(
                 "Unable to find the right slot to load from the rpyc file. The file header "
-                "structure has been changed.")
+                "structure has been changed.\n"
+                f"The file start has this content:\n{l1_start}")
 
         contents = chunks[1]
 
@@ -144,8 +163,10 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
         print("Decompiling %s to %s..." % (input_filename, out_filename))
 
         if not overwrite and out_filename.exists():
-            print("Output file already exists. Pass --clobber to overwrite.")
-            return False # Don't stop decompiling if one file already exists
+            print("Target file exists already! Skipping.")
+            result_count['skip'] += 1
+
+            return  # Don't stop decompiling if one file already exists
 
     with input_filename.open('rb') as in_file:
         if try_harder:
@@ -162,7 +183,11 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False,
                                          init_offset=init_offset, sl_custom_names=sl_custom_names)
 
             decompiler.pprint(out_file, ast, options)
-    return True
+
+    with printlock:
+        result_count['ok'] += 1
+
+    return
 
 def extract_translations(input_filename, language):
     with printlock:
@@ -225,17 +250,32 @@ def worker(arg_tup):
                                   comparable=args.comparable, translator=translator,
                                   init_offset=args.init_offset, try_harder=args.try_harder,
                                   sl_custom_names=args.sl_custom_names)
-    except Exception as e:
+
+    except BrokenHeaderError:
+        with printlock:
+            print("Error while trying to read the header of %s:" % filename)
+            print(traceback.format_exc())
+            result_count['spoofed'] += 1
+        return
+    except DeobfuscationError:
+        with printlock:
+            print("Error while trying to deobfuscate %s:" % filename)
+            print(traceback.format_exc())
+            result_count['spoofed'] += 1
+        return
+    except Exception:
         with printlock:
             print("Error while decompiling %s:" % filename)
             print(traceback.format_exc())
-        return False
+            result_count['fail'] += 1
+        return
 
 
 def main():
     if not sys.version_info[:2] >= (3, 9):
-        raise Exception("Must be executed in Python 3.9 or later.\n"
-                        f"You are running {sys.version}")
+        raise RuntimeError(
+            f"'{__title__} {__version__}' must be executed in Python 3.9 or later.\n"
+            f"You are running {sys.version}")
 
     # argparse usage: python3 unrpyc.py [-c] [--try-harder] [-d] [-p] file [file ...]
     cc_num = cpu_count()
@@ -342,6 +382,11 @@ def main():
         "potentially followed by a '-', and the amount of children the displayable takes"
         "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
+    ap.add_argument(
+        '--version',
+        action='version',
+        version=f"{__title__} {__version__}")
+
     args = ap.parse_args()
 
     if (args.write_translation_file
@@ -393,6 +438,7 @@ def main():
     if not worklist:
         print("Found no script files to decompile.")
         return
+    result_count['total'] = len(worklist)
 
     # If a big file starts near the end, there could be a long time with only one thread running,
     # which is inefficient. Avoid this by starting big files first.
@@ -400,7 +446,7 @@ def main():
     worklist = [(args, x) for x in worklist]
 
     if args.processes > 1 and len(worklist) > 5:
-        with Pool(args.processes, sharelock, [printlock]) as pool:
+        with Pool(args.processes) as pool:
             results = pool.map(worker, worklist)
     else:
         results = list(map(worker, worklist))
@@ -409,29 +455,37 @@ def main():
         print("Writing translations to %s..." % args.write_translation_file)
         translated_dialogue = {}
         translated_strings = {}
-        good = 0
-        bad = 0
+
         for result in results:
             if not result:
-                bad += 1
                 continue
-            good += 1
             translated_dialogue.update(pickle_loads(result[0]))
             translated_strings.update(result[1])
         with args.write_translation_file.open('wb') as out_file:
             pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
-    else:
-        # Check per file if everything went well and report back
-        good = results.count(True)
-        bad = results.count(False)
+    def plural_fmt(inp):
+        """returns singular or plural of term file(s) contingent of input count"""
+        return f"{inp} file{'s'[:inp^1]}"
 
-    if bad == 0:
-        print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))
-    elif good == 0:
-        print("Decompilation of %d file%s failed" % (bad, 's' if bad>1 else ''))
+    if not args.write_translation_file:
+        skiped = ("To overwrite existing files use option '--clopper'. "
+                  if result_count['skip'] != 0 else "")
+        spoofed = ("For manipulations can option '--try-harder' attempted."
+                   if result_count['spoofed'] != 0 else "")
+        endreport = (
+            "\nThis decompile run of Unrpyc has the following outcome:\n"
+            f"{55 * '-'}\n"
+            f"  A total of {plural_fmt(result_count['total'])} to decompile where found.\n"
+            f"  > {plural_fmt(result_count['ok'])} could be successful decompiled.\n"
+            f"  > {plural_fmt(result_count['fail'])} failed due to errors.\n"
+            f"  > {plural_fmt(result_count['spoofed'])} with wrong header or other manipulation.\n"
+            f"  > {plural_fmt(result_count['skip'])} already exist and have been skipped.\n"
+            f"{skiped}{spoofed}")
     else:
-        print("Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else ''))
+        endreport = "Writing of translation file done."
+    print(endreport)
+
 
 if __name__ == '__main__':
     main()
