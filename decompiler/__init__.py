@@ -261,8 +261,7 @@ class Decompiler(DecompilerBase):
             # Sanity check. check if there's a matching with statement two nodes further
             if not(isinstance(self.block[self.index + 2], renpy.ast.With) and
                    self.block[self.index + 2].expr == ast.paired):
-                raise Exception(
-                    f'Unmatched paired with {repr(self.paired_with)} != {repr(ast.expr)}')
+                raise Exception(f'Unmatched paired with {self.paired_with!r} != {ast.expr!r}')
 
             self.paired_with = ast.paired
 

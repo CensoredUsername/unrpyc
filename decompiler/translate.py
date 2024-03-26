@@ -69,7 +69,7 @@ class Translator:
             elif isinstance(i, renpy.ast.UserStatement):
                 code = i.line
             else:
-                raise Exception(f'Don\'t know how to get canonical code for a {str(type(i))}')
+                raise Exception(f'Don\'t know how to get canonical code for a {type(i)!s}')
             md5.update(code.encode("utf-8") + b"\r\n")
 
         digest = md5.hexdigest()[:8]
