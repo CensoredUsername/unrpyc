@@ -125,7 +125,7 @@ class Scope(object):
     def dec_global(self, name):
         resolution = self.resolution.get(name, None)
         if resolution == self.NONLOCAL:
-            raise SyntaxError("name '{0}' is nonlocal and global".format(name))
+            raise SyntaxError(f'name "{name}" is nonlocal and global')
         else:
             self.resolution[name] = self.GLOBAL
 
@@ -134,7 +134,7 @@ class Scope(object):
     def dec_nonlocal(self, name):
         resolution = self.resolution.get(name, None)
         if resolution == self.GLOBAL:
-            raise SyntaxError("name '{0}' is nonlocal and global".format(name))
+            raise SyntaxError(f'name "{name}" is nonlocal and global')
         else:
             self.resolution[name] = self.NONLOCAL
 
@@ -193,8 +193,7 @@ class Scope(object):
                         break
                     parent = parent.parent_scope
                 else:
-                    raise SyntaxError("no binding for nonlocal '{0}' found".format(
-                                      name))
+                    raise SyntaxError(f'no binding for nonlocal "{name}" found')
         # recurse
         for scope in self.children:
             scope.resolve_unbounds(builtin_scope)

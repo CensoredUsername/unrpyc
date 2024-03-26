@@ -62,7 +62,7 @@ class SL2Decompiler(DecompilerBase):
 
         # Print the screen statement and create the block
         self.indent()
-        self.write("screen %s" % ast.name)
+        self.write(f'screen {ast.name}')
         # If we have parameters, print them.
         if ast.parameters:
             self.write(reconstruct_paraminfo(ast.parameters))
@@ -97,7 +97,7 @@ class SL2Decompiler(DecompilerBase):
             if condition is None:
                 self.write("else")
             else:
-                self.write("%s %s" % (keyword(), condition))
+                self.write(f'{keyword()} {condition}')
 
             # Every condition has a block of type slast.SLBlock
             self.print_block(block, immediate_block=True)
@@ -142,10 +142,10 @@ class SL2Decompiler(DecompilerBase):
 
         self.indent()
         if hasattr(ast, "index_expression") and ast.index_expression is not None:
-            self.write("for %sindex %s in %s:" % (variable, ast.index_expression, ast.expression))
+            self.write(f'for {variable}index {ast.index_expression} in {ast.expression}:')
 
         else:
-            self.write("for %sin %s:" % (variable, ast.expression))
+            self.write(f'for {variable}in {ast.expression}:')
 
         # for doesn't contain a block, but just a list of child nodes
         self.print_nodes(children, 1)
@@ -173,7 +173,7 @@ class SL2Decompiler(DecompilerBase):
             with self.increase_indent():
                 self.write_lines(split_logical_lines(code))
         else:
-            self.write("$ %s" % code)
+            self.write(f'$ {code}')
 
     @dispatch(sl2.slast.SLPass)
     def print_pass(self, ast):
@@ -188,17 +188,17 @@ class SL2Decompiler(DecompilerBase):
         self.write("use ")
         args = reconstruct_arginfo(ast.args)
         if isinstance(ast.target, PyExpr):
-            self.write("expression %s" % ast.target)
+            self.write(f'expression {ast.target}')
             if args:
                 self.write(" pass ")
         else:
-            self.write("%s" % ast.target)
+            self.write(f'{ast.target}')
 
-        self.write("%s" % args)
+        self.write(f'{args}')
         if hasattr(ast, 'id') and ast.id is not None:
-            self.write(" id %s" % ast.id)
+            self.write(f' id {ast.id}')
 
-        if hasattr(ast, 'block') and ast.block:
+        if hasattr(ast, "block") and ast.block:
             self.print_block(ast.block)
 
     @dispatch(sl2.slast.SLTransclude)
@@ -210,7 +210,7 @@ class SL2Decompiler(DecompilerBase):
     def print_default(self, ast):
         # A default statement
         self.indent()
-        self.write("default %s = %s" % (ast.variable, ast.expression))
+        self.write(f'default {ast.variable} = {ast.expression}')
 
     @dispatch(sl2.slast.SLDisplayable)
     def print_displayable(self, ast, has_block=False):
@@ -223,7 +223,8 @@ class SL2Decompiler(DecompilerBase):
         if nameAndChildren is None and self.options.sl_custom_names:
             # check if we have a name registered for this displayable
             nameAndChildren = self.options.sl_custom_names.get(ast.displayable.__name__)
-            self.print_debug("Substituted '{}' as the name for displayable {}".format(nameAndChildren[0], ast.displayable))
+            self.print_debug(
+                f'Substituted "{nameAndChildren[0]}" as the name for displayable {ast.displayable}')
 
         if nameAndChildren is None:
             # This is a (user-defined) displayable we don't know about.
@@ -232,13 +233,10 @@ class SL2Decompiler(DecompilerBase):
             # print a debug message
             nameAndChildren = (ast.style, 'many')
             self.print_debug(
- """Warning: Encountered a user-defined displayable of type '{}'.
+    f'''Warning: Encountered a user-defined displayable of type "{ast.displayable}".
     Unfortunately, the name of user-defined displayables is not recorded in the compiled file.
-    For now the style name '{}' will be substituted.
-    To check if this is correct, find the corresponding renpy.register_sl_displayable call.""".format(
-                    ast.displayable, ast.style
-                )
-            )
+    For now the style name "{ast.style}" will be substituted.
+    To check if this is correct, find the corresponding renpy.register_sl_displayable call.''')  # noqa
 
         (name, children) = nameAndChildren
         self.indent()
@@ -335,9 +333,9 @@ class SL2Decompiler(DecompilerBase):
     def sort_keywords_and_children(self, node, immediate_block=False, ignore_children=False):
         # sorts the contents of a SL statement that has keywords and children
         # returns a list of sorted contents.
-        # 
+        #
         # node is either a SLDisplayable, a SLScreen or a SLBlock
-        # 
+        #
         # before this point, the name and any positional arguments of the statement have been
         # emitted, but the block itself has not been created yet.
         #   immediate_block: bool, if True, nothing is on the first line
@@ -346,7 +344,7 @@ class SL2Decompiler(DecompilerBase):
         # get all the data we need from the node
         keywords = node.keyword
         children = [] if ignore_children else node.children
-        
+
         # first linenumber where we can insert content that doesn't have a clear lineno
         block_lineno = node.location[1]
         start_lineno = (block_lineno + 1) if immediate_block else block_lineno
@@ -560,7 +558,7 @@ class SL2Decompiler(DecompilerBase):
 
         for name, value in item[2]:
             self.write(sep())
-            self.write("%s %s" % (name, value))
+            self.write(f'{name} {value}')
 
         if ty == "keywords_atl":
             assert not has_block, "cannot start a block on the same line as an at transform block"

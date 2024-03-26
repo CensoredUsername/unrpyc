@@ -58,11 +58,11 @@ def decompile_game():
             try:
                 decompile_rpyc(data, fullpath)
             except Exception as e:
-                f.write("\nFailed at decompiling {0}\n".format(fullpath))
+                f.write(f'\nFailed at decompiling {fullpath}\n')
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
-                f.write("\nDecompiled {0}\n".format(fullpath))
+                f.write(f'\nDecompiled {fullpath}\n')
 
         f.write("\nend decompiling\n")
 
