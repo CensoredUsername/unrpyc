@@ -109,7 +109,7 @@ class SLDecompiler(DecompilerBase):
 
         keywords = {ast.code.location[1]: WordConcatenator(False, True)}
         for key in ('modal', 'zorder', 'variant', 'predict'):
-            value = getattr(ast, key)
+            value = getattr(ast, key, None)
             # Non-Unicode strings are default values rather than user-supplied
             # values, so we don't need to write them out.
             if isinstance(value, unicode):
