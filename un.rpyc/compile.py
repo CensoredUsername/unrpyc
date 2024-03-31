@@ -23,16 +23,14 @@
 import zlib
 import argparse
 import os, sys
-import minimize
 import base64
 from os import path
+
+from corrupy import pickleast as p, minimize
 
 parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can be ran from inside renpy")
 
 parser.add_argument("-d", "--debug", dest="debug", action="store_true", help="Create debug files")
-
-parser.add_argument("-m", "--magic-path", dest="magic", action="store", default="picklemagic",
-                    help="In case picklemagic isn't in the python search path you can specify its folder here")
 
 parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
                     help="The pickle protocol used for packing the pickles. default is 1, options are 0, 1 and 2")
@@ -45,13 +43,7 @@ parser.add_argument("-o", "--obfuscate", dest="obfuscate", action="store_true",
 
 args = parser.parse_args()
 
-sys.path.append(path.abspath(args.magic))
 protocol = int(args.protocol)
-
-try:
-    import pickleast as p
-except ImportError:
-    exit("Could not import pickleast. Are you sure it's in pythons module search path?")
 
 def Module(name, filename, munge_globals=True, retval=False, package=None):
     with open(filename, "rb" if p.PY2 else "r") as f:
