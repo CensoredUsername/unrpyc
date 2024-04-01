@@ -5,17 +5,41 @@ script files. It will not extract files from .rpa archives. For that, use
 [rpatool](https://github.com/Shizmob/rpatool) or
 [UnRPA](https://github.com/Lattyware/unrpa).
 
-You are viewing the legacy branch of the project, which supports ren'py 6 and 7.
-
 ## Status
 
-legacy:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+master (python 3):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-legacy-dev:[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+dev (python 3):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+
+legacy (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+
+legacy-dev (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
 ## Usage
 
 This tool can either be ran as a command line tool, as a library, or injected into the game itself. For files from Ren'py 6 and 7, python 2.7 is required to run it as a command line tool.
+
+## Compatibility
+
+You are currently reading the documentation for the `legacy` branch of this tool. Ren'py switched to using Python 3 in Ren'py 8. This required significant changes to the decompiler, and necessitated splitting it into two to maintain support for older games. Development and releases for this tool are now split into the `master` branch (unrpyc v2, using python 3) and the `legacy` branch (unrpyc v1, using python 2). Additionally, support for some very ancient ren'py features has been dropped from the `master` branch to simplify continued development of unrpyc. In practice this means games that games before ren'py `6.18.0` are no longer supported by the `master` branch, and games from before `6.99.10` should use the --no-init-offset option. Any game using ren'py versions before `6.18.0` should instead use the `legacy` branch of unrpyc, which supports up to and including Ren'py version 7.
+
+When using the injectors (`un.rpyc`, `un.rpy`, `bytecode.rpyb`), compatibility is more stringent, as these tools use the python version bundled by ren'py. Use un.rpyc v2 (`2.*.*`) for ren'py 8 games, and un.rpyc v1 (`1.*.*`) for ren'py 7 and 6.
+
+Summarized:
+
+- unrpyc v2:
+  - Requires python `3.9` or above to work.
+  - Releases use version numbers `2.*.*`
+  - Uses branches `master` for the last release, and `dev` for development.
+  - Command line supports ren'py `8.*.*` (most recent) down to `6.18.0` (below `6.99.10` requires --no-init-offset)
+  - Injectors (`un.rpyc` and friends) support only ren'py `8.*.*`
+
+- unrpyc v1:
+  - Requires python `2.7` to work.
+  - Releases use version numbers `1.*.*`
+  - Uses branches `legacy` for the last release, and `legacy-dev` for development.
+  - Command line supports ren'py `7.*.*` (most recent) and ren'py `6.*.*`.
+  - Injectors (`un.rpyc` and friends) support ren'py `6.*.*` and `7.*.*`.
 
 ### Command line tool usage
 
@@ -134,9 +158,9 @@ to run decompiled files with different engine releases. Most attention is given
 to recent engine versions so if you encounter an issues with older games, please
 report it.
 
-Supported:
-* renpy version 6 and 7 (up to 7.7, the current)
-* Windows, OSX and Linux
+Additionally, with the jump to python 3 in Ren'Py 8, it became difficult to support
+all ren'py versions with a single tool. Therefore, please consult the compatibility
+section above to find out which version of the tool you need.
 
 ## Issue reports
 
