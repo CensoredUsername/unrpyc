@@ -108,7 +108,7 @@ def read_ast_from_file(in_file):
 
     try:
         contents = zlib.decompress(contents)
-    except Exception as e:
+    except Exception:
         raise Exception(
             "Did not find a zlib compressed blob where it was expected. Either the header has been "
             "modified or the file structure has been changed.") from None
@@ -227,7 +227,7 @@ def worker(arg_tup):
                                   comparable=args.comparable, translator=translator,
                                   init_offset=args.init_offset, try_harder=args.try_harder,
                                   sl_custom_names=args.sl_custom_names)
-    except Exception as e:
+    except Exception:
         with printlock:
             print(f'Error while decompiling {filename}:')
             print(traceback.format_exc())
@@ -441,12 +441,12 @@ def main():
         bad = results.count(False)
 
     if bad == 0:
-        print(f'Decompilation of {good} script file{"s" if good>1 else ""} successful')
+        print(f'Decompilation of {good} script file{"s" if good > 1 else ""} successful')
     elif good == 0:
-        print(f'Decompilation of {bad} file{"s" if bad>1 else ""} failed')
+        print(f'Decompilation of {bad} file{"s" if bad > 1 else ""} failed')
     else:
-        print(f'Decompilation of {good} file{"s" if good>1 else ""} successful\n'
-              f'but decompilation of {bad} file{"s" if bad>1 else ""} failed')
+        print(f'Decompilation of {good} file{"s" if good > 1 else ""} successful\n'
+              f'but decompilation of {bad} file{"s" if bad > 1 else ""} failed')
 
 
 if __name__ == '__main__':

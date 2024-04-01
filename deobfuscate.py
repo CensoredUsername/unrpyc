@@ -74,7 +74,7 @@ def extract_slot_rpyc(f, slot):
     slots = {}
 
     while position + 12 <= len(data):
-        slotid, start, length = struct.unpack("<III", data[position : position + 12])
+        slotid, start, length = struct.unpack("<III", data[position:position + 12])
         if (slotid, start, length) == (0, 0, 0):
             break
 
@@ -90,7 +90,7 @@ def extract_slot_rpyc(f, slot):
         raise ValueError("Unknown slot id")
 
     start, length = slots[slot]
-    return data[start : start + length]
+    return data[start:start + length]
 
 @extractor
 def extract_slot_legacy(f, slot):
@@ -130,7 +130,7 @@ def extract_slot_headerscan(f, slot):
 
     slots = {}
     while position + 12 <= len(data):
-        slotid, start, length = struct.unpack("<III", data[position : position + 12])
+        slotid, start, length = struct.unpack("<III", data[position:position + 12])
         if (slotid, start, length) == (0, 0, 0):
             break
 
@@ -146,7 +146,7 @@ def extract_slot_headerscan(f, slot):
         raise ValueError("Unknown slot id")
 
     start, length = slots[slot]
-    return data[start : start + length]
+    return data[start:start + length]
 
 @extractor
 def extract_slot_zlibscan(f, slot):
