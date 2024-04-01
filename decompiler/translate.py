@@ -58,7 +58,7 @@ class Translator:
     # Adapted from Ren'Py's Restructurer.create_translate
     def create_translate(self, block):
         if self.saving_translations:
-            return [] # Doesn't matter, since we're throwing this away in this case
+            return []  # Doesn't matter, since we're throwing this away in this case
 
         md5 = hashlib.md5()
 
@@ -97,7 +97,9 @@ class Translator:
         return new_block
 
     def walk(self, ast, f):
-        if isinstance(ast, (renpy.ast.Init, renpy.ast.Label, renpy.ast.While, renpy.ast.Translate, renpy.ast.TranslateBlock)):
+        if isinstance(
+            ast, (renpy.ast.Init, renpy.ast.Label, renpy.ast.While, renpy.ast.Translate,
+                  renpy.ast.TranslateBlock)):
             f(ast.block)
         elif isinstance(ast, renpy.ast.Menu):
             for i in ast.items:
@@ -122,7 +124,8 @@ class Translator:
                         self.label = i.name
                         self.alternate = None
 
-            if self.saving_translations and isinstance(i, renpy.ast.TranslateString) and i.language == self.language:
+            if self.saving_translations and isinstance(
+                    i, renpy.ast.TranslateString) and i.language == self.language:
                 self.strings[i.old] = i.new
 
             if not isinstance(i, renpy.ast.Translate):

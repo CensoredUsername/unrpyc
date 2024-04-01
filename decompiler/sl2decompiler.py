@@ -40,7 +40,8 @@ def pprint(out_file, ast, options,
 
 class SL2Decompiler(DecompilerBase):
     """
-    An object which handles the decompilation of renpy screen language 2 screens to a given stream
+    An object which handles the decompilation of renpy screen language 2 screens to a given
+    stream
     """
 
     def __init__(self, out_file, options):
@@ -106,9 +107,10 @@ class SL2Decompiler(DecompilerBase):
         # for showif, if and use, no keyword properties on the same line are allowed
         # for custom displayables, they are allowed.
         #
-        # immediate_block: boolean, indicates that no keyword properties are before the :, and that
-        # a block is required
-        first_line, other_lines = self.sort_keywords_and_children(ast, immediate_block=immediate_block)
+        # immediate_block: boolean, indicates that no keyword properties are before the :, and
+        # that a block is required
+        first_line, other_lines = self.sort_keywords_and_children(
+            ast, immediate_block=immediate_block)
 
         has_block = immediate_block or bool(other_lines)
 
@@ -248,13 +250,17 @@ class SL2Decompiler(DecompilerBase):
         # since it results in cleaner code.
 
         # if we're not already in a has block, and have a single child that's a displayable,
-        # which itself has children, and the line number of this child is after any atl transform or keyword
-        # we can safely use a has statement
-        if (not has_block and children == 1 and len(ast.children) == 1 and
-            isinstance(ast.children[0], sl2.slast.SLDisplayable) and
-            ast.children[0].children and (not ast.keyword or
-                ast.children[0].location[1] > ast.keyword[-1][1].linenumber) and
-            (atl_transform is None or ast.children[0].location[1] > atl_transform.loc[1])):
+        # which itself has children, and the line number of this child is after any atl
+        # transform or keyword we can safely use a has statement
+        if (not has_block
+                and children == 1
+                and len(ast.children) == 1
+                and isinstance(ast.children[0], sl2.slast.SLDisplayable)
+                and ast.children[0].children
+                and (not ast.keyword
+                     or ast.children[0].location[1] > ast.keyword[-1][1].linenumber)
+                and (atl_transform is None
+                     or ast.children[0].location[1] > atl_transform.loc[1])):
 
             first_line, other_lines = self.sort_keywords_and_children(ast, ignore_children=True)
             self.print_keyword_or_child(first_line, first_line=True, has_block=True)
@@ -286,45 +292,45 @@ class SL2Decompiler(DecompilerBase):
                     self.print_keyword_or_child(line)
 
     displayable_names = {
-        (behavior.AreaPicker, "default"):  ("areapicker", 1),
-        (behavior.Button, "button"):       ("button", 1),
-        (behavior.DismissBehavior, "default"): ("dismiss", 0),
-        (behavior.Input, "input"):         ("input", 0),
-        (behavior.MouseArea, 0):           ("mousearea", 0),
-        (behavior.MouseArea, None):        ("mousearea", 0),
-        (behavior.OnEvent, 0):             ("on", 0),
-        (behavior.OnEvent, None):          ("on", 0),
-        (behavior.Timer, "default"):       ("timer", 0),
-        (dragdrop.Drag, "drag"):           ("drag", 1),
-        (dragdrop.Drag, None):             ("drag", 1),
-        (dragdrop.DragGroup, None):        ("draggroup", 'many'),
-        (im.image, "default"):             ("image", 0),
-        (layout.Grid, "grid"):             ("grid", 'many'),
-        (layout.MultiBox, "fixed"):        ("fixed", 'many'),
-        (layout.MultiBox, "hbox"):         ("hbox", 'many'),
-        (layout.MultiBox, "vbox"):         ("vbox", 'many'),
-        (layout.NearRect, "default"):      ("nearrect", 1),
-        (layout.Null, "default"):          ("null", 0),
-        (layout.Side, "side"):             ("side", 'many'),
-        (layout.Window, "frame"):          ("frame", 1),
-        (layout.Window, "window"):         ("window", 1),
-        (motion.Transform, "transform"):   ("transform", 1),
-        (sld.sl2add, None):                ("add", 0),
-        (sld.sl2bar, None):                ("bar", 0),
-        (sld.sl2vbar, None):               ("vbar", 0),
-        (sld.sl2viewport, "viewport"):     ("viewport", 1),
-        (sld.sl2vpgrid, "vpgrid"):         ("vpgrid", 'many'),
-        (text.Text, "text"):               ("text", 0),
-        (transform.Transform, "transform"):("transform", 1),
-        (ui._add, None):                   ("add", 0),
-        (ui._hotbar, "hotbar"):            ("hotbar", 0),
-        (ui._hotspot, "hotspot"):          ("hotspot", 1),
-        (ui._imagebutton, "image_button"): ("imagebutton", 0),
-        (ui._imagemap, "imagemap"):        ("imagemap", 'many'),
-        (ui._key, None):                   ("key", 0),
-        (ui._label, "label"):              ("label", 0),
-        (ui._textbutton, "button"):        ("textbutton", 0),
-        (ui._textbutton, 0):               ("textbutton", 0),
+        (behavior.AreaPicker, "default"):       ("areapicker", 1),
+        (behavior.Button, "button"):            ("button", 1),
+        (behavior.DismissBehavior, "default"):  ("dismiss", 0),
+        (behavior.Input, "input"):              ("input", 0),
+        (behavior.MouseArea, 0):                ("mousearea", 0),
+        (behavior.MouseArea, None):             ("mousearea", 0),
+        (behavior.OnEvent, 0):                  ("on", 0),
+        (behavior.OnEvent, None):               ("on", 0),
+        (behavior.Timer, "default"):            ("timer", 0),
+        (dragdrop.Drag, "drag"):                ("drag", 1),
+        (dragdrop.Drag, None):                  ("drag", 1),
+        (dragdrop.DragGroup, None):             ("draggroup", 'many'),
+        (im.image, "default"):                  ("image", 0),
+        (layout.Grid, "grid"):                  ("grid", 'many'),
+        (layout.MultiBox, "fixed"):             ("fixed", 'many'),
+        (layout.MultiBox, "hbox"):              ("hbox", 'many'),
+        (layout.MultiBox, "vbox"):              ("vbox", 'many'),
+        (layout.NearRect, "default"):           ("nearrect", 1),
+        (layout.Null, "default"):               ("null", 0),
+        (layout.Side, "side"):                  ("side", 'many'),
+        (layout.Window, "frame"):               ("frame", 1),
+        (layout.Window, "window"):              ("window", 1),
+        (motion.Transform, "transform"):        ("transform", 1),
+        (sld.sl2add, None):                     ("add", 0),
+        (sld.sl2bar, None):                     ("bar", 0),
+        (sld.sl2vbar, None):                    ("vbar", 0),
+        (sld.sl2viewport, "viewport"):          ("viewport", 1),
+        (sld.sl2vpgrid, "vpgrid"):              ("vpgrid", 'many'),
+        (text.Text, "text"):                    ("text", 0),
+        (transform.Transform, "transform"):     ("transform", 1),
+        (ui._add, None):                        ("add", 0),
+        (ui._hotbar, "hotbar"):                 ("hotbar", 0),
+        (ui._hotspot, "hotspot"):               ("hotspot", 1),
+        (ui._imagebutton, "image_button"):      ("imagebutton", 0),
+        (ui._imagemap, "imagemap"):             ("imagemap", 'many'),
+        (ui._key, None):                        ("key", 0),
+        (ui._label, "label"):                   ("label", 0),
+        (ui._textbutton, "button"):             ("textbutton", 0),
+        (ui._textbutton, 0):                    ("textbutton", 0),
     }
 
     def sort_keywords_and_children(self, node, immediate_block=False, ignore_children=False):
@@ -347,20 +353,25 @@ class SL2Decompiler(DecompilerBase):
         start_lineno = (block_lineno + 1) if immediate_block else block_lineno
 
         # these ones are optional
-        keyword_tag = getattr(node, "tag", None) # only used by SLScreen
-        keyword_as = getattr(node, "variable", None) # only used by SLDisplayable
-        atl_transform = getattr(node, "atl_transform", None) # all three can have it, but it is an optional property anyway
+        keyword_tag = getattr(node, "tag", None)  # only used by SLScreen
+        keyword_as = getattr(node, "variable", None)  # only used by SLDisplayable
+        # all three can have it, but it is an optional property anyway
+        atl_transform = getattr(node, "atl_transform", None)
 
         # keywords
-        # pre 7.7/8.2: keywords at the end of a line could not have an argument and the parser was okay with that.
-        keywords_by_line = [(value.linenumber if value else None, "keyword" if value else "broken", (name, value)) for name, value in keywords]
+        # pre 7.7/8.2: keywords at the end of a line could not have an argument and the parser
+        # was okay with that.
+        keywords_by_line = [(value.linenumber if value else None,
+                             "keyword" if value else "broken",
+                             (name, value)) for name, value in keywords]
 
         # children
         children_by_line = [(child.location[1], "child", child) for child in children]
 
-        # now we have to determine the order of all things. Multiple keywords can go on the same line, but not children.
-        # we don't want to completely trust lineno's, even if they're utterly wrong we still should spit out a decent file
-        # also, keywords and children are supposed to be in order from the start, so we shouldn't scramble that.
+        # now we have to determine the order of all things. Multiple keywords can go on the
+        # same line, but not children. we don't want to completely trust lineno's, even if
+        # they're utterly wrong we still should spit out a decent file also, keywords and
+        # children are supposed to be in order from the start, so we shouldn't scramble that.
 
         # merge keywords and childrens into a single ordered list
         # list of lineno, type, contents
@@ -368,7 +379,8 @@ class SL2Decompiler(DecompilerBase):
         keywords_by_line.reverse()
         children_by_line.reverse()
         while keywords_by_line and children_by_line:
-            # broken keywords: always emit before any children, so we can merge them with the previous keywords easily
+            # broken keywords: always emit before any children, so we can merge them with the
+            # previous keywords easily
             if keywords_by_line[-1][0] is None:
                 contents_in_order.append(keywords_by_line.pop())
 
@@ -441,12 +453,15 @@ class SL2Decompiler(DecompilerBase):
                         current_keyword_line = (lineno, "keywords", [content])
 
                 elif ty == "broken":
-                    contents_grouped.append((current_keyword_line[0], "keywords_broken", current_keyword_line[2], content))
+                    contents_grouped.append(
+                        (current_keyword_line[0], "keywords_broken",
+                         current_keyword_line[2], content))
                     current_keyword_line = None
 
                 elif ty == "atl":
                     if current_keyword_line[0] == lineno:
-                        contents_grouped.append((lineno, "keywords_atl", current_keyword_line[2], content))
+                        contents_grouped.append(
+                            (lineno, "keywords_atl", current_keyword_line[2], content))
                         current_keyword_line = None
                     else:
                         contents_grouped.append(current_keyword_line)
@@ -456,8 +471,9 @@ class SL2Decompiler(DecompilerBase):
         if current_keyword_line is not None:
             contents_grouped.append(current_keyword_line)
 
-        # We need to assign linenos to any broken keywords that don't have them. Best guess is the previous lineno + 1
-        # unless that doesn't exist, in which case it's the first available line
+        # We need to assign linenos to any broken keywords that don't have them. Best guess
+        # is the previous lineno + 1 unless that doesn't exist, in which case it's the first
+        # available line
         for i in range(len(contents_grouped)):
             lineno = contents_grouped[i][0]
             ty = contents_grouped[i][1]
@@ -472,10 +488,10 @@ class SL2Decompiler(DecompilerBase):
                 contents_grouped[i] = (lineno, "keywords_broken", [], contents)
 
         # these two keywords have no lineno information with them
-        # additionally, since 7.3 upwards, tag cannot be placed on the same line as `screen` for
-        # whatever reason.
-        # it is currently impossible to have both an `as` and a `tag` keyword in the same displayble
-        # `as` is only used for displayables, `tag` for screens.
+        # additionally, since 7.3 upwards, tag cannot be placed on the same line as `screen`
+        # for whatever reason.
+        # it is currently impossible to have both an `as` and a `tag` keyword in the same
+        # displayble `as` is only used for displayables, `tag` for screens.
         # strategies:
         # - if there's several empty lines before any line, we can make some new lines for them
         # - if the first line is a keyword line, we can merge them with it
@@ -502,7 +518,8 @@ class SL2Decompiler(DecompilerBase):
                 # really hard to know where inbetween children it'd be safe
                 # to put it in
                 else:
-                    contents_grouped.insert(0, (block_lineno + 1, "keywords", [("tag", keyword_tag)]))
+                    contents_grouped.insert(
+                        0, (block_lineno + 1, "keywords", [("tag", keyword_tag)]))
 
         if keyword_as:
             # if there's no content, put it on the first available line
@@ -532,7 +549,8 @@ class SL2Decompiler(DecompilerBase):
 
 
 
-        # if there's no content on the first line, insert an empty line, to make processing easier.
+        # if there's no content on the first line, insert an empty line, to make processing
+        # easier.
         if immediate_block or not contents_grouped or contents_grouped[0][0] != block_lineno:
             contents_grouped.insert(0, (block_lineno, "keywords", []))
 

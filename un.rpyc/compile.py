@@ -24,21 +24,41 @@ import zlib
 import argparse
 import base64
 from pathlib import Path
-
 from corrupy import pickleast as p, minimize
 
-parser = argparse.ArgumentParser(description="Pack unpryc into un.rpyc which can be ran from inside renpy")
+parser = argparse.ArgumentParser(
+    description="Pack unpryc into un.rpyc which can be ran from inside renpy")
 
-parser.add_argument("-d", "--debug", dest="debug", action="store_true", help="Create debug files")
+parser.add_argument(
+    "-d",
+    "--debug",
+    dest="debug",
+    action="store_true",
+    help="Create debug files")
 
-parser.add_argument("-p", "--protocol", dest="protocol", action="store", default="1",
-                    help="The pickle protocol used for packing the pickles. default is 1, options are 0, 1 and 2")
+parser.add_argument(
+    "-p",
+    "--protocol",
+    dest="protocol",
+    action="store",
+    default="1",
+    help="The pickle protocol used for packing the pickles. Default is 1, options "
+    "are 0, 1 and 2")
 
-parser.add_argument("-r", "--raw", dest="minimize", action="store_false",
-                    help="Don't minimize the compiler modules")
+parser.add_argument(
+    "-r",
+    "--raw",
+    dest="minimize",
+    action="store_false",
+    help="Don't minimize the compiler modules")
 
-parser.add_argument("-o", "--obfuscate", dest="obfuscate", action="store_true",
-                    help="Enable extra minification measures which do not really turn down the filesize but make the source a lot less readable")
+parser.add_argument(
+    "-o",
+    "--obfuscate",
+    dest="obfuscate",
+    action="store_true",
+    help="Enable extra minification measures which do not really turn down the filesize but "
+    "make the source a lot less readable")
 
 args = parser.parse_args()
 
@@ -49,14 +69,14 @@ def Module(name, filename, munge_globals=True, retval=False, package=None):
         code = f.read()
     if args.minimize:
         # in modules only locals are worth optimizing
-        code = minimize.minimize(code, True, args.obfuscate and munge_globals, args.obfuscate, args.obfuscate)
+        code = minimize.minimize(
+            code, True, args.obfuscate and munge_globals, args.obfuscate, args.obfuscate)
     if package:
         return p.Sequence(
             p.DeclareModule(name, retval=retval),
             p.SetItem(p.Imports(name, "__dict__"), "__package__", package),
             p.DefineModule(name, code),
-            reversed=True
-        )
+            reversed=True)
     else:
         return p.Module(name, code, retval=retval)
 
@@ -214,20 +234,13 @@ python early hide:
 """
 
 unrpyc = zlib.compress(
-    p.optimize(
-        p.dumps(decompiler_rpyc, protocol),
-    protocol),
-9)
+    p.optimize(p.dumps(decompiler_rpyc, protocol), protocol), 9)
 
 bytecoderpyb = zlib.compress(
-    p.optimize(
-        p.dumps(decompiler_rpyb, protocol),
-    protocol),
-9)
+    p.optimize(p.dumps(decompiler_rpyb, protocol), protocol), 9)
 
-unrpy = rpy_base.format(
-    repr(base64.b64encode(p.optimize(p.dumps(decompiler_items, protocol), protocol)))
-)
+unrpy = rpy_base.format(repr(base64.b64encode(
+    p.optimize(p.dumps(decompiler_items, protocol), protocol))))
 
 
 with (PACK_FOLDER / "un.rpyc").open("wb") as f:
@@ -250,8 +263,8 @@ if args.debug:
         pickletools.dis(data, f)
 
     for com, arg, _ in pickletools.genops(data):
-        if arg and (isinstance(arg, str) or
-                    p.PY3 and isinstance(arg, bytes)) and len(arg) > 1000:
+        if arg and (isinstance(arg, str)
+                    or p.PY3 and isinstance(arg, bytes)) and len(arg) > 1000:
 
             if p.PY3 and isinstance(arg, str):
                 arg = arg.encode("latin1")
