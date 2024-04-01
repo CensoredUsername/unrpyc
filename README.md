@@ -8,23 +8,41 @@ script files. It will not extract files from .rpa archives. For that, use
 
 ## Status
 
-master (ren'py 8):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+master (python 3):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-dev (ren'py 8):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+dev (python 3):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-legacy (ren'py 6/7):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+legacy (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-legacy-dev (ren'py 6/7):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
+legacy-dev (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
 ## Usage
 
 This tool can either be ran as a command line tool, as a library, or injected into the game itself. To use it as a command line tool, a local python installation is required.
 
-Ren'py switched to using Python 3 in Ren'py 8. This required significant changes to the decompiler, and as such the `master` branch of unrpyc does not support Ren'py versions 7 and below. These are supported by the `legacy` branch of the project. Compatibility works as follows:
+## Compatibility
 
-- Ren'py 8: The `master` and `dev` branches, requires python 3 to work (3.9 or above). Releases (for un.rpyc and related tools) use version numbers 2.x.y.
-- Ren'py 6 and 7: The `legacy` and `legacy-dev` branches, requires python 2 to work (2.7). Releases (for un.rpyc and related tools) use version numbers 1.x.y.
-- Ren'py 5: Unsupported due to lack of interest.
+You are currently reading the documentation for the `master` branch of this tool. Ren'py switched to using Python 3 in Ren'py 8. This required significant changes to the decompiler, and necessitated splitting it into two to maintain support for older games. Development and releases for this tool are now split into the `master` branch (unrpyc v2, using python 3) and the `legacy` branch (unrpyc v1, using python 2). Additionally, support for some very ancient ren'py features has been dropped from the `master` branch to simplify continued development of unrpyc. In practice this means games that games before ren'py `6.18.0` are no longer supported by the `master` branch, and games from before `6.99.10` should use the --no-init-offset option. Any game using ren'py versions before `6.18.0` should instead use the `legacy` branch of unrpyc, which supports up to and including Ren'py version 7.
+
+When using the injectors (`un.rpyc`, `un.rpy`, `bytecode.rpyb`), compatibility is more stringent, as these tools use the python version bundled by ren'py. Use un.rpyc v2 (`2.*.*`) for ren'py 8 games, and un.rpyc v1 (`1.*.*`) for ren'py 7 and 6.
+
+Summarized:
+
+- unrpyc v2:
+  - Requires python `3.9` or above to work.
+  - Releases use version numbers `2.*.*`
+  - Uses branches `master` for the last release, and `dev` for development.
+  - Command line supports ren'py `8.*.*` (most recent) down to `6.18.0` (below `6.99.10` requires --no-init-offset)
+  - Injectors (`un.rpyc` and friends) support only ren'py `8.*.*`
+
+- unrpyc v1:
+  - Requires python `2.7` to work.
+  - Releases use version numbers `1.*.*`
+  - Uses branches `legacy` for the last release, and `legacy-dev` for development.
+  - Command line supports ren'py `7.*.*` (most recent) and ren'py `6.*.*`.
+  - Injectors (`un.rpyc` and friends) support ren'py `6.*.*` and `7.*.*`.
+
+Ren'py 5 or earlier are not supported currently.
 
 ### Command line tool usage
 
@@ -42,7 +60,7 @@ $ py -3 unrpyc.py --help
 usage: unrpyc.py [-h] [-c] [-d] [-p {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}]
                  [-t TRANSLATION_FILE] [-T WRITE_TRANSLATION_FILE]
                  [-l LANGUAGE] [--sl1-as-python] [--comparable] [--no-pyexpr]
-                 [--tag-outside-block] [--init-offset] [--try-harder]
+                 [--no-init-offset] [--try-harder]
                  [--register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]]
                  file [file ...]
 
@@ -135,14 +153,9 @@ to run decompiled files with different engine releases. Most attention is given
 to recent engine versions so if you encounter an issues with older games, please
 report it.
 
-Additionally, with the jump to python 3 in Ren'Py 7, it became difficult to support
-all ren'py versions with a single tool. Therefore, Ren'py 6 and 7 support is now
-provided by the legacy branch of the tool.
-
-Supported:
-* renpy version 8 (up to 8.2, the current)
-* renpy version 6 and 7 in the legacy branch (up to 7.7, the current)
-* Windows, OSX and Linux
+Additionally, with the jump to python 3 in Ren'Py 8, it became difficult to support
+all ren'py versions with a single tool. Therefore, please consult the compatibility
+section above to find out which version of the tool you need.
 
 ## Issue reports
 
