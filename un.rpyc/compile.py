@@ -165,8 +165,8 @@ from renpy.game import script
 
 decompiler_rpyb = p.ExecTranspile(base + "(None, [])", (decompiler_items,))
 
-rpy_base = """
-init python early hide:
+rpy_base = """\
+python early hide:
 
     import sys
     renpy_modules = sys.modules.copy()
