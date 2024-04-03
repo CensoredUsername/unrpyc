@@ -351,21 +351,19 @@ def main():
     if (args.no_pyexpr or args.comparable) and not args.dump:
         raise ap.error(
             "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
-        return
 
     if ((args.try_harder or args.dump)
             and (args.write_translation_file or args.translation_file or args.language)):
         raise ap.error(
             "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
             "feature.")
-        return
 
     # Fail early to avoid wasting time going through the files
     if (args.write_translation_file
             and not args.clobber
             and args.write_translation_file.exists()):
-        print("Output translation file already exists. Pass --clobber to overwrite.")
-        return
+        raise ap.error(
+            "Output translation file already exists. Pass --clobber to overwrite.")
 
     if args.translation_file:
         with args.translation_file.open('rb') as in_file:
