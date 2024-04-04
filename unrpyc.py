@@ -305,7 +305,7 @@ def main():
         '--language',
         dest='language',
         action='store',
-        default='english',
+        default=None,
         help="If writing a translation file, the language of the translations to write")
 
     ap.add_argument(
@@ -346,12 +346,24 @@ def main():
 
     args = ap.parse_args()
 
+    # Catch impossible arg combinations with clear info, so they do not produce unclear
+    # errors or fail silent
+    if (args.no_pyexpr or args.comparable) and not args.dump:
+        raise ap.error(
+            "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
+
+    if ((args.try_harder or args.dump)
+            and (args.write_translation_file or args.translation_file or args.language)):
+        raise ap.error(
+            "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
+            "feature.")
+
+    # Fail early to avoid wasting time going through the files
     if (args.write_translation_file
-        and not args.clobber
+            and not args.clobber
             and args.write_translation_file.exists()):
-        # Fail early to avoid wasting time going through the files
-        print("Output translation file already exists. Pass --clobber to overwrite.")
-        return
+        raise ap.error(
+            "Output translation file already exists. Pass --clobber to overwrite.")
 
     if args.translation_file:
         with args.translation_file.open('rb') as in_file:
