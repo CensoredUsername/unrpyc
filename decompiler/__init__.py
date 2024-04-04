@@ -31,9 +31,8 @@ from . import testcasedecompiler
 from . import atldecompiler
 from . import astdump
 
-__all__ = [
-    "astdump", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util", "Options",
-    "pprint", "Decompiler", "renpycompat"]
+__all__ = ["astdump", "magic", "sl2decompiler", "testcasedecompiler", "translate", "util",
+           "Options", "pprint", "Decompiler", "renpycompat"]
 
 # Main API
 
@@ -118,8 +117,9 @@ class Decompiler(DecompilerBase):
         # We special-case line advancement for some types in their print
         # methods, so don't advance lines for them here.
         if hasattr(ast, 'linenumber') and not isinstance(
-                ast, (renpy.ast.TranslateString, renpy.ast.With, renpy.ast.Label, renpy.ast.Pass,
-                      renpy.ast.Return)):
+                ast, (renpy.ast.TranslateString, renpy.ast.With, renpy.ast.Label,
+                      renpy.ast.Pass, renpy.ast.Return)
+                ):
             self.advance_to_line(ast.linenumber)
 
         self.dispatch.get(type(ast), type(self).print_unknown)(self, ast)
@@ -315,7 +315,8 @@ class Decompiler(DecompilerBase):
             if remaining_blocks > 1:
                 # Label followed by a menu
                 next_ast = self.block[self.index + 1]
-                if isinstance(next_ast, renpy.ast.Menu) and next_ast.linenumber == ast.linenumber:
+                if (isinstance(next_ast, renpy.ast.Menu)
+                        and next_ast.linenumber == ast.linenumber):
                     self.label_inside_menu = ast
                     return
 
@@ -383,7 +384,8 @@ class Decompiler(DecompilerBase):
         if (ast.expression is None
                 and self.parent is None
                 and self.index + 1 == len(self.block)
-                and self.index and ast.linenumber == self.block[self.index - 1].linenumber):
+                and self.index
+                and ast.linenumber == self.block[self.index - 1].linenumber):
             # As of Ren'Py commit 356c6e34, a return statement is added to
             # the end of each rpyc file. Don't include this in the source.
             return
@@ -488,8 +490,8 @@ class Decompiler(DecompilerBase):
             # Keep this block in sync with set_best_init_offset
             # TODO merge this and require_init into another decorator or something
             if (len(ast.block) == 1
-                    and (isinstance(
-                        ast.block[0], (renpy.ast.Define, renpy.ast.Default, renpy.ast.Transform))
+                    and (isinstance(ast.block[0], (renpy.ast.Define, renpy.ast.Default,
+                                                   renpy.ast.Transform))
                          or (ast.priority == -500 + self.init_offset
                              and isinstance(ast.block[0], renpy.ast.Screen))
                          or (ast.priority == self.init_offset
@@ -835,9 +837,10 @@ class Decompiler(DecompilerBase):
         self.skip_indent_until_write = True
 
         in_init = self.in_init
-        if len(ast.block) == 1 and isinstance(ast.block[0], (renpy.ast.Python, renpy.ast.Style)):
-            # Ren'Py counts the TranslateBlock from "translate python" and "translate style" as
-            # an Init.
+        if (len(ast.block) == 1
+                and isinstance(ast.block[0], (renpy.ast.Python, renpy.ast.Style))):
+            # Ren'Py counts the TranslateBlock from "translate python" and "translate
+            # style" as an Init.
             self.in_init = True
         try:
             self.print_nodes(ast.block)
