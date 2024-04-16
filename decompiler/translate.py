@@ -22,7 +22,6 @@ from .util import say_get_code
 import renpy
 
 import hashlib
-import re
 from copy import copy
 
 class Translator:
@@ -59,7 +58,7 @@ class Translator:
     # Adapted from Ren'Py's Restructurer.create_translate
     def create_translate(self, block):
         if self.saving_translations:
-            return [] # Doesn't matter, since we're throwing this away in this case
+            return []  # Doesn't matter, since we're throwing this away in this case
 
         md5 = hashlib.md5()
 
@@ -98,7 +97,9 @@ class Translator:
         return new_block
 
     def walk(self, ast, f):
-        if isinstance(ast, (renpy.ast.Init, renpy.ast.Label, renpy.ast.While, renpy.ast.Translate, renpy.ast.TranslateBlock)):
+        if isinstance(
+            ast, (renpy.ast.Init, renpy.ast.Label, renpy.ast.While, renpy.ast.Translate,
+                  renpy.ast.TranslateBlock)):
             f(ast.block)
         elif isinstance(ast, renpy.ast.Menu):
             for i in ast.items:
@@ -110,8 +111,8 @@ class Translator:
 
     # Adapted from Ren'Py's Restructurer.callback
     def translate_dialogue(self, children):
-        new_children = [ ]
-        group = [ ]
+        new_children = []
+        group = []
 
         for i in children:
 
@@ -123,7 +124,8 @@ class Translator:
                         self.label = i.name
                         self.alternate = None
 
-            if self.saving_translations and isinstance(i, renpy.ast.TranslateString) and i.language == self.language:
+            if self.saving_translations and isinstance(
+                    i, renpy.ast.TranslateString) and i.language == self.language:
                 self.strings[i.old] = i.new
 
             if not isinstance(i, renpy.ast.Translate):
@@ -137,7 +139,7 @@ class Translator:
                 group.append(i)
                 tl = self.create_translate(group)
                 new_children.extend(tl)
-                group = [ ]
+                group = []
 
             elif hasattr(i, 'translatable') and i.translatable:
                 group.append(i)
@@ -146,13 +148,13 @@ class Translator:
                 if group:
                     tl = self.create_translate(group)
                     new_children.extend(tl)
-                    group = [ ]
+                    group = []
 
                 new_children.append(i)
 
         if group:
             nodes = self.create_translate(group)
             new_children.extend(nodes)
-            group = [ ]
+            group = []
 
         children[:] = new_children

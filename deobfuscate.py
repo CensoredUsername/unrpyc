@@ -20,8 +20,8 @@
 
 
 
-# This file contains documented strategies used against known obfuscation techniques and some machinery
-# to test them against.
+# This file contains documented strategies used against known obfuscation techniques and
+# some machinery to test them against.
 
 # Architecture is pretty simple. There's at least two steps in unpacking the rpyc format.
 # RPYC2 is an archive format that can contain multiple streams (referred to as slots)
@@ -32,7 +32,6 @@
 # being layers of base64, string-escape, hex-encoding, zlib-compression, etc.
 # We handle this by just trying these by checking if they fit.
 
-import os
 import zlib
 import struct
 import base64
@@ -75,7 +74,7 @@ def extract_slot_rpyc(f, slot):
     slots = {}
 
     while position + 12 <= len(data):
-        slotid, start, length = struct.unpack("<III", data[position : position + 12])
+        slotid, start, length = struct.unpack("<III", data[position:position + 12])
         if (slotid, start, length) == (0, 0, 0):
             break
 
@@ -91,7 +90,7 @@ def extract_slot_rpyc(f, slot):
         raise ValueError("Unknown slot id")
 
     start, length = slots[slot]
-    return data[start : start + length]
+    return data[start:start + length]
 
 @extractor
 def extract_slot_legacy(f, slot):
@@ -121,9 +120,9 @@ def extract_slot_headerscan(f, slot):
 
     position = 0
     while position + 36 < len(data):
-        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", data[position : position + 36])
+        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", data[position:position + 36])
         if a == 1 and d == 2 and g == 0 and b + c == e:
-            break;
+            break
         position += 1
 
     else:
@@ -131,7 +130,7 @@ def extract_slot_headerscan(f, slot):
 
     slots = {}
     while position + 12 <= len(data):
-        slotid, start, length = struct.unpack("<III", data[position : position + 12])
+        slotid, start, length = struct.unpack("<III", data[position:position + 12])
         if (slotid, start, length) == (0, 0, 0):
             break
 
@@ -147,13 +146,13 @@ def extract_slot_headerscan(f, slot):
         raise ValueError("Unknown slot id")
 
     start, length = slots[slot]
-    return data[start : start + length]
+    return data[start:start + length]
 
 @extractor
 def extract_slot_zlibscan(f, slot):
     """
-    Slot extractor for things that fucked with the header structure to the point where it's easier
-    to just not bother with it and instead we just look for valid zlib chunks directly.
+    Slot extractor for things that fucked with the header structure to the point where it's
+    easier to just not bother with it and instead we just look for valid zlib chunks directly.
     """
     f.seek(0)
     data = f.read()
@@ -201,7 +200,8 @@ def decrypt_hex(data, count):
 
 @decryptor
 def decrypt_base64(data, count):
-    if not all(i in b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n" for i in count.keys()):
+    if not all(i in b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/=\n"
+               for i in count.keys()):
         return None
     try:
         return base64.b64decode(data)
@@ -224,8 +224,8 @@ def decrypt_string_escape(data, count):
 def assert_is_normal_rpyc(f):
     """
     Analyze the structure of a single rpyc file object for correctness.
-    Does not actually say anything about the _contents_ of that section, just that we were able
-    to slice it out of there.
+    Does not actually say anything about the _contents_ of that section, just that we were
+    able to slice it out of there.
 
     If succesful, returns the uncompressed contents of the first storage slot.
     """
@@ -244,17 +244,17 @@ def assert_is_normal_rpyc(f):
         try:
             uncompressed = zlib.decompress(raw_data)
         except zlib.error:
-            raise ValueError("Did not find RENPY RPC2 header, but interpretation as legacy file failed")
+            raise ValueError(
+                "Did not find RENPY RPC2 header, but interpretation as legacy file failed")
 
         return uncompressed
-
 
     else:
         if len(header) < 46:
             # 10 bytes header + 4 * 9 bytes content table
             return ValueError("File too short")
 
-        a,b,c,d,e,f,g,h,i = struct.unpack("<IIIIIIIII", header[10: 46])
+        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", header[10:46])
 
         # does the header format match default ren'py generated files?
         if not (a == 1 and b == 46 and d == 2 and (g, h, i) == (0, 0, 0) and b + c == e):

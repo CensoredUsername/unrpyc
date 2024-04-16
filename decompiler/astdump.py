@@ -20,7 +20,6 @@
 
 import sys
 import inspect
-import ast as py_ast
 import renpy
 
 def pprint(out_file, ast, comparable=False, no_pyexpr=False):
@@ -47,7 +46,9 @@ class AstDumper(object):
     def dump(self, ast):
         self.linenumber = 1
         self.indent = 0
-        self.passed = [] # We'll keep a stack of objects which we've traversed here so we don't recurse endlessly on circular references
+        # We'll keep a stack of objects which we've traversed here so we don't recurse
+        # endlessly on circular references
+        self.passed = []
         self.passed_where = []
         self.print_ast(ast)
 
@@ -132,7 +133,7 @@ class AstDumper(object):
         elif key == 'serial':
             ast.serial = 0
         elif key == 'col_offset':
-            ast.col_offset = 0 # TODO maybe make this match?
+            ast.col_offset = 0  # TODO maybe make this match?
         elif key == 'name' and type(ast.name) == tuple:
             name = ast.name[0]
             if isinstance(name, str):
@@ -140,48 +141,58 @@ class AstDumper(object):
             ast.name = (name.split(b'/')[-1], 0, 0)
         elif key == 'location' and type(ast.location) == tuple:
             if len(ast.location) == 4:
-                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], ast.location[2], 0)
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1],
+                                ast.location[1], ast.location[2], 0)
             elif len(ast.location) == 3:
-                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1], 0)
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1],
+                                ast.location[1], 0)
             elif len(ast.location) == 2:
-                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1], ast.location[1])
+                ast.location = (ast.location[0].split('/')[-1].split('\\')[-1],
+                                ast.location[1])
         elif key == 'loc' and type(ast.loc) == tuple:
             ast.loc = (ast.loc[0].split('/')[-1].split('\\')[-1], ast.loc[1])
         elif key == 'filename':
             ast.filename = ast.filename.split('/')[-1].split('\\')[-1]
-        elif (key == 'parameters' and ast.parameters is None and
-            isinstance(ast, renpy.screenlang.ScreenLangScreen)):
+        elif (key == 'parameters'
+              and ast.parameters is None
+              and isinstance(ast, renpy.screenlang.ScreenLangScreen)):
             # When no parameters exist, some versions of Ren'Py set parameters
             # to None and some don't set it at all.
             return False
-        elif (key == 'hide' and ast.hide == False and
-            (isinstance(ast, renpy.ast.Python) or
-            isinstance(ast, renpy.ast.Label))):
+        elif (key == 'hide'
+              and ast.hide is False
+              and (isinstance(ast, renpy.ast.Python)
+                   or isinstance(ast, renpy.ast.Label))):
             # When hide isn't set, some versions of Ren'Py set it to False and
             # some don't set it at all.
             return False
-        elif (key == 'attributes' and ast.attributes is None and
-            isinstance(ast, renpy.ast.Say)):
+        elif (key == 'attributes'
+              and ast.attributes is None
+              and isinstance(ast, renpy.ast.Say)):
             # When no attributes are set, some versions of Ren'Py set it to None
             # and some don't set it at all.
             return False
-        elif (key == 'temporary_attributes' and ast.temporary_attributes is None and
-            isinstance(ast, renpy.ast.Say)):
+        elif (key == 'temporary_attributes'
+              and ast.temporary_attributes is None
+              and isinstance(ast, renpy.ast.Say)):
             # When no temporary attributes are set, some versions of Ren'Py set
             # it to None and some don't set it at all.
             return False
-        elif (key == 'rollback' and ast.rollback == 'normal' and
-            isinstance(ast, renpy.ast.Say)):
+        elif (key == 'rollback'
+              and ast.rollback == 'normal'
+              and isinstance(ast, renpy.ast.Say)):
             # When rollback is normal, some versions of Ren'Py set it to 'normal'
             # and some don't set it at all.
             return False
-        elif (key == 'block' and ast.block == [] and
-            isinstance(ast, renpy.ast.UserStatement)):
+        elif (key == 'block'
+              and ast.block == []
+              and isinstance(ast, renpy.ast.UserStatement)):
             # When there's no block, some versions of Ren'Py set it to None
             # and some don't set it at all.
             return False
-        elif (key == 'store' and ast.store == 'store' and
-            isinstance(ast, renpy.ast.Python)):
+        elif (key == 'store'
+              and ast.store == 'store'
+              and isinstance(ast, renpy.ast.Python)):
             # When a store isn't specified, some versions of Ren'Py set it to
             # "store" and some don't set it at all.
             return False
@@ -200,7 +211,7 @@ class AstDumper(object):
         # prints the values of relevant attributes in a dictionary-like way
         # it will not print anything which is a bound method or starts with a _
         self.p('<')
-        self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__')  else str(ast))
+        self.p(str(ast.__class__)[8:-2] if hasattr(ast, '__class__') else str(ast))
 
         keys = list(i for i in dir(ast) if self.should_print_key(ast, i))
         if keys:

@@ -46,8 +46,8 @@ class DecompilerBase:
         self.linenumber = 0
         # the indentation level we're at
         self.indent_level = 0
-        # a boolean that can be set to make the next call to indent() not insert a newline and indent
-        # useful when a child node can continue on the same line as the parent node
+        # a boolean that can be set to make the next call to indent() not insert a newline and
+        # indent useful when a child node can continue on the same line as the parent node
         # advance_to_line will also cancel this if it changes the lineno
         self.skip_indent_until_write = False
 
@@ -102,8 +102,13 @@ class DecompilerBase:
         """
         Save our current state.
         """
-        state = (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue)
+        state = (self.out_file,
+                 self.skip_indent_until_write,
+                 self.linenumber,
+                 self.block_stack,
+                 self.index_stack,
+                 self.indent_level,
+                 self.blank_line_queue)
         self.out_file = StringIO()
         return state
 
@@ -119,8 +124,13 @@ class DecompilerBase:
         """
         Roll back to a saved state.
         """
-        (self.out_file, self.skip_indent_until_write, self.linenumber,
-            self.block_stack, self.index_stack, self.indent_level, self.blank_line_queue) = state
+        (self.out_file,
+         self.skip_indent_until_write,
+         self.linenumber,
+         self.block_stack,
+         self.index_stack,
+         self.indent_level,
+         self.blank_line_queue) = state
 
     def advance_to_line(self, linenumber):
         # If there was anything that we wanted to do as soon as we found a blank line,
@@ -227,7 +237,9 @@ def reconstruct_paraminfo(paraminfo):
 
         already_accounted = set(name for name, default in paraminfo.positional_only)
         already_accounted.update(name for name, default in paraminfo.keyword_only)
-        other = [(name, default) for name, default in paraminfo.parameters if name not in already_accounted]
+        other = [(name, default)
+                 for name, default in paraminfo.parameters
+                 if name not in already_accounted]
 
         for name, default in paraminfo.positional_only:
             rv.append(sep())
@@ -296,8 +308,9 @@ def reconstruct_paraminfo(paraminfo):
         # ren'py 7.7/8.2 and above.
         # positional only, /, positional or keyword, *, keyword only, ***
         # prescence of the / is indicated by positional only arguments being present
-        # prescence of the * (if no *args) are present is indicated by keyword only args being present.
-        state = 1 # (0 = positional only, 1 = pos/key, 2 = keyword only)
+        # prescence of the * (if no *args) are present is indicated by keyword only args
+        # being present.
+        state = 1  # (0 = positional only, 1 = pos/key, 2 = keyword only)
 
         for parameter in paraminfo.parameters.values():
             rv.append(sep())
@@ -385,7 +398,7 @@ def reconstruct_arginfo(arginfo):
 
     return "".join(rv)
 
-def string_escape(s): # TODO see if this needs to work like encode_say_string elsewhere
+def string_escape(s):  # TODO see if this needs to work like encode_say_string elsewhere
     s = s.replace('\\', '\\\\')
     s = s.replace('"', '\\"')
     s = s.replace('\n', '\\n')
@@ -450,8 +463,8 @@ class Lexer:
 
     def python_string(self, clear_whitespace=True):
         # parse strings the ren'py way (don't parse docstrings, no b/r in front allowed)
-        # edit: now parses docstrings correctly. There was a degenerate case where '''string'string''' would
-        # result in issues
+        # edit: now parses docstrings correctly. There was a degenerate case where
+        # '''string'string''' would result in issues
         if clear_whitespace:
             return self.match(r"""(u?(?P<a>"(?:"")?|'(?:'')?).*?(?<=[^\\])(?:\\\\)*(?P=a))""")
         else:
@@ -503,18 +516,15 @@ class Lexer:
         return word
 
     def simple_expression(self):
-        # test if the start string was a simple expression
-        start = self.pos
-
         # check if there's anything in here acctually
         if self.eol():
             return False
 
         # parse anything which can be called or have attributes requested
-        if not(self.python_string() or
-               self.number() or
-               self.container() or
-               self.name()):
+        if not (self.python_string()
+                or self.number()
+                or self.container()
+                or self.name()):
             return False
 
         while not self.eol():
@@ -549,7 +559,9 @@ class Lexer:
         while self.pos < self.length:
             c = self.string[self.pos]
 
-            if c == '\n' and not contained and (not self.pos or self.string[self.pos - 1] != '\\'):
+            if (c == '\n'
+                    and not contained
+                    and (not self.pos or self.string[self.pos - 1] != '\\')):
                 lines.append(self.string[startpos:self.pos])
                 # the '\n' is not included in the emitted line
                 self.pos += 1
@@ -573,7 +585,7 @@ class Lexer:
             if self.python_string(False):
                 continue
 
-            self.re(r'\w+| +|.') # consume a word, whitespace or one symbol
+            self.re(r'\w+| +|.')  # consume a word, whitespace or one symbol
 
         if self.pos != startpos:
             lines.append(self.string[startpos:])
@@ -629,7 +641,7 @@ def encode_say_string(s):
 
 # Adapted from Ren'Py's Say.get_code
 def say_get_code(ast, inmenu=False):
-    rv = [ ]
+    rv = []
 
     if ast.who:
         rv.append(ast.who)

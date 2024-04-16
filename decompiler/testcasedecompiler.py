@@ -143,8 +143,9 @@ class TestcaseDecompiler(DecompilerBase):
     @dispatch(testast.Until)
     def print_until(self, ast):
         if hasattr(ast.right, 'linenumber'):
-            # We don't have our own line number, and it's not guaranteed that left has a line number.
-            # Go to right's line number now since we can't go to it after we print left.
+            # We don't have our own line number, and it's not guaranteed that left has a line
+            # number. Go to right's line number now since we can't go to it after we print
+            # left.
             self.advance_to_line(ast.right.linenumber)
         self.print_node(ast.left)
         self.write(" until ")

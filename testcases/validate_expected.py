@@ -26,9 +26,9 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).parent
-ORIGINAL = ROOT / "originals" # original .rpy files
-EXPECTED = ROOT / "expected" # expected result from decompiling .rpyc files
-COMPILED = ROOT / "compiled" # .rpyc files from compiling original
+ORIGINAL = ROOT / "originals"  # original .rpy files
+EXPECTED = ROOT / "expected"  # expected result from decompiling .rpyc files
+COMPILED = ROOT / "compiled"  # .rpyc files from compiling original
 
 def normalize(source: Path, dest: Path):
     with source.open("r", encoding="utf-8-sig") as fin:
@@ -39,7 +39,8 @@ def normalize(source: Path, dest: Path):
                 if not l or l.startswith("#"):
                     continue
 
-                # strip any comments in general (yes this ignores that they might be inside a string)
+                # strip any comments in general (yes this ignores that they might be inside
+                # a string)
                 if "#" in line:
                     line, _ = line.split("#", 1)
 
@@ -64,10 +65,16 @@ def process_recursively(source_dir, dest_dir, function):
             function(source_item, dest_item)
 
 def main():
-    parser = argparse.ArgumentParser(description="Testcase utilities. Compares `expected` with `originals`")
+    parser = argparse.ArgumentParser(
+        description="Testcase utilities. Compares `expected` with `originals`")
 
-    parser.add_argument('-u', '--update', dest='update', action='store_true',
-                        help="update the contents of 'expected' with .rpy files found in 'compiled' before running")
+    parser.add_argument(
+        '-u',
+        '--update',
+        dest='update',
+        action='store_true',
+        help="Update the contents of 'expected' with .rpy files found in 'compiled' before "
+        "running")
     args = parser.parse_args()
 
 

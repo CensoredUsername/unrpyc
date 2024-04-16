@@ -21,7 +21,6 @@
 import sys
 from pathlib import Path
 import traceback
-import struct
 
 import decompiler
 from decompiler.renpycompat import pickle_safe_loads
