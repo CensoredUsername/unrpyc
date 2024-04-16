@@ -160,10 +160,10 @@ def extract_slot_zlibscan(f, slot):
     start_positions = []
 
     for i in range(len(data) - 1):
-        if data[i] != "\x78":
+        if data[i] != 0x78:
             continue
 
-        if (ord(data[i]) * 256 + ord(data[i + 1])) % 31 != 0:
+        if (data[i] * 256 + data[i + 1]) % 31 != 0:
             continue
 
         start_positions.append(i)
