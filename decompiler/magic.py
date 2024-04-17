@@ -538,22 +538,22 @@ class SafePickler(pickle.Pickler if PY2 else pickle._Pickler):
     the classes themselves, and we need to override the method used for normally saving classes.
     """
 
-    def save_global(self, obj, name=None, pack=struct.pack):
+    def save_global(self, obj, name=None, pack=None):
         if isinstance(obj, FakeClassType):
             if PY2:
-                self.write(pickle.GLOBAL + obj.__module__ + '\n' + obj.__name__ + '\n')
+                self.write(pickle.GLOBAL
+                           + obj.__module__ + '\n' + obj.__name__ + '\n')
             elif self.proto >= 4:
                 self.save(obj.__module__)
                 self.save(obj.__name__)
-                self.write(STACK_GLOBAL)
+                self.write(pickle.STACK_GLOBAL)
             else:
-                self.write(pickle.GLOBAL +
-                    (obj.__module__ + '\n' + obj.__name__ + '\n').decode("utf-8")
-                )
+                self.write(pickle.GLOBAL
+                           + (obj.__module__ + '\n' + obj.__name__ + '\n').decode("utf-8"))
             self.memoize(obj)
             return
 
-        pickle.Pickler.save_global(self, obj, name, pack)
+        super().save_global(obj, name)
 
 # the main API
 
