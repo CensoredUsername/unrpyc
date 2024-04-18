@@ -175,8 +175,7 @@ def decompile_rpyc(input_filename, context, overwrite=False, dump=False,
     return True
 
 def extract_translations(input_filename, language, context):
-    with printlock:
-        context.log(f'Extracting translations from {input_filename}...')
+    context.log(f'Extracting translations from {input_filename}...')
 
     with input_filename.open('rb') as in_file:
         ast = read_ast_from_file(in_file)
