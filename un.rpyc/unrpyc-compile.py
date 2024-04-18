@@ -44,7 +44,7 @@ def decompile_rpyc(data, fullpath):
     with out_filename.open('w', encoding='utf-8') as out_file:
         options = decompiler.Options(init_offset=True)
         decompiler.pprint(out_file, ast, options)
-    return True
+    return options.log
 
 def decompile_game():
 
@@ -55,13 +55,15 @@ def decompile_game():
 
         for fullpath, data in sys.files:
             try:
-                decompile_rpyc(data, fullpath)
+                log = decompile_rpyc(data, fullpath)
             except Exception as e:
                 f.write(f'\nFailed at decompiling {fullpath}\n')
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
                 f.write(f'\nDecompiled {fullpath}\n')
+                for line in log:
+                    f.write(line)
 
         f.write("\nend decompiling\n")
 

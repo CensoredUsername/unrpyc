@@ -38,10 +38,10 @@ __all__ = ["astdump", "magic", "sl2decompiler", "testcasedecompiler", "translate
 
 # Object that carries configurable decompilation options
 class Options(OptionBase):
-    def __init__(self, indentation="    ", printlock=None,
+    def __init__(self, indentation="    ", log=None,
                  translator=None, init_offset=False,
                  sl_custom_names=None):
-        super(Options, self).__init__(indentation=indentation, printlock=printlock)
+        super(Options, self).__init__(indentation=indentation, log=log)
 
         # decompilation options
         self.translator = translator

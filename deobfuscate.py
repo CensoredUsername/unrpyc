@@ -32,13 +32,12 @@
 # being layers of base64, string-escape, hex-encoding, zlib-compression, etc.
 # We handle this by just trying these by checking if they fit.
 
-import zlib
-import struct
 import base64
+import struct
+import zlib
 from collections import Counter
-from decompiler.renpycompat import pickle_safe_loads
-import unrpyc
 
+from decompiler.renpycompat import pickle_safe_loads
 
 # Extractors are simple functions of (fobj, slotno) -> bytes
 # They raise ValueError if they fail
@@ -277,7 +276,7 @@ def assert_is_normal_rpyc(f):
         return uncompressed
 
 
-def read_ast(f):
+def read_ast(f, context):
     diagnosis = ["Attempting to deobfuscate file:"]
 
     raw_datas = set()
@@ -308,8 +307,7 @@ def read_ast(f):
             diagnosis.append(e.message)
         else:
             diagnosis.extend(d)
-            with unrpyc.printlock:
-                print("\n".join(diagnosis))
+            context.log("\n".join(diagnosis))
             return stmts
 
     diagnosis.append("All strategies failed. Unable to deobfuscate data")
