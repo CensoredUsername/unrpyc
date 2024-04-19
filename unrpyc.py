@@ -20,30 +20,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import argparse
-from pathlib import Path
 import glob
-import traceback
 import struct
+import sys
+import traceback
 import zlib
+from pathlib import Path
 
 try:
-    from multiprocessing import Pool, Lock, cpu_count
+    from multiprocessing import Pool, cpu_count
 except ImportError:
     # Mock required support when multiprocessing is unavailable
     def cpu_count():
         return 1
-
-    class Lock:
-        def __enter__(self):
-            pass
-        def __exit__(self, type, value, traceback):
-            pass
-        def acquire(self, block=True, timeout=None):
-            pass
-        def release(self):
-            pass
 
 import decompiler
 import deobfuscate
