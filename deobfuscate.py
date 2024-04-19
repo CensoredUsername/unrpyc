@@ -32,13 +32,12 @@
 # being layers of base64, string-escape, hex-encoding, zlib-compression, etc.
 # We handle this by just trying these by checking if they fit.
 
-import zlib
-import struct
 import base64
+import struct
+import zlib
 from collections import Counter
-from decompiler.renpycompat import pickle_safe_loads
-import unrpyc
 
+from decompiler.renpycompat import pickle_safe_loads
 
 # Extractors are simple functions of (fobj, slotno) -> bytes
 # They raise ValueError if they fail
