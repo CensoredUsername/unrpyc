@@ -76,7 +76,7 @@ def read_ast_from_file(in_file, context):
     # v1 files are just a zlib compressed pickle blob containing some data and the ast
     # v2 files contain a basic archive structure that can be parsed to find the same blob
     raw_contents = in_file.read()
-
+    l1_start = raw_contents[:50]
     is_rpyc_v1 = False
 
     if not raw_contents.startswith(b"RENPY RPC2"):
@@ -110,7 +110,8 @@ def read_ast_from_file(in_file, context):
         if 1 not in chunks:
             raise BadRpycException(
                 "Unable to find the right slot to load from the rpyc file. The file header "
-                "structure has been changed.")
+                "structure has been changed."
+                f"File header:{l1_start}")
 
         contents = chunks[1]
 
