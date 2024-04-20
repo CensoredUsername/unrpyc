@@ -485,12 +485,13 @@ def main():
         f"  > {plural_fmt(state_count['skip'])} already exist and have been skipped.\n"
     )
     # add pointers if we encounter problems
-    skipped = ("To overwrite existing files use option '--clopper'. "
+    skipped = ("To overwrite existing files use option '--clobber'. "
                if state_count['skip'] != 0 else "")
-    spoofed = ("In case of manipulations can be option '--try-harder' attempted."
-               if state_count['spoofed'] != 0 else "")
-    errors = ("Errors where found. Check the exceptions in the log for addition info about them."
-              if state_count['fail'] != 0 else "")
+    spoofed = (
+        "In case of manipulation, the --try-harder option can be attempted."
+        if state_count['spoofed'] != 0 else "")
+    errors = ("Errors were found. Check the exceptions in the log for more info about this."
+        if state_count['fail'] != 0 else "")
     print(endreport, skipped, spoofed, errors)
 
 if __name__ == '__main__':
