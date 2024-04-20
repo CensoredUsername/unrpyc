@@ -20,6 +20,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
+__title__ = "Unrpyc"
+__version__ = 'v2.0.2.dev'
+__url__ = "https://github.com/CensoredUsername/unrpyc"
+
+
 import argparse
 import glob
 import struct
@@ -242,8 +248,9 @@ def worker(arg_tup):
 
 def main():
     if not sys.version_info[:2] >= (3, 9):
-        raise Exception("Must be executed in Python 3.9 or later.\n"
-                        f'You are running {sys.version}')
+        raise RuntimeError(
+            f"'{__title__} {__version__}' must be executed in Python 3.9 or later.\n"
+            f"You are running {sys.version}")
 
     # argparse usage: python3 unrpyc.py [-c] [--try-harder] [-d] [-p] file [file ...]
     cc_num = cpu_count()
@@ -350,10 +357,15 @@ def main():
         "potentially followed by a '-', and the amount of children the displayable takes"
         "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
+    ap.add_argument(
+        '--version',
+        action='version',
+        version=f"{__title__} {__version__}")
+
     args = ap.parse_args()
 
-    # Catch impossible arg combinations with clear info, so they do not produce unclear
-    # errors or fail silent
+    # Catch impossible arg combinations so they don't produce strange errors or fail silent;
+    # output clear infos
     if (args.no_pyexpr or args.comparable) and not args.dump:
         raise ap.error(
             "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
@@ -384,7 +396,8 @@ def main():
 
     def glob_or_complain(inpath):
         """Expands wildcards and casts output to pathlike state."""
-        retval = [Path(elem).resolve(strict=True) for elem in glob.glob(inpath, recursive=True)]
+        retval = [Path(elem).resolve(strict=True)
+                  for elem in glob.glob(inpath, recursive=True)]
         if not retval:
             print(f'Input path not found: {inpath}')
         return retval
@@ -414,8 +427,8 @@ def main():
         print("Found no script files to decompile.")
         return
 
-    # If a big file starts near the end, there could be a long time with only one thread running,
-    # which is inefficient. Avoid this by starting big files first.
+    # If a big file starts near the end, there could be a long time with only one thread
+    # running, which is inefficient. Avoid this by starting big files first.
     worklist.sort(key=lambda x: x.stat().st_size, reverse=True)
     worklist = [(args, x) for x in worklist]
 
