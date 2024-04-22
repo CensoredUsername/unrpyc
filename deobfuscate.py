@@ -294,7 +294,6 @@ def read_ast(f, context):
 
     if not raw_datas:
         diagnosis.append("All strategies failed. Unable to extract data")
-        context.set_state('spoofed')
         raise ValueError("\n".join(diagnosis))
 
     if len(raw_datas) != 1:
@@ -312,7 +311,6 @@ def read_ast(f, context):
             return stmts
 
     diagnosis.append("All strategies failed. Unable to deobfuscate data")
-    context.set_state('spoofed')
     raise ValueError("\n".join(diagnosis))
 
 
