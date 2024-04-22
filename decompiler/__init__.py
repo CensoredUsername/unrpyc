@@ -404,13 +404,13 @@ class Decompiler(DecompilerBase):
         statement = First("if %s:", "elif %s:")
 
         for i, (condition, block) in enumerate(ast.entries):
-            # The unicode string "True" is used as the condition for else:.
-            # But if it's an actual expression, it's a renpy.ast.PyExpr
-            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
+            # The unicode string or the renpy.ast.PyExpr "True" is used as the condition for else:.
+            # We just check if it equals "True" to determine if it's an else statement.
+            if (i + 1) == len(ast.entries) and condition == 'True' and i:
                 self.indent()
                 self.write("else:")
             else:
-                if(hasattr(condition, 'linenumber')):
+                if hasattr(condition, 'linenumber'):
                     self.advance_to_line(condition.linenumber)
                 self.indent()
                 self.write(statement() % condition)
