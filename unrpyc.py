@@ -44,8 +44,8 @@ except ImportError:
 import decompiler
 import deobfuscate
 from decompiler import astdump, translate
-from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle_safe_dump,
-                                    pickle_loads, pickle_detect_python2)
+from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle_loads,
+                                    pickle_detect_python2)
 
 
 class Context:
@@ -153,6 +153,19 @@ def read_ast_from_file(in_file, context):
     return stmts
 
 
+def get_ast(in_file, try_harder, context):
+    """
+    Decides whether its tried to aquired the ast the basic way or with special deobfucation
+    methods.
+    """
+    with in_file.open('rb') as in_file:
+        if try_harder:
+            ast = deobfuscate.read_ast(in_file, context)
+        else:
+            ast = read_ast_from_file(in_file, context)
+    return ast
+
+
 def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, dump=False,
                    comparable=False, no_pyexpr=False, translator=None, init_offset=False,
                    sl_custom_names=None):
@@ -173,12 +186,7 @@ def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, d
         return
 
     context.log(f'Decompiling {input_filename} to {out_filename.name} ...')
-
-    with input_filename.open('rb') as in_file:
-        if try_harder:
-            ast = deobfuscate.read_ast(in_file, context)
-        else:
-            ast = read_ast_from_file(in_file, context)
+    ast = get_ast(input_filename, try_harder, context)
 
     with out_filename.open('w', encoding='utf-8') as out_file:
         if dump:
@@ -191,16 +199,47 @@ def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, d
 
     context.set_state('ok')
 
-def extract_translations(input_filename, language, context):
-    context.log(f'Extracting translations from {input_filename}...')
 
-    with input_filename.open('rb') as in_file:
-        ast = read_ast_from_file(in_file)
+def tl_worker(arg_tup):
+    """
+    This func manages the translation feature related work. It takes two steps to complete,
+    because the tl-data is stored in different files as the specific file a mp-process works
+    on when decompiling.
+    Step1: Browses all rpy(m)c files and extracts the tl_data
+    Step2: Decompiles and replaces at the same time all translation strings
+    """
+    args, filename = arg_tup
+    context = Context()
 
-    translator = translate.Translator(language, True)
-    translator.translate_dialogue(ast)
-    # we pickle and unpickle this manually because the regular unpickler will choke on it
-    return pickle_safe_dumps(translator.dialogue), translator.strings
+    if not args.translate2:
+        try:
+            context.log(f'Extracting translations from {filename}...')
+            ast = get_ast(filename, args.try_harder, context)
+
+            tl_inst = translate.Translator(args.translate, True)
+            tl_inst.translate_dialogue(ast)
+            # we pickle and unpickle this manually because the regular unpickler will choke on it
+            tl_data = pickle_safe_dumps(tl_inst.dialogue), tl_inst.strings
+            context.set_result(tl_data)
+        except Exception as e:
+            context.set_error(e)
+            context.log(f'Error while extracting translations from {filename}:')
+            context.log(traceback.format_exc())
+    else:
+        try:
+            tl_inst = translate.Translator(args.translate)
+            tl_inst.dialogue, tl_inst.strings = args.translate2
+            decompile_rpyc(
+                filename, context, overwrite=args.clobber, try_harder=args.try_harder,
+                translator=tl_inst, init_offset=args.init_offset,
+                sl_custom_names=args.sl_custom_names
+                )
+        except Exception as e:
+            context.set_error(e)
+            context.log(f'Error while translating {filename}:')
+            context.log(traceback.format_exc())
+
+    return context
 
 
 def worker(arg_tup):
@@ -208,30 +247,46 @@ def worker(arg_tup):
     context = Context()
 
     try:
-        if args.write_translation_file:
-            result = extract_translations(filename, args.language, context)
-            context.set_result(result)
-
-        else:
-            if args.translation_file is not None:
-                translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = (
-                    pickle_loads(args.translations))
-            else:
-                translator = None
-
-            decompile_rpyc(
-                filename, context, args.clobber, try_harder=args.try_harder, dump=args.dump,
-                no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
-                init_offset=args.init_offset, sl_custom_names=args.sl_custom_names
-                )
-
+        decompile_rpyc(
+            filename, context, overwrite=args.clobber, try_harder=args.try_harder,
+            dump=args.dump, no_pyexpr=args.no_pyexpr, comparable=args.comparable,
+            init_offset=args.init_offset, sl_custom_names=args.sl_custom_names
+            )
     except Exception as e:
         context.set_error(e)
         context.log(f'Error while decompiling {filename}:')
         context.log(traceback.format_exc())
 
     return context
+
+
+def mp_runner(worker_type, baselist, args):
+
+    # When TL-Extract is run, the list must be assembled after it to include the TL data
+    worklist = []
+    worklist = [(args, x) for x in baselist]
+
+    results = []
+    if args.processes > 1:
+        with Pool(args.processes) as pool:
+            for result in pool.imap(worker_type, worklist, 1):
+                results.append(result)
+
+                for line in result.log_contents:
+                    print(line)
+
+                print("")
+
+    else:
+        for result in map(worker_type, worklist):
+            results.append(result)
+
+            for line in result.log_contents:
+                print(line)
+
+            print("")
+
+    return results
 
 
 def parse_sl_custom_names(unparsed_arguments):
@@ -324,32 +379,6 @@ def main():
         "unavailable is.")
 
     ap.add_argument(
-        '-t',
-        '--translation-file',
-        dest='translation_file',
-        type=Path,
-        action='store',
-        default=None,
-        help="Use the specified file to translate during decompilation")
-
-    ap.add_argument(
-        '-T',
-        '--write-translation-file',
-        dest='write_translation_file',
-        type=Path,
-        action='store',
-        default=None,
-        help="Store translations in the specified file instead of decompiling")
-
-    ap.add_argument(
-        '-l',
-        '--language',
-        dest='language',
-        action='store',
-        default=None,
-        help="If writing a translation file, the language of the translations to write")
-
-    ap.add_argument(
         '--comparable',
         dest='comparable',
         action='store_true',
@@ -386,6 +415,19 @@ def main():
         "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
     ap.add_argument(
+        '-t',
+        '--translate',
+        dest='translate',
+        type=str,
+        action='store',
+        help="Changes the dialogue language in the decompiled script files, using a translation "
+        "already present in the tl dir.")
+
+    ap.add_argument(
+        '--translate2',
+        help=argparse.SUPPRESS)
+
+    ap.add_argument(
         '--version',
         action='version',
         version=f"{__title__} {__version__}")
@@ -395,24 +437,10 @@ def main():
     # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
         ap.error(
-            "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
+            "Options 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
 
-    if ((args.try_harder or args.dump)
-            and (args.write_translation_file or args.translation_file or args.language)):
-        ap.error(
-            "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
-            "feature.")
-
-    # Fail early to avoid wasting time going through the files
-    if (args.write_translation_file
-            and not args.clobber
-            and args.write_translation_file.exists()):
-        ap.error(
-            "Output translation file already exists. Pass --clobber to overwrite.")
-
-    if args.translation_file:
-        with args.translation_file.open('rb') as in_file:
-            args.translations = in_file.read()
+    if args.dump and args.translate:
+        ap.error("Options 'translate' and 'dump' can only be used separately.")
 
     if args.sl_custom_names is not None:
         try:
@@ -462,39 +490,23 @@ def main():
     # If a big file starts near the end, there could be a long time with only one thread running,
     # which is inefficient. Avoid this by starting big files first.
     worklist.sort(key=lambda x: x.stat().st_size, reverse=True)
-    worklist = [(args, x) for x in worklist]
-
     results = []
-    if args.processes > 1:
-        with Pool(args.processes) as pool:
-            for result in pool.imap(worker, worklist, 1):
-                results.append(result)
 
-                for line in result.log_contents:
-                    print(line)
+    if args.translate:
+        results = mp_runner(tl_worker, worklist, args)
 
-                print("")
-
-    else:
-        for result in map(worker, worklist):
-            results.append(result)
-
-            for line in result.log_contents:
-                print(line)
-
-            print("")
-
-    if args.write_translation_file:
-        print(f'Writing translations to {args.write_translation_file}...')
-        translated_dialogue = {}
-        translated_strings = {}
-        for result in results:
-            if not result.value:
+        print('Sorting extracted translations.')
+        tl_dialogue = {}
+        tl_strings = {}
+        for entry in results:
+            if not entry.value:
                 continue
-            translated_dialogue.update(pickle_loads(result.value[0]))
-            translated_strings.update(result.value[1])
-        with args.write_translation_file.open('wb') as out_file:
-            pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
+            tl_dialogue.update(pickle_loads(entry.value[0]))
+            tl_strings.update(entry.value[1])
+        args.translate2 = (tl_dialogue, tl_strings)
+        results = mp_runner(tl_worker, worklist, args)
+    else:
+        results = mp_runner(worker, worklist, args)
 
     success = sum(result.state == "ok" for result in results)
     skipped = sum(result.state == "skip" for result in results)
@@ -507,7 +519,7 @@ def main():
     print(f"{55 * '-'}")
     print(f"Processed {plural_s(len(results), 'file')}.")
 
-    if args.write_translation_file:
+    if args.translate:
         print(f"> {plural_s(success, 'file')} were successfully analyzed.")
     else:
         print(f"> {plural_s(success, 'file')} were successfully decompiled.")
