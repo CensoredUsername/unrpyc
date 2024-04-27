@@ -16,6 +16,29 @@ legacy (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/ac
 
 legacy-dev (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
+## Features
+#### Decompiling
+The main task is to convert Ren'Py script files of type *.rpyc*, *.rpymc* into human-readable
+source code.
+
+#### Astdump
+Writes the target applications "Abstract Syntax Tree"(AST) to a text file. This representation
+is in "pretty printed" form for good readability and overview.
+
+The output of dump can be influenced be with option `--comparable` to remove misleading
+statements or `--no-pyexpr` for easier comparison of code from different Ren'Py versions.
+
+#### Translate
+This feature changes the main language of the app, also "None language" called, with another
+one. Every string for dialogue, button names or descriptions will in the script files appear
+in the new language. The choosen "new" main language must already supported and present in the
+apps tl-directory.
+
+The translation task requires the `--translate` option, followed by the name of the replacement
+language. The given string must exactly match the directory name of the choosen language.
+For example 'your/gamepath.../game/tl/french' would be executed with the CLI command
+`python unrpyc.py /path/to/renpy/app/ -t french`.
+
 ## Usage
 
 This tool can either be ran as a command line tool, as a library, or injected into the game itself. To use it as a command line tool, a local python installation is required.
