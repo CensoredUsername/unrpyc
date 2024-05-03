@@ -16,32 +16,30 @@ legacy (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/ac
 
 legacy-dev (python 2):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=legacy-dev)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
 
-## Features
-#### Decompiling
-The main task is to convert Ren'Py script files of type *.rpyc*, *.rpymc* into human-readable
-source code.
-
-#### Astdump
-Writes the target applications "Abstract Syntax Tree"(AST) to a text file. This representation
-is in "pretty printed" form for good readability and overview.
-
-The output of dump can be influenced be with option `--comparable` to remove misleading
-statements or `--no-pyexpr` for easier comparison of code from different Ren'Py versions.
-
-#### Translate
-This feature changes the main language of the app, also "None language" called, with another
-one. Every string for dialogue, button names or descriptions will in the script files appear
-in the new language. The choosen "new" main language must already supported and present in the
-apps tl-directory.
-
-The translation task requires the `--translate` option, followed by the name of the replacement
-language. The given string must exactly match the directory name of the choosen language.
-For example 'your/gamepath.../game/tl/french' would be executed with the CLI command
-`python unrpyc.py /path/to/renpy/app/ -t french`.
-
 ## Usage
 
-This tool can either be ran as a command line tool, as a library, or injected into the game itself. To use it as a command line tool, a local python installation is required.
+This tool can either be ran as a command line tool, as a library, or injected into the game itself. To use it as a command line tool, a local python installation is required. To use it for its default function (decompiling)
+you can simply pass it the files you want to decompile as arguments, or pass it the folder
+containing them. For example, `python unrpyc.py file1.rpyc file2.rpyc` or `python unrpyc.py folder/`
+
+### Additional features
+
+#### Translation:
+For easier reading of decompiled script files, unrpyc can use translation data contained in a game
+to automatically convert the emitted script files to another language. You can find the supported
+languages for a game by looking in the `game/tl` folder of said game (`None` being the default)
+
+To use this feature, simply pass the name of the target language (which has to match the name found
+in the tl folder) with the `-t`/`--translate` option. For example, if a game has a folder
+`path/to/renpyapp/game/tl/french`, then you can run the command:
+`python unrpyc.py /path/to/renpyapp/ -t french`
+
+#### Raw ast view:
+Instead of decompiling, the tool can simply show the contents of a rpyc file. This is mainly useful
+for bug reports and the development of unrpyc. You can pass the `-d`/`--dump` flag to activate this
+feature.
+
+Note: this generates a _lot_ of output.
 
 ## Compatibility
 
