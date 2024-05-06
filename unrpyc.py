@@ -360,13 +360,6 @@ def main():
         help="Tries some workarounds against common obfuscation methods. This is a lot slower.")
 
     ap.add_argument(
-        '-d',
-        '--dump',
-        dest='dump',
-        action='store_true',
-        help="Instead of decompiling, pretty print the ast to a file")
-
-    ap.add_argument(
         '-p',
         '--processes',
         dest='processes',
@@ -378,7 +371,15 @@ def main():
         "Defaults to the amount of hw threads available minus one, disabled when muliprocessing "
         "unavailable is.")
 
-    ap.add_argument(
+    astdump = ap.add_argument_group('astdump options', 'All unrpyc options related to ast-dumping.')
+    astdump.add_argument(
+        '-d',
+        '--dump',
+        dest='dump',
+        action='store_true',
+        help="Instead of decompiling, pretty print the ast to a file")
+
+    astdump.add_argument(
         '--comparable',
         dest='comparable',
         action='store_true',
@@ -386,7 +387,7 @@ def main():
         "This suppresses attributes that are different even when the code is identical, such as "
         "file modification times. ")
 
-    ap.add_argument(
+    astdump.add_argument(
         '--no-pyexpr',
         dest='no_pyexpr',
         action='store_true',
@@ -432,8 +433,7 @@ def main():
 
     # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
-        ap.error(
-            "Options '--comparable' and '--no_pyexpr' require '--dump'.")
+        ap.error("Options '--comparable' and '--no_pyexpr' require '--dump'.")
 
     if args.dump and args.translate:
         ap.error("Options '--translate' and '--dump' cannot be used together.")
@@ -491,7 +491,7 @@ def main():
     args.translator = None
     if args.translate:
         # For translation, we first need to analyse all files for translation data.
-        # We then collect all of these back into the main process, and build a 
+        # We then collect all of these back into the main process, and build a
         # datastructure of all of them. This datastructure is then passed to
         # all decompiling processes.
         # Note: because this data contains some FakeClasses, Multiprocessing cannot
