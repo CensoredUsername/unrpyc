@@ -1,15 +1,14 @@
 # Unrpyc, the Ren'Py script decompiler
-[![Python Version][py]][l_py] [![Python Version][renpy]][l_renpy] [![MIT][b_licence]][l_licence] ![Downloads][b_downloads]
+[![Python Version][py]][l_py] [![Python Version][renpy]][l_renpy] [![MIT][b_licence]][l_licence] ![Downloads][b_downloads]<br>
 **Unrpyc** is a tool to decompile Ren'Py (http://www.renpy.org) compiled .rpyc script files. It will
 not extract files from .rpa archives. For that, use [rpatool](https://github.com/Shizmob/rpatool) or [UnRPA](https://github.com/Lattyware/unrpa).
 
 ## Status
-![Python Version][b_py3] [![Latest Version][b_release_2]][l_releases] [![check][b_check_master]][l_workflow] [![check][b_check_dev]][l_workflow]
+![Python Version][b_py3] [![Latest Version][b_release_2]][l_releases] [![check][b_check_master]][l_workflow] [![check][b_check_dev]][l_workflow]<br>
 ![Python Version][b_py2] [![Latest Version][b_release_1]][l_releases] [![check][b_check_legacy]][l_workflow] [![check][b_check_legacy_dev]][l_workflow]
 
+<!-- Badge-link prefixe: b_ = badge source; l_ = link source -->
 
-
-<!-- Link prefixe: b_ = badge source; l_ = link source -->
 [py]: https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff&style=flat-square
 [l_py]: https://python.org
 [renpy]: https://img.shields.io/badge/Ren'Py-ac6464?logo=renpy&logoColor=fff&style=flat-square
@@ -17,12 +16,12 @@ not extract files from .rpa archives. For that, use [rpatool](https://github.com
 <!-- Licence -->
 [b_licence]: https://img.shields.io/badge/license-MIT-yellow?style=flat-square&color=darkred
 [l_licence]: LICENSE
-<!-- Downloads -->
+<!-- Download count -->
 [b_downloads]: https://img.shields.io/github/downloads/CensoredUsername/unrpyc/total?style=flat-square&color=darkgreen
-<!-- Python -->
+<!-- Python minimal version info -->
 [b_py3]: https://img.shields.io/badge/3.9-gold?style=flat-square&logo=python&logoColor=fff&labelColor=3776AB
 [b_py2]: https://img.shields.io/badge/2.7-gold?style=flat-square&logo=python&logoColor=fff&labelColor=3776AB
-<!-- release -->
+<!-- Release version info -->
 [b_release_2]: https://img.shields.io/github/v/release/CensoredUsername/unrpyc?style=flat-square
 [b_release_1]: https://img.shields.io/github/v/release/CensoredUsername/unrpyc?filter=v1*&style=flat-square
 [l_releases]: https://github.com/CensoredUsername/unrpyc/releases
