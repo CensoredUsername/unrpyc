@@ -209,7 +209,7 @@ def decrypt_base64(data, count):
 
 @decryptor
 def decrypt_string_escape(data, count):
-    if not all(ord(i) >= 0x20 and ord(i) < 0x80 for i in count.keys()):
+    if not all(i >= 0x20 and i < 0x80 for i in count.keys()):
         return None
     try:
         newdata = data.decode("unicode-escape").encode('latin1')
