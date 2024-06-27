@@ -58,36 +58,36 @@ feature.
 Note: this generates a _lot_ of output.
 
 ## Compatibility
-You are currently reading the documentation for the **master branch** of this tool. Ren'Py switched
+You are currently reading the documentation for the `master` branch of this tool. *Ren'Py* switched
 to using Python 3 in *Ren'Py 8*. This required significant changes to the decompiler, and
 necessitated splitting it into two to maintain support for older games. Development and releases
-for this tool are now split into the **master branch** (Unrpyc v2.x, using Python 3) and the
-**legacy branch** (Unrpyc v1.x, using Python 2). Additionally, support for some very ancient Ren'Py
-features has been dropped from the **master branch** to simplify continued development of unrpyc.
+for this tool are now split into the `master` branch (Unrpyc v2.x, using Python 3) and the
+`legacy` branch (Unrpyc v1.x, using Python 2). Additionally, support for some very ancient *Ren'Py*
+features has been dropped from the `master` branch to simplify continued development of unrpyc.
 In practice this means that games before Ren'Py `6.18.0` are no longer supported by the
-**master branch**, and games from before `6.99.10` should use the `--no-init-offset` option. Any
-game using Ren'Py versions before `6.18.0` should instead use the **legacy branch** of unrpyc,
+`master` branch, and games from before `6.99.10` should use the `--no-init-offset` option. Any
+game using *Ren'Py* versions before `6.18.0` should instead use the `legacy` branch of unrpyc,
 which supports up to and including *Ren'Py 7*.
 
 When using the injectors (`un.rpyc`, `un.rpy`, `bytecode.rpyb`), compatibility is more stringent,
-as these tools use the python version bundled by Ren'Py. Use un.rpyc v2 (`2.*.*`) for Ren'Py 8
-games, and un.rpyc v1 (`1.*.*`) for Ren'Py 7 and 6.
+as these tools use the python version bundled by *Ren'Py*. Use un.rpyc v2 (`2.*.*`) for Ren'Py 8
+games, and un.rpyc v1 (`1.*.*`) for *Ren'Py* 7 and 6.
 
 Summarized:
 - unrpyc v2:
   - Requires python `3.9` or above to work.
   - Releases use version numbers `2.x`
-  - Uses branches **master** for the last release, and **dev** for development.
-  - Command line supports Ren'Py `8.x` (most recent) down to `6.18.0` (below `6.99.10` requires
-  option --no-init-offset)
-  - Injectors (`un.rpyc` and friends) support only Ren'Py `8.x`
+  - Uses branches `master` for the last release, and `dev` for development.
+  - Command line supports *Ren'Py* `8.x` (most recent) down to `6.18.0` (below `6.99.10` requires
+  option --no-init-offset)*
+    - Injectors (`un.rpyc` and friends) support only *Ren'Py* `8.x`
 
 - unrpyc v1:
   - Requires python `2.7` to work.
   - Releases use version numbers `1.x`
-  - Uses branches **legacy** for the last release, and **legacy-dev** for development.
-  - Command line supports Ren'Py `7.x` (most recent) and Ren'Py `6.x`.
-  - Injectors (`un.rpyc` and friends) support Ren'Py `6.x` and `7.x`.
+  - Uses branches `legacy` for the last release, and `legacy-dev` for development.
+  - Command line supports Ren'Py `7.x` (most recent) and *Ren'Py* `6.x`.
+  - Injectors (`un.rpyc` and friends) support *Ren'Py* `6.x` and `7.x`.
 
 *Ren'Py 5* or earlier are not supported currently.
 
@@ -167,8 +167,8 @@ in these directories or their subdirectories will be decompiled. By default, the
 overwrite existing files, use option `-c` to do that.
 
 This script will try to disassemble all AST nodes. In the case it encounters an unknown node type,
-which may be caused by an update to Ren'Py somewhere in the future, a warning will be printed and a
-placeholder inserted in the script when it finds a node it doesn't know how tohandle. If you
+which may be caused by an update to *Ren'Py* somewhere in the future, a warning will be printed and
+a placeholder inserted in the script when it finds a node it doesn't know how to handle. If you
 encounter this, please open an issue to alert us of the problem.
 
 For the script to run correctly it is required for the unrpyc.py file to be in the same directory
@@ -183,19 +183,22 @@ into the `game` directory. The tool writes logs to the file `unrpyc.log.txt`.
 ### Library usage
 You can import the module from python and call unrpyc.decompile_rpyc(filename, ...) directly.
 
-## Notes on support
-The Ren'Py engine has changed a lot through the years. While this tool tries to support all
-available Ren'Py versions since the creation of this tool, we do not actively test it against every
-engine release. Furthermore the engine does not have perfect backwards compatibility itself, so
-issues can occur if you try to run decompiled files with different engine releases. Most attention
-is given to recent engine versions so if you encounter an issues with older games, please report it.
+warning: this has changed with python 3 and might not work. This is under active development.
 
-Additionally, with the jump to python 3 in Ren'Py 8, it became difficult to support all Ren'Py
+## Notes on support
+The *Ren'Py* engine has changed a lot through the years. While this tool tries to support all
+available *Ren'Py* versions since the creation of this tool, we do not actively test it against
+every engine release. Furthermore the engine does not have perfect backwards compatibility itself,
+so issues can occur if you try to run decompiled files with different engine releases. Most
+attention is given to recent engine versions so if you encounter an issues with older games, please
+report it.
+
+Additionally, with the jump to python 3 in *Ren'Py 8*, it became difficult to support all *Ren'Py*
 versions with a single tool. Therefore, please consult the compatibility section above to find out
 which version of the tool you need.
 
 ## Issue reports
-As Ren'Py is being continuously developed itself it often occurs that this tool might break on
+As *Ren'Py* is being continuously developed itself it often occurs that this tool might break on
 newer engine releases. This is most likely due to us not being aware of these features existing in
 the first place. To get this fixed you can make an issue report to this repository. However, we
 work on this tool in our free time and therefore we strongly request performing the following steps
@@ -210,7 +213,7 @@ directly, do not use wrapper tools incorporating unrpyc for the report.
 2. Run the command line tool with the anti-obfuscation option `--try-harder`.
 
 ### When making an issue report:
-1. List the used version of unrpyc and the version of Ren'Py used to create the .rpyc file you're
+1. List the used version of unrpyc and the version of *Ren'Py* used to create the .rpyc file you're
 trying to decompile (and if applicable, what game).
 2. Describe exactly what you're trying to do, and what the issue is (is it not decompiling at all,
 is there an omission in the decompiled file, or is the decompiled file invalid).
@@ -228,9 +231,9 @@ do your best to conform to the style used by the rest of the code base and only 
 absolutely necessary, this keeps the process smooth.
 
 ### Notes on deobfuscation
-Recently a lot of modifications of Ren'Py have turned up that slightly alter the Ren'Py file format
-to block this tool from working. The tool now includes a basic framework for deobfuscation, but
-feature requests to create deobfuscation support for specific games are not likely to get a
+Recently a lot of modifications of *Ren'Py* have turned up that slightly alter the *Ren'Py* file
+format to block this tool from working. The tool now includes a basic framework for deobfuscation,
+but feature requests to create deobfuscation support for specific games are not likely to get a
 response from us as this is essentially just an arms race, and it's trivial to figure out a way to
 obfuscate the file that blocks anything that is supported right now. If you make a pull request
 with it we'll happily put it in mainline or a game-specific branch depending on how many games it
