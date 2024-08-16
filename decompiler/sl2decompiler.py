@@ -258,7 +258,10 @@ class SL2Decompiler(DecompilerBase):
                 and isinstance(ast.children[0], sl2.slast.SLDisplayable)
                 and ast.children[0].children
                 and (not ast.keyword
-                     or ast.children[0].location[1] > ast.keyword[-1][1].linenumber)
+                     # this line shoudln't be necessary, but guards against broken keywords
+                     or (ast.keyword[-1][1] is not None and
+                         ast.children[0].location[1] > ast.keyword[-1][1].linenumber
+                    ))
                 and (atl_transform is None
                      or ast.children[0].location[1] > atl_transform.loc[1])):
 
@@ -589,7 +592,7 @@ class SL2Decompiler(DecompilerBase):
 
         if ty == "keywords_broken":
             self.write(sep())
-            self.write(item[3])
+            self.write(item[3][0])
 
         if first_line and has_block:
             self.write(":")
