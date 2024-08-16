@@ -254,13 +254,20 @@ class SL2Decompiler(DecompilerBase):
         # since it results in cleaner code.
 
         # if we're not already in a has block, and have a single child that's a displayable,
-        # which itself has children, and the line number of this child is after any atl transform or keyword
-        # we can safely use a has statement
-        if (not has_block and children == 1 and len(ast.children) == 1 and
-            isinstance(ast.children[0], sl2.slast.SLDisplayable) and
-            ast.children[0].children and (not ast.keyword or
-                ast.children[0].location[1] > ast.keyword[-1][1].linenumber) and
-            (atl_transform is None or ast.children[0].location[1] > atl_transform.loc[1])):
+        # which itself has children, and the line number of this child is after any atl
+        # transform or keyword we can safely use a has statement
+        if (not has_block
+                and children == 1
+                and len(ast.children) == 1
+                and isinstance(ast.children[0], sl2.slast.SLDisplayable)
+                and ast.children[0].children
+                and (not ast.keyword
+                     # this line shoudln't be necessary, but guards against broken keywords
+                     or (ast.keyword[-1][1] is not None and
+                         ast.children[0].location[1] > ast.keyword[-1][1].linenumber
+                    ))
+                and (atl_transform is None
+                    or ast.children[0].location[1] > atl_transform.loc[1])):
 
             first_line, other_lines = self.sort_keywords_and_children(ast, ignore_children=True)
             self.print_keyword_or_child(first_line, first_line=True, has_block=True)
@@ -591,7 +598,7 @@ class SL2Decompiler(DecompilerBase):
 
         if ty == "keywords_broken":
             self.write(sep())
-            self.write(item[3])
+            self.write(item[3][0])
 
         if first_line and has_block:
             self.write(":")
