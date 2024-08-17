@@ -576,7 +576,10 @@ class SafePickler(pickle.Pickler if PY2 else pickle._Pickler):
             self.memoize(obj)
             return
 
-        super().save_global(obj, name)
+        if PY2:
+            pickle.Pickler.save_global(self, obj, name)
+        else:
+            super().save_global(self, obj, name)
 
 # the main API
 
