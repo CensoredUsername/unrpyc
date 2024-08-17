@@ -20,6 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+__title__ = "Unrpyc"
+__version__ = 'v1.3.2.dev'
+__url__ = "https://github.com/CensoredUsername/unrpyc"
+
+
 import argparse
 import codecs
 import glob
@@ -230,6 +235,11 @@ def worker(t):
     return context
 
 def main():
+    if not sys.version_info[:2] == (2, 7):
+        raise Exception(
+            "'%s %s' must be executed with Python 2.7.\n" % (__title__, __version__) +
+            "You are running %s" % sys.version)
+
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
     cc_num = cpu_count()
     parser = argparse.ArgumentParser(description="Decompile .rpyc/.rpymc files")
@@ -291,10 +301,14 @@ def main():
                         "potentially followed by a '-', and the amount of children the displayable takes"
                         "(valid options are '0', '1' or 'many', with 'many' being the default)")
 
+    parser.add_argument(
+        '--version',
+        action='version',
+        version="%s %s" % (__title__, __version__))
+
     args = parser.parse_args()
 
-    # Catch impossible arg combinations with clear info, so they do not produce unclear
-    # errors or fail silent
+    # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
         raise ap.error(
             "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
