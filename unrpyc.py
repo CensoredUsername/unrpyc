@@ -260,7 +260,8 @@ def run_workers(worker, common_args, private_args, parallelism):
 
     results = []
     if parallelism > 1:
-        with Pool(parallelism) as pool:
+        pool = Pool(parallelism)
+        try:
             for result in pool.imap(worker, worker_args, 1):
                 results.append(result)
 
@@ -268,6 +269,9 @@ def run_workers(worker, common_args, private_args, parallelism):
                     print(line)
 
                 print("")
+
+        finally:
+            pool.close()
 
     else:
         for result in map(worker, worker_args):
