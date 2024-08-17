@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 __title__ = "Unrpyc"
-__version__ = 'v1.3.2.dev'
+__version__ = 'v1.3.2'
 __url__ = "https://github.com/CensoredUsername/unrpyc"
 
 
