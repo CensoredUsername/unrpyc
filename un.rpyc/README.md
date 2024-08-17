@@ -6,13 +6,11 @@ using python 2.7.
 creating a pickle which will run the decompiler when ren'py is loading all files, before any .rpy
 code normally even runs.
 
-Note that for this to work the module
-`pickleast` (from https://github.com/CensoredUsername/picklemagic)
-must be in pythons module search path. If it isn't, you can use the -m (--magic) switch to specify the
-directory in which pickleast.py is located.
+Building un.rpyc requires the `corrupy` package to (from https://github.com/CensoredUsername/corrupy).
+This is normally available as a submodule git submodule in this folder. 
 
 Via various ways of optimization this module manages to fit the whole decompiler in a file less
-than 16 kB in size! This is smaller than some of the unrpyc source files.
+than 20 kB in size! This is smaller than some of the unrpyc source files.
 
 The -d (--debug) switch turns on debug results. In this case, three extra files will be produced.
 
