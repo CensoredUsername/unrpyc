@@ -46,8 +46,7 @@ except ImportError:
 import decompiler
 import deobfuscate
 from decompiler import astdump, translate
-from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle_safe_dump,
-                                    pickle_loads)
+from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle_loads)
 
 
 class Context:
@@ -144,6 +143,20 @@ def read_ast_from_file(in_file, context):
     return stmts
 
 
+def get_ast(in_file, try_harder, context):
+    """
+    Opens the rpyc file at path in_file to load the contained AST.
+    If try_harder is True, an attempt will be made to work around obfuscation techniques.
+    Else, it is loaded as a normal rpyc file.
+    """
+    with open(in_file, 'rb') as in_file:
+        if try_harder:
+            ast = deobfuscate.read_ast(in_file, context)
+        else:
+            ast = read_ast_from_file(in_file, context)
+    return ast
+
+
 def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, dump=False,
                    decompile_python=False, comparable=False, no_pyexpr=False, translator=None,
                    tag_outside_block=False, init_offset=False, sl_custom_names=None):
@@ -163,12 +176,7 @@ def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, d
         return
 
     context.log('Decompiling %s to %s ...' % (input_filename, out_filename))
-
-    with open(input_filename, 'rb') as in_file:
-        if try_harder:
-            ast = deobfuscate.read_ast(in_file, context)
-        else:
-            ast = read_ast_from_file(in_file, context)
+    ast = get_ast(input_filename, try_harder, context)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
@@ -182,42 +190,56 @@ def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, d
 
     context.set_state('ok')
 
-def extract_translations(input_filename, language, context):
-    context.log("Extracting translations from %s..." % input_filename)
 
-    with open(input_filename, 'rb') as in_file:
-        ast = read_ast_from_file(in_file)
-
-    translator = translate.Translator(language, True)
-    translator.translate_dialogue(ast)
-    # we pickle and unpickle this manually because the regular unpickler will choke on it
-    return pickle_safe_dumps(translator.dialogue), translator.strings
-
-
-def worker(arg_tup):
-    (args, filename) = arg_tup
+def worker_tl(arg_tup):
+    """
+    This file implements the first pass of the translation feature. It gathers TL-data from the
+    given rpyc files, to be used by the common worker to translate while decompiling.
+    arg_tup is (args, filename). Returns the gathered TL data in the context.
+    """
+    args, filename = arg_tup
     context = Context()
 
     try:
-        if args.write_translation_file:
-            result = extract_translations(filename, args.language, context)
-            context.set_result(result)
+        context.log('Extracting translations from %s...' % filename)
+        ast = get_ast(filename, args.try_harder, context)
 
-        else:
-            if args.translation_file is not None:
-                translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = (
-                    pickle_loads(args.translations))
-            else:
-                translator = None
+        tl_inst = translate.Translator(args.translate, True)
+        tl_inst.translate_dialogue(ast)
 
-            decompile_rpyc(
-                filename, context, args.clobber, try_harder=args.try_harder, dump=args.dump,
-                decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
-                comparable=args.comparable, translator=translator,
-                tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
-                sl_custom_names=args.sl_custom_names
-            )
+        # this object has to be sent back to the main process, for which it needs to be pickled.
+        # the default pickler cannot pickle fake classes correctly, so manually handle that here.
+        context.set_result(pickle_safe_dumps((tl_inst.dialogue, tl_inst.strings)))
+        context.set_state("ok")
+
+    except Exception as e:
+        context.set_error(e)
+        context.log('Error while extracting translations from %s' % filename)
+        context.log(traceback.format_exc())
+
+    return context
+
+
+def worker_common(arg_tup):
+    """
+    The core of unrpyc. arg_tup is (args, filename). This worker will unpack the file at filename,
+    decompile it, and write the output to it's corresponding rpy file.
+    """
+
+    (args, filename) = arg_tup
+    context = Context()
+
+    if args.translator:
+        args.translator = pickle_loads(args.translator)
+
+    try:
+        decompile_rpyc(
+            filename, context, args.clobber, try_harder=args.try_harder, dump=args.dump,
+            decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
+            comparable=args.comparable, translator=args.translator,
+            tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
+            sl_custom_names=args.sl_custom_names
+        )
 
     except Exception, e:
         context.set_error(e)
@@ -225,6 +247,39 @@ def worker(arg_tup):
         context.log(traceback.format_exc())
 
     return context
+
+
+def run_workers(worker, common_args, private_args, parallelism):
+    """
+    Runs worker in parallel using multiprocessing, with a max of `parallelism` processes.
+    Workers are called as worker((common_args, private_args[i])).
+    Workers should return an instance of `Context` as return value.
+    """
+
+    worker_args = ((common_args, x) for x in private_args)
+
+    results = []
+    if parallelism > 1:
+        with Pool(parallelism) as pool:
+            for result in pool.imap(worker, worker_args, 1):
+                results.append(result)
+
+                for line in result.log_contents:
+                    print(line)
+
+                print("")
+
+    else:
+        for result in map(worker, worker_args):
+            results.append(result)
+
+            for line in result.log_contents:
+                print(line)
+
+            print("")
+
+    return results
+
 
 def parse_sl_custom_names(unparsed_arguments):
     # parse a list of strings in the format
@@ -283,15 +338,6 @@ def main():
                         help="use the specified number or processes to decompile."
                         "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
 
-    parser.add_argument('-t', '--translation-file', dest='translation_file', action='store', default=None,
-                        help="use the specified file to translate during decompilation")
-
-    parser.add_argument('-T', '--write-translation-file', dest='write_translation_file', action='store', default=None,
-                        help="store translations in the specified file instead of decompiling")
-
-    parser.add_argument('-l', '--language', dest='language', action='store', default=None,
-                        help="if writing a translation file, the language of the translations to write")
-
     parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
                         help="Only dumping and for decompiling screen language 1 screens. "
                         "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
@@ -299,6 +345,15 @@ def main():
     parser.add_argument('--comparable', dest='comparable', action='store_true',
                         help="Only for dumping, remove several false differences when comparing dumps. "
                         "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
+
+    parser.add_argument(
+        '-t',
+        '--translate',
+        dest='translate',
+        type=str,
+        action='store',
+        help="Changes the dialogue language in the decompiled script files, using a translation "
+        "already present in the tl dir.")
 
     parser.add_argument('--no-pyexpr', dest='no_pyexpr', action='store_true',
                         help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
@@ -339,24 +394,10 @@ def main():
     # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
         ap.error(
-            "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
+            "Options '--comparable' and '--no_pyexpr' require '--dump'.")
 
-    if ((args.try_harder or args.dump)
-            and (args.write_translation_file or args.translation_file or args.language)):
-        ap.error(
-            "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
-            "feature.")
-
-    # Fail early to avoid wasting time going through the files
-    if (args.write_translation_file
-            and not args.clobber
-            and path.exists(args.write_translation_file)):
-        ap.error(
-            "Output translation file already exists. Pass --clobber to overwrite.")
-
-    if args.translation_file:
-        with open(args.translation_file, 'rb') as in_file:
-            args.translations = in_file.read()
+    if args.dump and args.translate:
+        ap.error("Options '--translate' and '--dump' cannot be used together.")
 
     if args.sl_custom_names is not None:
         try:
@@ -399,40 +440,41 @@ def main():
     # If a big file starts near the end, there could be a long time with only one thread running,
     # which is inefficient. Avoid this by starting big files first.
     worklist.sort(key=lambda x: path.getsize(x), reverse=True)
-    worklist = [(args, x) for x in worklist]
 
-    results = []
+    translation_errors = 0
+    args.translator = None
+    if args.translate:
+        # For translation, we first need to analyse all files for translation data.
+        # We then collect all of these back into the main process, and build a 
+        # datastructure of all of them. This datastructure is then passed to
+        # all decompiling processes.
+        # Note: because this data contains some FakeClasses, Multiprocessing cannot
+        # pass it between processes (it pickles them, and pickle will complain about
+        # these). Therefore, we need to manually pickle and unpickle it.
 
-    if args.processes > 1:
-        with Pool(args.processes) as pool:
-            for result in pool.imap(worker, worklist, 1):
-                results.append(result)
+        print("Step 1: analysing files for translations.")
+        results = run_workers(worker_tl, args, worklist, args.processes)
 
-                for line in result.log_contnets:
-                    print(line)
+        print('Compiling extracted translations.')
+        tl_dialogue = {}
+        tl_strings = {}
+        for entry in results:
+            if entry.state != "ok":
+                translation_errors += 1
 
-                print("")
+            if entry.value:
+                new_dialogue, new_strings = pickle_loads(entry.value)
+                tl_dialogue.update(new_dialogue)
+                tl_strings.update(new_strings)
 
-    else:
-        for result in itertools.imap(worker, worklist):
-            results.append(result)
+        translator = translate.Translator(None)
+        translator.dialogue = tl_dialogue
+        translator.strings = tl_strings
+        args.translator = pickle_safe_dumps(translator)
 
-            for line in result.log_contents:
-                print(line)
+        print("Step 2: decompiling.")
 
-                print("")
-
-    if args.write_translation_file:
-        print("Writing translations to %s..." % args.write_translation_file)
-        translated_dialogue = {}
-        translated_strings = {}
-        for result in results:
-            if not result.value:
-                continue
-            translated_dialogue.update(pickle_loads(result.value[0]))
-            translated_strings.update(result.value[1])
-        with open(args.write_translation_file, 'wb') as out_file:
-            pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
+    results = run_workers(worker_common, args, worklist, args.processes)
 
     success = sum(result.state == "ok" for result in results)
     skipped = sum(result.state == "skip" for result in results)
@@ -446,10 +488,7 @@ def main():
     print(55 * '-')
     print("Processed %s" % plural_s(len(results), 'file'))
 
-    if args.write_translation_file:
-        print("> %s were successfully analyzed." % plural_s(success, 'file'))
-    else:
-        print("> %s were successfully decompiled." % plural_s(success, 'file'))
+    print("> %s were successfully decompiled." % plural_s(success, 'file'))
 
     if broken:
         print("> %s did not have the correct header, "
@@ -460,6 +499,9 @@ def main():
 
     if skipped:
         print("> %s were skipped as the output file already existed." % plural_s(skipped, 'file'))
+
+    if translation_errors:
+        print("> %s failed translation extraction." % plural_s(translation_errors, 'file'))
 
 
     if skipped:

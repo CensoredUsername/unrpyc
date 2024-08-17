@@ -5,6 +5,9 @@ script files. It will not extract files from .rpa archives. For that, use
 [rpatool](https://github.com/Shizmob/rpatool) or
 [UnRPA](https://github.com/Lattyware/unrpa).
 
+You are currently reading the README of the `legacy` version of this tool, which requires python 2
+and targets Ren'py `6` and `7`.
+
 ## Status
 
 master (python 3):[![Build Status](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml/badge.svg?branch=master)](https://github.com/CensoredUsername/unrpyc/actions/workflows/python-app.yaml)
@@ -17,7 +20,30 @@ legacy-dev (python 2):[![Build Status](https://github.com/CensoredUsername/unrpy
 
 ## Usage
 
-This tool can either be ran as a command line tool, as a library, or injected into the game itself. For files from Ren'py 6 and 7, python 2.7 is required to run it as a command line tool.
+This tool can either be ran as a command line tool, as a library, or injected into the game itself.
+To use it as a command line tool, a local python 2 installation is required. To use it for its
+default function (decompiling) you can simply pass it the files you want to decompile as arguments,
+or pass it the folder containing them. For example, `python unrpyc.py file1.rpyc file2.rpyc` or
+`python unrpyc.py folder/`
+
+### Additional features
+
+#### Translation:
+For easier reading of decompiled script files, unrpyc can use translation data contained in a game
+to automatically convert the emitted script files to another language. You can find the supported
+languages for a game by looking in the `game/tl` folder of said game (`None` being the default)
+
+To use this feature, simply pass the name of the target language (which has to match the name found
+in the tl folder) with the `-t`/`--translate` option. For example, if a game has a folder
+`path/to/renpyapp/game/tl/french`, then you can run the command:
+`python unrpyc.py /path/to/renpyapp/ -t french`
+
+#### Raw ast view:
+Instead of decompiling, the tool can simply show the contents of a rpyc file. This is mainly useful
+for bug reports and the development of unrpyc. You can pass the `-d`/`--dump` flag to activate this
+feature.
+
+Note: this generates a _lot_ of output.
 
 ## Compatibility
 
