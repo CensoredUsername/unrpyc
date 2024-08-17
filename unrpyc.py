@@ -52,8 +52,22 @@ from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle
 
 class Context:
     def __init__(self):
+        # list of log lines to print
         self.log_contents = []
+
+        # any exception that occurred
         self.error = None
+
+
+        # state of what case was encountered
+        # options:
+        #     error:      (default) an unexpected exception was raised
+        #     ok:         the process concluded successfully
+        #     bad_header: the given file cannot be parsed as a normal rpyc file
+        #     skip:       the given file was skipped due to a preexisting output file
+        self.state = "error"
+
+        # return value from the worker, if any
         self.value = None
 
     def log(self, message):
@@ -61,6 +75,9 @@ class Context:
 
     def set_error(self, error):
         self.error = error
+
+    def set_state(self, state):
+        self.state = state
 
     def set_result(self, value):
         self.value = value
@@ -78,6 +95,7 @@ def read_ast_from_file(in_file, context):
     # v1 files are just a zlib compressed pickle blob containing some data and the ast
     # v2 files contain a basic archive structure that can be parsed to find the same blob
     raw_contents = in_file.read()
+    file_start = raw_contents[:50]
 
     if not raw_contents.startswith("RENPY RPC2"):
         # if the header isn't present, it should be a RPYC V1 file, which is just the blob
@@ -107,26 +125,28 @@ def read_ast_from_file(in_file, context):
             chunks[slot] = raw_contents[start: start + length]
 
         if not 1 in chunks:
+            context.set_state('bad_header')
             raise BadRpycException(
                 "Unable to find the right slot to load from the rpyc file. The file header "
-                "structure has been changed.")
+                "structure has been changed. File header: %s" % file_start)
 
         contents = chunks[1]
 
     try:
         contents = zlib.decompress(contents)
     except Exception:
+        context.set_state('bad_header')
         raise BadRpycException(
             "Did not find a zlib compressed blob where it was expected. Either the header has been "
-            "modified or the file structure has been changed.")
+            "modified or the file structure has been changed. File header: %s" % file_start)
 
     _, stmts = pickle_safe_loads(contents)
     return stmts
 
 
-def decompile_rpyc(input_filename, context, overwrite=False, dump=False, decompile_python=False,
-                   comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
-                   init_offset=False, try_harder=False, sl_custom_names=None):
+def decompile_rpyc(input_filename, context, overwrite=False, try_harder=False, dump=False,
+                   decompile_python=False, comparable=False, no_pyexpr=False, translator=None,
+                   tag_outside_block=False, init_offset=False, sl_custom_names=None):
 
     # Output filename is input filename but with .rpy extension
     filepath, ext = path.splitext(input_filename)
@@ -137,11 +157,12 @@ def decompile_rpyc(input_filename, context, overwrite=False, dump=False, decompi
     else:
         out_filename = filepath + ".rpy"
 
-    context.log("Decompiling %s to %s..." % (input_filename, out_filename))
-
     if not overwrite and path.exists(out_filename):
-        context.log("Output file already exists. Pass --clobber to overwrite.")
-        return False  # Don't stop decompiling if one file already exists
+        context.log('Skipping %s. %s already exists.' % (input_filename, out_filename))
+        context.set_state('skip')
+        return
+
+    context.log('Decompiling %s to %s ...' % (input_filename, out_filename))
 
     with open(input_filename, 'rb') as in_file:
         if try_harder:
@@ -158,7 +179,8 @@ def decompile_rpyc(input_filename, context, overwrite=False, dump=False, decompi
                                          tag_outside_block=tag_outside_block, init_offset=init_offset, sl_custom_names=sl_custom_names)
 
             decompiler.pprint(out_file, ast, options)
-    return True
+
+    context.set_state('ok')
 
 def extract_translations(input_filename, language, context):
     context.log("Extracting translations from %s..." % input_filename)
@@ -171,6 +193,38 @@ def extract_translations(input_filename, language, context):
     # we pickle and unpickle this manually because the regular unpickler will choke on it
     return pickle_safe_dumps(translator.dialogue), translator.strings
 
+
+def worker(arg_tup):
+    (args, filename) = arg_tup
+    context = Context()
+
+    try:
+        if args.write_translation_file:
+            result = extract_translations(filename, args.language, context)
+            context.set_result(result)
+
+        else:
+            if args.translation_file is not None:
+                translator = translate.Translator(None)
+                translator.language, translator.dialogue, translator.strings = (
+                    pickle_loads(args.translations))
+            else:
+                translator = None
+
+            decompile_rpyc(
+                filename, context, args.clobber, try_harder=args.try_harder, dump=args.dump,
+                decompile_python=args.decompile_python, no_pyexpr=args.no_pyexpr,
+                comparable=args.comparable, translator=translator,
+                tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
+                sl_custom_names=args.sl_custom_names
+            )
+
+    except Exception, e:
+        context.set_error(e)
+        context.log("Error while decompiling %s:" % filename)
+        context.log(traceback.format_exc())
+
+    return context
 
 def parse_sl_custom_names(unparsed_arguments):
     # parse a list of strings in the format
@@ -204,35 +258,9 @@ def parse_sl_custom_names(unparsed_arguments):
 
     return parsed_arguments
 
-def worker(t):
-    (args, filename) = t
-    context = Context()
-
-    try:
-        if args.write_translation_file:
-            result = extract_translations(filename, args.language, context)
-        else:
-            if args.translation_file is not None:
-                translator = translate.Translator(None)
-                translator.language, translator.dialogue, translator.strings = (
-                    pickle_loads(args.translations))
-            else:
-                translator = None
-            result = decompile_rpyc(filename, context, args.clobber, args.dump,
-                                    decompile_python=args.decompile_python,
-                                    no_pyexpr=args.no_pyexpr, comparable=args.comparable,
-                                    translator=translator, tag_outside_block=args.tag_outside_block,
-                                    init_offset=args.init_offset, try_harder=args.try_harder,
-                                    sl_custom_names=args.sl_custom_names)
-
-        context.set_result(result)
-
-    except Exception, e:
-        context.set_error(e)
-        context.log("Error while decompiling %s:" % filename)
-        context.log(traceback.format_exc())
-
-    return context
+def plural_s(n, unit):
+    """Correctly uses the plural form of 'unit' when 'n' is not one"""
+    return ("1 %s" % unit) if n == 1 else "%s %ss" % (n, unit)
 
 def main():
     if not sys.version_info[:2] == (2, 7):
@@ -310,12 +338,12 @@ def main():
 
     # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
-        raise ap.error(
+        ap.error(
             "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
 
     if ((args.try_harder or args.dump)
             and (args.write_translation_file or args.translation_file or args.language)):
-        raise ap.error(
+        ap.error(
             "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
             "feature.")
 
@@ -323,7 +351,7 @@ def main():
     if (args.write_translation_file
             and not args.clobber
             and path.exists(args.write_translation_file)):
-        raise ap.error(
+        ap.error(
             "Output translation file already exists. Pass --clobber to overwrite.")
 
     if args.translation_file:
@@ -362,6 +390,12 @@ def main():
         print("No script files to decompile.")
         return
 
+    if args.processes > len(worklist):
+        args.processes = len(worklist)
+
+    print("Found %s to process. Performing decompilation using %s." %
+          (plural_s(len(worklist), 'file'), plural_s(args.processes, 'worker')))
+
     # If a big file starts near the end, there could be a long time with only one thread running,
     # which is inefficient. Avoid this by starting big files first.
     worklist.sort(key=lambda x: path.getsize(x), reverse=True)
@@ -369,13 +403,15 @@ def main():
 
     results = []
 
-    if args.processes > 1 and len(worklist) > 5:
+    if args.processes > 1:
         with Pool(args.processes) as pool:
             for result in pool.imap(worker, worklist, 1):
                 results.append(result)
 
                 for line in result.log_contnets:
                     print(line)
+
+                print("")
 
     else:
         for result in itertools.imap(worker, worklist):
@@ -384,33 +420,60 @@ def main():
             for line in result.log_contents:
                 print(line)
 
+                print("")
+
     if args.write_translation_file:
         print("Writing translations to %s..." % args.write_translation_file)
         translated_dialogue = {}
         translated_strings = {}
-        good = 0
-        bad = 0
         for result in results:
             if not result.value:
-                bad += 1
                 continue
-            good += 1
             translated_dialogue.update(pickle_loads(result.value[0]))
             translated_strings.update(result.value[1])
         with open(args.write_translation_file, 'wb') as out_file:
             pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
-    else:
-        # Check per file if everything went well and report back
-        good = sum(1 for i in results if i.error is None)
-        bad = sum(1 for i in results if i.error is not None)
+    success = sum(result.state == "ok" for result in results)
+    skipped = sum(result.state == "skip" for result in results)
+    failed = sum(result.state == "error" for result in results)
+    broken = sum(result.state == "bad_header" for result in results)
 
-    if bad == 0:
-        print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))
-    elif good == 0:
-        print("Decompilation of %d file%s failed" % (bad, 's' if bad>1 else ''))
+
+    print("")
+    print(55 * '-')
+    print("%s %s results summary:" % (__title__, __version__))
+    print(55 * '-')
+    print("Processed %s" % plural_s(len(results), 'file'))
+
+    if args.write_translation_file:
+        print("> %s were successfully analyzed." % plural_s(success, 'file'))
     else:
-        print("Decompilation of %d file%s successful, but decompilation of %d file%s failed" % (good, 's' if good>1 else '', bad, 's' if bad>1 else ''))
+        print("> %s were successfully decompiled." % plural_s(success, 'file'))
+
+    if broken:
+        print("> %s did not have the correct header, "
+              "these were ignored." % plural_s(broken, 'file'))
+
+    if failed:
+        print("> %s failed to decompile due to errors." % plural_s(failed, 'file'))
+
+    if skipped:
+        print("> %s were skipped as the output file already existed." % plural_s(skipped, 'file'))
+
+
+    if skipped:
+        print("")
+        print("To overwrite existing files instead of skipping them, use the --clobber flag.")
+
+    if broken:
+        print("")
+        print("To attempt to bypass modifications to the file header, use the --try-harder flag.")
+
+    if failed:
+        print("")
+        print("Errors were encountered during decompilation. Check the log for more information.")
+        print("When making a bug report, please include this entire log.")
 
 if __name__ == '__main__':
     main()
