@@ -21,31 +21,22 @@
 # SOFTWARE.
 
 import argparse
-from os import path, walk
 import codecs
 import glob
 import itertools
-import traceback
-import struct
-import zlib
 from operator import itemgetter
+from os import path, walk
+import struct
+import sys
+import traceback
+import zlib
 
 try:
-    from multiprocessing import Pool, Lock, cpu_count
+    from multiprocessing import Pool, cpu_count
 except ImportError:
     # Mock required support when multiprocessing is unavailable
     def cpu_count():
         return 1
-
-    class Lock:
-        def __enter__(self):
-            pass
-        def __exit__(self, type, value, traceback):
-            pass
-        def acquire(self, block=True, timeout=None):
-            pass
-        def release(self):
-            pass
 
 import decompiler
 import deobfuscate
@@ -54,12 +45,30 @@ from decompiler.renpycompat import (pickle_safe_loads, pickle_safe_dumps, pickle
                                     pickle_loads)
 
 
-printlock = Lock()
+class Context:
+    def __init__(self):
+        self.log_contents = []
+        self.error = None
+        self.value = None
+
+    def log(self, message):
+        self.log_contents.append(message)
+
+    def set_error(self, error):
+        self.error = error
+
+    def set_result(self, value):
+        self.value = value
+
+
+class BadRpycException(Exception):
+    """Exception raised when we couldn't parse the rpyc archive format"""
+    pass
 
 
 # API
 
-def read_ast_from_file(in_file):
+def read_ast_from_file(in_file, context):
     # Reads rpyc v1 or v2 file
     # v1 files are just a zlib compressed pickle blob containing some data and the ast
     # v2 files contain a basic archive structure that can be parsed to find the same blob
@@ -84,17 +93,16 @@ def read_ast_from_file(in_file):
             if slot != expected_slot and not have_errored:
                 have_errored = True
 
-                with printlock:
-                    print(
-                        "Warning: encountered an unexpected slot structure. It is possible the \n"
-                        "    file header structure has been changed.")
+                context.log(
+                    "Warning: Encountered an unexpected slot structure. It is possible the \n"
+                    "    file header structure has been changed.")
 
             position += 12
 
             chunks[slot] = raw_contents[start: start + length]
 
         if not 1 in chunks:
-            raise Exception(
+            raise BadRpycException(
                 "Unable to find the right slot to load from the rpyc file. The file header "
                 "structure has been changed.")
 
@@ -103,7 +111,7 @@ def read_ast_from_file(in_file):
     try:
         contents = zlib.decompress(contents)
     except Exception:
-        raise Exception(
+        raise BadRpycException(
             "Did not find a zlib compressed blob where it was expected. Either the header has been "
             "modified or the file structure has been changed.")
 
@@ -111,7 +119,7 @@ def read_ast_from_file(in_file):
     return stmts
 
 
-def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python=False,
+def decompile_rpyc(input_filename, context, overwrite=False, dump=False, decompile_python=False,
                    comparable=False, no_pyexpr=False, translator=None, tag_outside_block=False,
                    init_offset=False, try_harder=False, sl_custom_names=None):
 
@@ -124,33 +132,31 @@ def decompile_rpyc(input_filename, overwrite=False, dump=False, decompile_python
     else:
         out_filename = filepath + ".rpy"
 
-    with printlock:
-        print("Decompiling %s to %s..." % (input_filename, out_filename))
+    context.log("Decompiling %s to %s..." % (input_filename, out_filename))
 
-        if not overwrite and path.exists(out_filename):
-            print("Output file already exists. Pass --clobber to overwrite.")
-            return False # Don't stop decompiling if one file already exists
+    if not overwrite and path.exists(out_filename):
+        context.log("Output file already exists. Pass --clobber to overwrite.")
+        return False  # Don't stop decompiling if one file already exists
 
     with open(input_filename, 'rb') as in_file:
         if try_harder:
-            ast = deobfuscate.read_ast(in_file)
+            ast = deobfuscate.read_ast(in_file, context)
         else:
-            ast = read_ast_from_file(in_file)
+            ast = read_ast_from_file(in_file, context)
 
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         if dump:
             astdump.pprint(out_file, ast, decompile_python=decompile_python, comparable=comparable,
                                           no_pyexpr=no_pyexpr)
         else:
-            options = decompiler.Options(printlock=printlock, decompile_python=decompile_python, translator=translator,
+            options = decompiler.Options(log=context.log_contents, decompile_python=decompile_python, translator=translator,
                                          tag_outside_block=tag_outside_block, init_offset=init_offset, sl_custom_names=sl_custom_names)
 
             decompiler.pprint(out_file, ast, options)
     return True
 
-def extract_translations(input_filename, language):
-    with printlock:
-        print("Extracting translations from %s..." % input_filename)
+def extract_translations(input_filename, language, context):
+    context.log("Extracting translations from %s..." % input_filename)
 
     with open(input_filename, 'rb') as in_file:
         ast = read_ast_from_file(in_file)
@@ -194,10 +200,12 @@ def parse_sl_custom_names(unparsed_arguments):
     return parsed_arguments
 
 def worker(t):
-    (args, filename, filesize) = t
+    (args, filename) = t
+    context = Context()
+
     try:
         if args.write_translation_file:
-            return extract_translations(filename, args.language)
+            result = extract_translations(filename, args.language, context)
         else:
             if args.translation_file is not None:
                 translator = translate.Translator(None)
@@ -205,19 +213,21 @@ def worker(t):
                     pickle_loads(args.translations))
             else:
                 translator = None
-            return decompile_rpyc(filename, args.clobber, args.dump, decompile_python=args.decompile_python,
-                                  no_pyexpr=args.no_pyexpr, comparable=args.comparable, translator=translator,
-                                  tag_outside_block=args.tag_outside_block, init_offset=args.init_offset,
-                                  try_harder=args.try_harder, sl_custom_names=args.sl_custom_names)
-    except Exception as e:
-        with printlock:
-            print("Error while decompiling %s:" % filename)
-            print(traceback.format_exc())
-        return False
+            result = decompile_rpyc(filename, context, args.clobber, args.dump,
+                                    decompile_python=args.decompile_python,
+                                    no_pyexpr=args.no_pyexpr, comparable=args.comparable,
+                                    translator=translator, tag_outside_block=args.tag_outside_block,
+                                    init_offset=args.init_offset, try_harder=args.try_harder,
+                                    sl_custom_names=args.sl_custom_names)
 
-def sharelock(lock):
-    global printlock
-    printlock = lock
+        context.set_result(result)
+
+    except Exception, e:
+        context.set_error(e)
+        context.log("Error while decompiling %s:" % filename)
+        context.log(traceback.format_exc())
+
+    return context
 
 def main():
     # python27 unrpyc.py [-c] [-d] [--python-screens|--ast-screens|--no-screens] file [file ...]
@@ -309,7 +319,7 @@ def main():
     if args.sl_custom_names is not None:
         try:
             args.sl_custom_names = parse_sl_custom_names(args.sl_custom_names)
-        except Exception as e:
+        except Exception, e:
             print("\n".join(e.args))
             return
 
@@ -324,32 +334,41 @@ def main():
     filesAndDirs = list(itertools.chain(*filesAndDirs))
 
     # Recursively add .rpyc files from any directories passed
-    files = []
+    worklist = []
     for i in filesAndDirs:
         if path.isdir(i):
             for dirpath, dirnames, filenames in walk(i):
-                files.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpymc')))
+                worklist.extend(path.join(dirpath, j) for j in filenames if len(j) >= 5 and j.endswith(('.rpyc', '.rpymc')))
         else:
-            files.append(i)
+            worklist.append(i)
 
     # Check if we actually have files. Don't worry about
     # no parameters passed, since ArgumentParser catches that
-    if len(files) == 0:
+    if len(worklist) == 0:
         print("No script files to decompile.")
         return
 
-    files = map(lambda x: (args, x, path.getsize(x)), files)
-    processes = int(args.processes)
-    if processes > 1:
-        # If a big file starts near the end, there could be a long time with
-        # only one thread running, which is inefficient. Avoid this by starting
-        # big files first.
-        files.sort(key=itemgetter(2), reverse=True)
-        results = Pool(int(args.processes), sharelock, [printlock]).map(worker, files, 1)
+    # If a big file starts near the end, there could be a long time with only one thread running,
+    # which is inefficient. Avoid this by starting big files first.
+    worklist.sort(key=lambda x: path.getsize(x), reverse=True)
+    worklist = [(args, x) for x in worklist]
+
+    results = []
+
+    if args.processes > 1 and len(worklist) > 5:
+        with Pool(args.processes) as pool:
+            for result in pool.imap(worker, worklist, 1):
+                results.append(result)
+
+                for line in result.log_contnets:
+                    print(line)
+
     else:
-        # Decompile in the order Ren'Py loads in
-        files.sort(key=itemgetter(1))
-        results = map(worker, files)
+        for result in itertools.imap(worker, worklist):
+            results.append(result)
+
+            for line in result.log_contents:
+                print(line)
 
     if args.write_translation_file:
         print("Writing translations to %s..." % args.write_translation_file)
@@ -358,19 +377,19 @@ def main():
         good = 0
         bad = 0
         for result in results:
-            if not result:
+            if not result.value:
                 bad += 1
                 continue
             good += 1
-            translated_dialogue.update(pickle_loads(result[0]))
-            translated_strings.update(result[1])
+            translated_dialogue.update(pickle_loads(result.value[0]))
+            translated_strings.update(result.value[1])
         with open(args.write_translation_file, 'wb') as out_file:
             pickle_safe_dump((args.language, translated_dialogue, translated_strings), out_file)
 
     else:
         # Check per file if everything went well and report back
-        good = results.count(True)
-        bad = results.count(False)
+        good = sum(1 for i in results if i.error is None)
+        bad = sum(1 for i in results if i.error is not None)
 
     if bad == 0:
         print("Decompilation of %d script file%s successful" % (good, 's' if good>1 else ''))

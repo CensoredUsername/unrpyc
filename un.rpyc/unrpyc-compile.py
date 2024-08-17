@@ -47,7 +47,7 @@ def decompile_rpyc(data, abspath, init_offset):
     with codecs.open(out_filename, 'w', encoding='utf-8') as out_file:
         options = decompiler.Options(init_offset=init_offset)
         decompiler.pprint(out_file, ast, options)
-    return True
+    return options.log
 
 def decompile_game():
     import sys
@@ -59,13 +59,15 @@ def decompile_game():
 
         for abspath, data in sys.files:
             try:
-                decompile_rpyc(data, abspath, sys.init_offset)
+                log = decompile_rpyc(data, abspath, sys.init_offset)
             except Exception, e:
                 f.write("\nFailed at decompiling {0}\n".format(abspath))
                 traceback = sys.modules['traceback']
                 traceback.print_exc(None, f)
             else:
                 f.write("\nDecompiled {0}\n".format(abspath))
+                for line in log:
+                    f.write(line)
 
         f.write("\nend decompiling\n")
 

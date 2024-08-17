@@ -41,10 +41,10 @@ __all__ = ["astdump", "codegen", "magic", "screendecompiler", "sl2decompiler", "
 
 # Object that carries configurable decompilation options
 class Options(OptionBase):
-    def __init__(self, indentation="    ", printlock=None, decompile_python=False,
+    def __init__(self, indentation="    ", log=None, decompile_python=False,
                  translator=None, init_offset=False, tag_outside_block=False,
                  sl_custom_names=None):
-        super(Options, self).__init__(indentation=indentation, printlock=printlock)
+        super(Options, self).__init__(indentation=indentation, log=log)
 
         # decompilation options
         self.decompile_python = decompile_python

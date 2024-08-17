@@ -25,9 +25,9 @@ from StringIO import StringIO
 from contextlib import contextmanager
 
 class OptionBase(object):
-    def __init__(self, indentation="    ", printlock=None):
+    def __init__(self, indentation="    ", log=None):
         self.indentation = indentation
-        self.printlock = printlock
+        self.log = [] if log is None else log
 
 class DecompilerBase(object):
     def __init__(self, out_file=None, options=OptionBase()):
@@ -37,8 +37,6 @@ class DecompilerBase(object):
         self.options = options
         # the string we use for indentation
         self.indentation = options.indentation
-        # a lock that prevents multiple decompilers writing warnings a the same time
-        self.printlock = options.printlock
 
 
         # properties used for keeping track of where we are
@@ -178,13 +176,7 @@ class DecompilerBase(object):
         return self.block_stack[-2][self.index_stack[-2]]
 
     def print_debug(self, message):
-        if self.printlock:
-            self.printlock.acquire()
-        try:
-            print(message)
-        finally:
-            if self.printlock:
-                self.printlock.release()
+        self.options.log.append(message)
 
     def write_failure(self, message):
         self.print_debug(message)
