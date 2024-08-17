@@ -334,21 +334,40 @@ def main():
     parser.add_argument('-c', '--clobber', dest='clobber', action='store_true',
                         help="overwrites existing output files")
 
-    parser.add_argument('-d', '--dump', dest='dump', action='store_true',
-                        help="instead of decompiling, pretty print the ast to a file")
-
     parser.add_argument('-p', '--processes', dest='processes', action='store', type=int,
                         choices=range(1, cc_num), default=cc_num - 1 if cc_num > 2 else 1,
                         help="use the specified number or processes to decompile."
                         "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is unavailable.")
 
-    parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
-                        help="Only dumping and for decompiling screen language 1 screens. "
-                        "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
+    astdump = parser.add_argument_group('astdump options', 'All unrpyc options related to ast-dumping.')
+    astdump.add_argument(
+        '-d',
+        '--dump',
+        dest='dump',
+        action='store_true',
+        help="Instead of decompiling, pretty print the ast to a file")
 
-    parser.add_argument('--comparable', dest='comparable', action='store_true',
-                        help="Only for dumping, remove several false differences when comparing dumps. "
-                        "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
+    astdump.add_argument(
+        '--sl1-as-python',
+        dest='decompile_python',
+        action='store_true',
+        help="Only dumping and for decompiling screen language 1 screens. "
+        "Convert SL1 Python AST to Python code instead of dumping it or converting it to screenlang.")
+
+    astdump.add_argument(
+        '--comparable',
+        dest='comparable',
+        action='store_true',
+        help="Only for dumping, remove several false differences when comparing dumps. "
+        "This suppresses attributes that are different even when the code is identical, such as file modification times. ")
+
+    astdump.add_argument(
+        '--no-pyexpr',
+        dest='no_pyexpr',
+        action='store_true',
+        help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
+        "This is useful when comparing dumps from different versions of Ren'Py. "
+                        "It should only be used if necessary, since it will cause loss of information such as line numbers.")
 
     parser.add_argument(
         '-t',
@@ -358,11 +377,6 @@ def main():
         action='store',
         help="Changes the dialogue language in the decompiled script files, using a translation "
         "already present in the tl dir.")
-
-    parser.add_argument('--no-pyexpr', dest='no_pyexpr', action='store_true',
-                        help="Only for dumping, disable special handling of PyExpr objects, instead printing them as strings. "
-                        "This is useful when comparing dumps from different versions of Ren'Py. "
-                        "It should only be used if necessary, since it will cause loss of information such as line numbers.")
 
     parser.add_argument('--tag-outside-block', dest='tag_outside_block', action='store_true',
                         help="Always put SL2 'tag's on the same line as 'screen' rather than inside the block. "
@@ -397,8 +411,7 @@ def main():
 
     # Catch impossible arg combinations so they don't produce strange errors or fail silently
     if (args.no_pyexpr or args.comparable) and not args.dump:
-        ap.error(
-            "Options '--comparable' and '--no_pyexpr' require '--dump'.")
+        ap.error("Options '--comparable' and '--no_pyexpr' require '--dump'.")
 
     if args.dump and args.translate:
         ap.error("Options '--translate' and '--dump' cannot be used together.")
@@ -449,7 +462,7 @@ def main():
     args.translator = None
     if args.translate:
         # For translation, we first need to analyse all files for translation data.
-        # We then collect all of these back into the main process, and build a 
+        # We then collect all of these back into the main process, and build a
         # datastructure of all of them. This datastructure is then passed to
         # all decompiling processes.
         # Note: because this data contains some FakeClasses, Multiprocessing cannot
