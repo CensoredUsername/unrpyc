@@ -241,7 +241,7 @@ def main():
     parser.add_argument('-T', '--write-translation-file', dest='write_translation_file', action='store', default=None,
                         help="store translations in the specified file instead of decompiling")
 
-    parser.add_argument('-l', '--language', dest='language', action='store', default='english',
+    parser.add_argument('-l', '--language', dest='language', action='store', default=None,
                         help="if writing a translation file, the language of the translations to write")
 
     parser.add_argument('--sl1-as-python', dest='decompile_python', action='store_true',
@@ -283,10 +283,24 @@ def main():
 
     args = parser.parse_args()
 
-    if args.write_translation_file and not args.clobber and path.exists(args.write_translation_file):
-        # Fail early to avoid wasting time going through the files
-        print("Output translation file already exists. Pass --clobber to overwrite.")
-        return
+    # Catch impossible arg combinations with clear info, so they do not produce unclear
+    # errors or fail silent
+    if (args.no_pyexpr or args.comparable) and not args.dump:
+        raise ap.error(
+            "Arguments 'comparable' and 'no_pyexpr' are not usable without 'dump'.")
+
+    if ((args.try_harder or args.dump)
+            and (args.write_translation_file or args.translation_file or args.language)):
+        raise ap.error(
+            "Arguments 'try_harder' and/or 'dump' are not usable with the translation "
+            "feature.")
+
+    # Fail early to avoid wasting time going through the files
+    if (args.write_translation_file
+            and not args.clobber
+            and path.exists(args.write_translation_file)):
+        raise ap.error(
+            "Output translation file already exists. Pass --clobber to overwrite.")
 
     if args.translation_file:
         with open(args.translation_file, 'rb') as in_file:
