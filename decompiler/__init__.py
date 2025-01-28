@@ -343,7 +343,7 @@ class Decompiler(DecompilerBase):
         self.missing_init = False
         try:
             self.write(f'label {ast.name}{reconstruct_paraminfo(ast.parameters)}'
-                       f'{" hide" if getattr(ast, "hide", False) else ""}:')
+                       f'{" hide" if ast.hide else ""}:')
             self.print_nodes(ast.block, 1)
         finally:
             if self.missing_init:
@@ -557,7 +557,7 @@ class Decompiler(DecompilerBase):
             self.label_inside_menu = None
 
         # arguments attribute added in 7.1.4
-        if getattr(ast, "arguments", None) is not None:
+        if ast.arguments is not None:
             self.write(reconstruct_arginfo(ast.arguments))
 
         self.write(":")
@@ -572,7 +572,7 @@ class Decompiler(DecompilerBase):
                 self.write(f'set {ast.set}')
 
             # item_arguments attribute since 7.1.4
-            if hasattr(ast, 'item_arguments'):
+            if ast.item_arguments is not None:
                 item_arguments = ast.item_arguments
             else:
                 item_arguments = [None] * len(ast.items)
@@ -640,7 +640,7 @@ class Decompiler(DecompilerBase):
             if ast.hide:
                 self.write(" hide")
             # store attribute added in 6.14
-            if getattr(ast, "store", "store") != "store":
+            if ast.store != "store":
                 self.write(" in ")
                 # Strip prepended "store."
                 self.write(ast.store[6:])
@@ -673,14 +673,14 @@ class Decompiler(DecompilerBase):
 
         index = ""
         # index attribute added in 7.4
-        if getattr(ast, "index", None) is not None:
+        if ast.index is not None:
             index = f'[{ast.index.source}]'
 
         # operator attribute added in 7.4
-        operator = getattr(ast, "operator", "=")
+        operator = ast.operator
 
         # store attribute added in 6.18.2
-        if getattr(ast, "store", "store") == "store":
+        if ast.store == "store":
             self.write(f'define{priority} {ast.varname}{index} {operator} {ast.code.source}')
         else:
             self.write(
@@ -740,7 +740,7 @@ class Decompiler(DecompilerBase):
         self.write(ast.line)
 
         # block attribute since 6.13.0
-        if getattr(ast, "block", None):
+        if ast.block is not None:
             with self.increase_indent():
                 self.print_lex(ast.block)
 

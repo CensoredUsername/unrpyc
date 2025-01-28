@@ -82,6 +82,25 @@ class PyExpr(magic.FakeStrict, str):
 
 
 @SPECIAL_CLASSES.append
+class PyExpr(magic.FakeStrict, str):
+    __module__ = "renpy.astsupport"
+
+    def __new__(cls, s, filename, linenumber, py=None, hashcode=None):
+        self = str.__new__(cls, s)
+        self.filename = filename
+        self.linenumber = linenumber
+        self.py = py
+        self.hashcode = hashcode
+        return self
+
+    def __getnewargs__(self):
+        if self.py is not None:
+            return str(self), self.filename, self.linenumber, self.py
+        else:
+            return str(self), self.filename, self.linenumber
+
+
+@SPECIAL_CLASSES.append
 class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
 
@@ -89,8 +108,12 @@ class PyCode(magic.FakeStrict):
         if len(state) == 4:
             (_, self.source, self.location, self.mode) = state
             self.py = None
-        else:
+            self.hashcode = None
+        elif len(state) == 5:
             (_, self.source, self.location, self.mode, self.py) = state
+            self.hashcode = None
+        else:
+            (_, self.source, self.location, self.mode, self.py, self.hashcode) = state
         self.bytecode = None
 
 
@@ -164,6 +187,278 @@ class RevertableSet(magic.FakeStrict, set):
         else:
             self.update(state)
 
+
+# as of ren'py 8.4, default properties of many classes are not stored in the pickle anymore.
+# so we define prototypes of these classes here, so we don't end up with a soup of hasattr checks.
+# rules: unless otherwise stated, int properties default to 0, anything else is None
+
+# ast classes
+
+@SPECIAL_CLASSES.append
+class Say(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    who = None
+    with_ = None
+    interact = True
+    attributes = None
+    arguments = None
+    temporary_attributes = None
+    identifier = None
+    explicit_identifier = None
+
+
+@SPECIAL_CLASSES.append
+class Init(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    priority = 0
+
+
+@SPECIAL_CLASSES.append
+class Label(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+    parameters = None
+    hide = False
+
+    # shenanigans have begotten shenanigans
+    @property
+    def name(self):
+        if "name" in self.__dict__:
+            return self.__dict__["name"]
+        else:
+            return self._name
+
+
+@SPECIAL_CLASSES.append
+class Python(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    store = "store"
+    hide = False
+
+
+@SPECIAL_CLASSES.append
+class EarlyPython(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    store = "store"
+    hide = False
+
+
+@SPECIAL_CLASSES.append
+class Image(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    code = None
+    atl = None
+
+
+@SPECIAL_CLASSES.append
+class Transform(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    parameters = None
+    store = "store"
+
+
+@SPECIAL_CLASSES.append
+class Show(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    atl = None
+    warp = True
+
+
+@SPECIAL_CLASSES.append
+class ShowLayer(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    atl = None
+    warp = True
+    layer = "master"
+
+
+@SPECIAL_CLASSES.append
+class Camera(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    atl = None
+    warp = True
+    layer = "master"
+
+
+@SPECIAL_CLASSES.append
+class Scene(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    atl = None
+    warp = True
+    layer = "master"
+
+
+@SPECIAL_CLASSES.append
+class Hide(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    warp = True
+
+
+@SPECIAL_CLASSES.append
+class With(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    paired = None
+
+
+@SPECIAL_CLASSES.append
+class Call(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    arguments = None
+    expression = False
+    global_label = ""
+
+
+@SPECIAL_CLASSES.append
+class Return(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    expression = None
+
+
+@SPECIAL_CLASSES.append
+class Menu(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+    set = None
+    with_ = None
+    has_caption = False
+    arguments = None
+    item_arguments = None
+    rollback = "force"
+
+
+@SPECIAL_CLASSES.append
+class Jump(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    expression = False
+    global_label = ""
+
+
+@SPECIAL_CLASSES.append
+class UserStatement(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    block = []
+    translatable = False
+    code_block = None
+    translation_relevant = False
+    rollback = "normal"
+    subparses = []
+    init_priority = 0
+    atl = None
+
+
+@SPECIAL_CLASSES.append
+class Define(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    store = "store"
+    operator = "="
+    index = None
+
+
+@SPECIAL_CLASSES.append
+class Default(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    store = "store"
+
+
+@SPECIAL_CLASSES.append
+class Style(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    parent = None
+    clear = False
+    take = None
+    variant = None
+
+
+@SPECIAL_CLASSES.append
+class Translate(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    rollback = "never"
+    translation_relevant = True
+    alternate = None
+    language = None
+    after = None
+
+
+@SPECIAL_CLASSES.append
+class TranslateSay(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translatable = True
+    translation_relevant = True
+    alternate = None
+    language = None
+
+    # inherited from Say
+    who = None
+    with_ = None
+    interact = True
+    attributes = None
+    arguments = None
+    temporary_attributes = None
+    identifier = None
+    explicit_identifier = None
+
+
+@SPECIAL_CLASSES.append
+class EndTranslate(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    rollback = "never"
+
+
+@SPECIAL_CLASSES.append
+class TranslateString(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+
+
+
+@SPECIAL_CLASSES.append
+class TranslatePython(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+
+
+
+@SPECIAL_CLASSES.append
+class TranslateBlock(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+
+
+@SPECIAL_CLASSES.append
+class TranslateEarlyBlock(magic.FakeStrict):
+    __module__ = "renpy.ast"
+
+    translation_relevant = True
+
+
+# end of the declarative data section
 
 CLASS_FACTORY = magic.FakeClassFactory(SPECIAL_CLASSES, magic.FakeStrict)
 
