@@ -220,62 +220,6 @@ def decrypt_string_escape(data, count):
     return newdata
 
 
-def assert_is_normal_rpyc(f):
-    """
-    Analyze the structure of a single rpyc file object for correctness.
-    Does not actually say anything about the _contents_ of that section, just that we were
-    able to slice it out of there.
-
-    If succesful, returns the uncompressed contents of the first storage slot.
-    """
-
-    f.seek(0)
-    header = f.read(1024)
-    f.seek(0)
-
-    if header[:10] != b'RENPY RPC2':
-        # either legacy, or someone messed with the header
-
-        # assuming legacy, see if this thing is a valid zlib blob
-        raw_data = f.read()
-        f.seek(0)
-
-        try:
-            uncompressed = zlib.decompress(raw_data)
-        except zlib.error:
-            raise ValueError(
-                "Did not find RENPY RPC2 header, but interpretation as legacy file failed")
-
-        return uncompressed
-
-    else:
-        if len(header) < 46:
-            # 10 bytes header + 4 * 9 bytes content table
-            return ValueError("File too short")
-
-        a, b, c, d, e, f, g, h, i = struct.unpack("<IIIIIIIII", header[10:46])
-
-        # does the header format match default ren'py generated files?
-        if not (a == 1 and b == 46 and d == 2 and (g, h, i) == (0, 0, 0) and b + c == e):
-            return ValueError("Header data is abnormal, did the format gain extra fields?")
-
-        f.seek(b)
-        raw_data = f.read(c)
-        f.seek(0)
-        if len(raw_data) != c:
-            return ValueError("Header data is incompatible with file length")
-
-        try:
-            uncompressed = zlib.decompress(raw_data)
-        except zlib.error:
-            return ValueError("Slot 1 did not contain a zlib blob")
-
-        if not uncompressed.endswith("."):
-            return ValueError("Slot 1 did not contain a simple pickle")
-
-        return uncompressed
-
-
 def read_ast(f, context):
     diagnosis = ["Attempting to deobfuscate file:"]
 
