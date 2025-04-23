@@ -632,8 +632,11 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n':
-            code = code[1:]
+
+        indented = code and (code[0] == " ")
+
+        if indented or code[0] == '\n':
+            code = code if indented else code[1:]
             self.write("python")
             if early:
                 self.write(" early")
@@ -645,9 +648,13 @@ class Decompiler(DecompilerBase):
                 # Strip prepended "store."
                 self.write(ast.store[6:])
             self.write(":")
-
-            with self.increase_indent():
-                self.write_lines(split_logical_lines(code))
+            
+            if indented:
+                self.write('\n')
+                self.write(code)
+            else:
+                with self.increase_indent():
+                    self.write_lines(split_logical_lines(code))
 
         else:
             self.write(f'$ {code}')
@@ -733,6 +740,18 @@ class Decompiler(DecompilerBase):
         # else just write it.
         self.indent()
         self.write(say_get_code(ast, inmenu))
+    
+    @dispatch(renpy.ast.TranslateSay)
+    def print_translate_say(self, ast):
+        if ast.language:
+            self.indent()
+            self.write(f'translate {ast.language} {ast.identifier}:')
+
+            with self.increase_indent():
+                self.indent()
+                self.write(say_get_code(ast))
+        else:
+            self.print_say(ast)
 
     @dispatch(renpy.ast.UserStatement)
     def print_userstatement(self, ast):
@@ -745,7 +764,11 @@ class Decompiler(DecompilerBase):
                 self.print_lex(ast.block)
 
     def print_lex(self, lex):
-        for file, linenumber, content, block in lex:
+        for entry in lex:
+            if len(entry) == 4:
+                file, linenumber, content, block = entry
+            else:
+                file, linenumber, _indent, content, block = entry
             self.advance_to_line(linenumber)
             self.indent()
             self.write(content)

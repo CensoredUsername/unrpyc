@@ -85,19 +85,31 @@ class PyExpr(magic.FakeStrict, str):
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.astsupport"
 
-    def __new__(cls, s, filename, linenumber, py=None, hashcode=None):
+    def __new__(cls, s, filename, linenumber, py=None, hashcode=None, column=None):
         self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
         self.py = py
         self.hashcode = hashcode
+        self.column = column
         return self
 
     def __getnewargs__(self):
-        if self.py is not None:
+        if self.column is not None:
+            return str(self), self.filename, self.linenumber, self.py, self.hashcode, self.column
+        elif self.hashcode is not None:
+            return str(self), self.filename, self.linenumber, self.py, self.hashcode
+        elif self.py is not None:
             return str(self), self.filename, self.linenumber, self.py
         else:
             return str(self), self.filename, self.linenumber
+        
+@SPECIAL_CLASSES.append
+class GroupedLine(magic.FakeStrict, tuple):
+    __module__ = 'renpy.lexer'
+    
+    def __new__(cls, filename, number, indent, text, block):
+        return tuple.__new__(cls, (filename, number, indent, text, block))
 
 
 @SPECIAL_CLASSES.append
@@ -108,12 +120,17 @@ class PyCode(magic.FakeStrict):
         if len(state) == 4:
             (_, self.source, self.location, self.mode) = state
             self.py = None
+            self.col_offset = None
             self.hashcode = None
         elif len(state) == 5:
             (_, self.source, self.location, self.mode, self.py) = state
+            self.col_offset = None
             self.hashcode = None
-        else:
+        elif len(state) == 6:
             (_, self.source, self.location, self.mode, self.py, self.hashcode) = state
+            self.col_offset = None
+        else:
+            (_, self.source, self.location, self.mode, self.py, self.hashcode, self.col_offset) = state
         self.bytecode = None
 
 
@@ -449,6 +466,7 @@ class TranslateBlock(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     translation_relevant = True
+    language = None
 
 
 @SPECIAL_CLASSES.append
@@ -456,6 +474,7 @@ class TranslateEarlyBlock(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     translation_relevant = True
+    language = None
 
 
 # end of the declarative data section

@@ -362,7 +362,7 @@ def reconstruct_arginfo(arginfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(arginfo, 'starred_indexes'):
+    if not hasattr(arginfo, 'extrapos'):
         # ren'py 7.5 and above, PEP 448 compliant
         for i, (name, val) in enumerate(arginfo.arguments):
             rv.append(sep())
