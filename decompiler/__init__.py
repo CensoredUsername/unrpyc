@@ -404,7 +404,7 @@ class Decompiler(DecompilerBase):
         for i, (condition, block) in enumerate(ast.entries):
             # The unicode string "True" is used as the condition for else:.
             # But if it's an actual expression, it's a renpy.ast.PyExpr
-            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
+            if (i + 1) == len(ast.entries) and condition == "None":
                 self.indent()
                 self.write("else:")
             else:
@@ -756,7 +756,7 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.UserStatement)
     def print_userstatement(self, ast):
         self.indent()
-        self.write(ast.line)
+        self.write(ast.line.strip(' '))
 
         # block attribute since 6.13.0
         if ast.block is not None:
