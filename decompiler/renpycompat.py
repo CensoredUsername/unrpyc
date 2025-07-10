@@ -85,12 +85,13 @@ class PyExpr(magic.FakeStrict, str):
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.astsupport"
 
-    def __new__(cls, s, filename, linenumber, py=None, hashcode=None):
+    def __new__(cls, s, filename, linenumber, py=None, hashcode=None, column=None):
         self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
         self.py = py
         self.hashcode = hashcode
+        self.column = None
         return self
 
     def __getnewargs__(self):
@@ -109,11 +110,16 @@ class PyCode(magic.FakeStrict):
             (_, self.source, self.location, self.mode) = state
             self.py = None
             self.hashcode = None
+            self.col_offset = None
         elif len(state) == 5:
             (_, self.source, self.location, self.mode, self.py) = state
             self.hashcode = None
-        else:
+            self.col_offset = None
+        elif len(state) == 6:
             (_, self.source, self.location, self.mode, self.py, self.hashcode) = state
+            self.col_offset = None
+        else:
+            (_, self.source, self.location, self.mode, self.py, self.hashcode, self.col_offset) = state
         self.bytecode = None
 
 
