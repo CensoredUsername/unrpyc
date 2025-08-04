@@ -300,6 +300,7 @@ class Camera(magic.FakeStrict):
 class Scene(magic.FakeStrict):
     __module__ = "renpy.ast"
 
+    imspec = None
     atl = None
     warp = True
     layer = "master"
@@ -439,6 +440,7 @@ class TranslateString(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     translation_relevant = True
+    language = None
 
 
 
