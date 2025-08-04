@@ -65,7 +65,7 @@ class AstDumper(object):
         self.passed_where.append(self.linenumber)
         if isinstance(ast, (list, tuple, set, frozenset)):
             self.print_list(ast)
-        elif isinstance(ast, renpy.ast.PyExpr):
+        elif isinstance(ast, (renpy.ast.PyExpr, renpy.astsupport.PyExpr)):
             self.print_pyexpr(ast)
         elif isinstance(ast, dict):
             self.print_dict(ast)
