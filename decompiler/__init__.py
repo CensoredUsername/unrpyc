@@ -544,7 +544,7 @@ class Decompiler(DecompilerBase):
 
         if block is not None:
             # ren'py uses the unicode string "True" as condition when there isn't one.
-            if isinstance(condition, renpy.ast.PyExpr):
+            if isinstance(condition, (renpy.ast.PyExpr, renpy.astsupport.PyExpr)):
                 self.write(f' if {condition}')
             self.write(":")
             self.print_nodes(block, 1)
