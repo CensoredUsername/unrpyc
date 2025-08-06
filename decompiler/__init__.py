@@ -633,8 +633,10 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n':
-            code = code[1:]
+        indented = code and (code[0] == " ")
+
+        if indented or code[0] == '\n':
+            code = code if indented else code[1:]
             self.write("python")
             if early:
                 self.write(" early")
@@ -647,8 +649,11 @@ class Decompiler(DecompilerBase):
                 self.write(ast.store[6:])
             self.write(":")
 
-            with self.increase_indent():
-                self.write_lines(split_logical_lines(code))
+            if indented:
+                self.write(f'\n{code}')
+            else:
+                with self.increase_indent():
+                    self.write_lines(split_logical_lines(code))
 
         else:
             self.write(f'$ {code}')
