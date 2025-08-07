@@ -746,7 +746,11 @@ class Decompiler(DecompilerBase):
                 self.print_lex(ast.block)
 
     def print_lex(self, lex):
-        for file, linenumber, content, block in lex:
+        for entry in lex:
+            if len(entry) == 4:
+                file, linenumber, content, block = entry
+            else:
+                file, linenumber, _indent, content, block = entry
             self.advance_to_line(linenumber)
             self.indent()
             self.write(content)

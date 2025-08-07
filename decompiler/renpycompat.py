@@ -124,6 +124,14 @@ class PyCode(magic.FakeStrict):
 
 
 @SPECIAL_CLASSES.append
+class GroupedLine(magic.FakeStrict, tuple):
+    __module__ = 'renpy.lexer'
+
+    def __new__(cls, filename, number, indent, text, block):
+        return tuple.__new__(cls, (filename, number, indent, text, block))
+
+
+@SPECIAL_CLASSES.append
 class Sentinel(magic.FakeStrict):
     __module__ = "renpy.object"
 
