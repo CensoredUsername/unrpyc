@@ -35,11 +35,26 @@ import zlib
 from pathlib import Path
 
 try:
-    from multiprocessing import Pool, cpu_count
+    from multiprocessing import Lock, Pool, cpu_count, current_process, freeze_support
+    # - The above import only fails, if multiprocessing(MP) is not there at all
+    # - In some implementations of MP, the C-ext is not available, so we test for it
+    # - To make sure it really works, we try also to instantiate the Lock class
+    import _multiprocessing
+    lock = Lock()
 except ImportError:
+    traceback.print_exc(file=sys.stdout)
+    print("The multiprocessing module is not available! Proceeding with only a single CPU "
+          "thread, which will be slow.\n")
     # Mock required support when multiprocessing is unavailable
     def cpu_count():
         return 1
+
+    def freeze_support():
+        pass
+else:
+    if current_process().name == 'MainProcess':
+        print("Multiprocessing functionality is available.")
+        del lock
 
 import decompiler
 import deobfuscate
@@ -563,4 +578,7 @@ def main():
         print("When making a bug report, please include this entire log.")
 
 if __name__ == '__main__':
+    if sys.platform == "win32":
+        freeze_support()
+
     main()
