@@ -51,6 +51,35 @@ except ImportError:
 
     def freeze_support():
         pass
+
+    class Pool:
+        """
+        A mock of the Pool class and its imap method, which is used by our setup, in case
+        the multiprocessing module is not available.
+        """
+
+        def __init__(self, processes=None, initializer=None, initargs=None):
+            pass
+
+        def imap(self, func, iterable, chunksize=1):
+            """
+            In Python 3, the built-in map() returns a lazy iterator,
+            which is exactly what is needed to mimic pool.imap.
+            """
+            return map(func, iterable)
+
+        def close(self):
+            pass
+
+        def join(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
 else:
     if current_process().name == 'MainProcess':
         print("Multiprocessing functionality is available.")
@@ -282,18 +311,8 @@ def run_workers(worker, common_args, private_args, parallelism):
     worker_args = ((common_args, x) for x in private_args)
 
     results = []
-    if parallelism > 1:
-        with Pool(parallelism) as pool:
-            for result in pool.imap(worker, worker_args, 1):
-                results.append(result)
-
-                for line in result.log_contents:
-                    print(line)
-
-                print("")
-
-    else:
-        for result in map(worker, worker_args):
+    with Pool(parallelism) as pool:
+        for result in pool.imap(worker, worker_args, 1):
             results.append(result)
 
             for line in result.log_contents:
