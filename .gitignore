@@ -13,8 +13,6 @@
 /tests
 /*.egg-info
 
-/bintray.json
-
 unrpyc.sublime-*
 
 !testcases/originals/**/*.rpy
