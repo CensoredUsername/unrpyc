@@ -700,6 +700,8 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Python)
     def print_python(self, ast, early=False):
+        import textwrap
+        import re
         self.indent()
 
         code = ast.code.source
@@ -709,8 +711,48 @@ class Decompiler(DecompilerBase):
         is_multiline = '\n' in code
         
         if is_multiline:
-            # Strip leading whitespace/newlines for multiline blocks
-            code = code.lstrip()
+            # Strip leading blank lines, then dedent to remove common indentation
+            # This handles Ren'Py 8.5+ where Python blocks have embedded indentation
+            code = code.lstrip('\n')  # Remove leading newlines only
+            code = textwrap.dedent(code)  # Remove common leading whitespace
+            code = code.strip('\n')  # Remove trailing newlines
+            
+            # Fix docstring indentation - docstrings may have been stored with
+            # incorrect internal indentation. This regex finds docstrings and
+            # reindents their content to match the opening quote's indentation.
+            def fix_docstring_indent(match):
+                indent = match.group(1)  # Leading whitespace before """
+                quotes = match.group(2)  # """ or '''
+                content = match.group(3)  # Docstring content
+                closing = match.group(4)  # Closing """ or '''
+                
+                if not content.strip():
+                    # Empty or whitespace-only docstring
+                    return f'{indent}{quotes}{content}{closing}'
+                
+                # Split content into lines and reindent each non-empty line
+                lines = content.split('\n')
+                fixed_lines = []
+                for i, line in enumerate(lines):
+                    stripped = line.lstrip()
+                    if stripped:  # Non-empty line
+                        fixed_lines.append(indent + '    ' + stripped)
+                    elif i == 0:
+                        # First line (right after opening quotes) - keep empty
+                        fixed_lines.append('')
+                    else:
+                        fixed_lines.append('')
+                
+                # Check if closing quotes are on their own line
+                if lines and not lines[-1].strip():
+                    fixed_lines[-1] = indent + '    '
+                
+                return f'{indent}{quotes}\n' + '\n'.join(fixed_lines) + f'\n{indent}    {closing}'
+            
+            # Pattern to match multiline docstrings
+            docstring_pattern = r'^([ \t]*)("""|\'\'\')\n(.*?)\n[ \t]*("""|\'\'\')'
+            code = re.sub(docstring_pattern, fix_docstring_indent, code, flags=re.MULTILINE | re.DOTALL)
+            
             self.write("python")
             if early:
                 self.write(" early")
