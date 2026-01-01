@@ -130,6 +130,127 @@ FakeClass = FakeClassType("FakeClass", (), {"__doc__": """
 A barebones instance of :class:`FakeClassType`. Inherit from this to create fake classes.
 """}, module=__name__)
 
+# Known optional attributes in Ren'Py 8.5+ AST nodes with their default values
+# Ren'Py 8.5+ uses __slots__ with cslots optimization that doesn't pickle default values
+RENPY_AST_DEFAULTS = {
+    # Common attributes (Node base class)
+    'atl': None,
+    'expression': False,
+    'arguments': None,
+    'parameters': None,
+    'paired': None,
+    'hide': False,
+    'store': 'store',
+    'name': None,
+    '_name': None,
+    'name_version': 0,
+    'name_serial': 0,
+    'global_label': '',
+    'block': [],
+    
+    # Say attributes
+    'who': None,
+    'what': '',
+    'with_': None,
+    'interact': True,
+    'attributes': None,
+    'temporary_attributes': None,
+    'rollback': 'normal',
+    'identifier': None,
+    
+    # Image/Scene/Show attributes
+    'imspec': None,
+    'layer': 'master',
+    'at_list': [],
+    'behind': [],
+    'as_': None,
+    'atl_transform': None,
+    
+    # Menu attributes
+    'items': [],
+    'set': None,
+    'has_caption': False,
+    'caption_block': None,
+    'item_arguments': None,
+    'nvl': False,
+    
+    # Init attributes
+    'priority': 0,
+    
+    # Python/Code attributes
+    'code': None,
+    'source': '',
+    
+    # Screen attributes
+    'modal': None,
+    'zorder': None,
+    'tag': None,
+    'variant': None,
+    'predict': None,
+    'sensitive': None,
+    'layer': 'screens',
+    'roll_forward': None,
+    
+    # User statement
+    'translatable': False,
+    'translation_relevant': False,
+    'subparses': [],
+    'parsed': None,
+    
+    # Translate
+    'alternate': None,
+    'language': None,
+    
+    # Style attributes (Ren'Py 8.5+)
+    'parent': None,
+    'take': None,
+    'clear': False,
+    'properties': [],
+    'delattr': [],
+    
+    # Jump/Call attributes
+    'target': None,
+    'expression': False,
+    'from_expression': None,
+    
+    # Label attributes
+    'hide': False,
+    
+    # If/While attributes
+    'entries': [],
+    'condition': None,
+    
+    # Return attributes
+    'expression': None,
+    
+    # Transform attributes
+    'varname': None,
+    
+    # Default/Define attributes
+    'operator': '=',
+    'index': None,
+    
+    # ATL attributes
+    'loc': (None, 0),
+    'statements': [],
+    
+    # Screen language attributes
+    'keyword': [],
+    'children': [],
+    'positional': [],
+    'displayable': None,
+    'style': None,
+    'variable': None,
+    
+    # Testcase attributes
+    'label': None,
+    'right': False,
+    
+    # Translation attributes
+    'identifier': None,
+    'block': [],
+}
+
 class FakeStrict(FakeClass, object):
     def __new__(cls, *args, **kwargs):
         self = FakeClass.__new__(cls)
@@ -154,6 +275,12 @@ class FakeStrict(FakeClass, object):
 
         if slotstate:
             self.__dict__.update(slotstate)
+
+    def __getattr__(self, name):
+        # For Ren'Py 8.5+ compatibility: return default values for known optional attributes
+        if name in RENPY_AST_DEFAULTS:
+            return RENPY_AST_DEFAULTS[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
 class FakeWarning(FakeClass, object):
     def __new__(cls, *args, **kwargs):

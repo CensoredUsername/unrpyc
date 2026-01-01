@@ -28,6 +28,29 @@ from io import StringIO
 
 from . import sl2decompiler
 from . import testcasedecompiler
+
+
+# Helper function to get node name (compatible with Ren'Py 8.5+ where name is a computed property)
+def get_node_name(node):
+    """
+    Gets the name of a node. In Ren'Py 8.5+, name is a computed property that's not pickled directly.
+    Instead, _name, name_version, and name_serial are stored separately.
+    """
+    # First try the direct name attribute (old format)
+    if hasattr(node, 'name') and node.name is not None:
+        return node.name
+    
+    # Check for _name attribute (Ren'Py 8.5+ explicit names like labels)
+    if hasattr(node, '_name') and node._name is not None:
+        return node._name
+    
+    # Compute name from name_version and name_serial (Ren'Py 8.5+ internal nodes)
+    if hasattr(node, 'name_version') and hasattr(node, 'name_serial'):
+        if node.name_version:
+            filename = getattr(node, 'filename', None)
+            return (filename, node.name_version, node.name_serial)
+    
+    return None
 from . import atldecompiler
 from . import astdump
 
@@ -310,7 +333,9 @@ class Decompiler(DecompilerBase):
             return
 
         # See if we're the label for a menu, rather than a standalone label.
-        if not ast.block and ast.parameters is None:
+        # Handle missing parameters attribute (Ren'Py 8.5+)
+        parameters = getattr(ast, 'parameters', None)
+        if not ast.block and parameters is None:
             remaining_blocks = len(self.block) - self.index
             if remaining_blocks > 1:
                 # Label followed by a menu
@@ -342,7 +367,11 @@ class Decompiler(DecompilerBase):
         missing_init = self.missing_init
         self.missing_init = False
         try:
-            self.write(f'label {ast.name}{reconstruct_paraminfo(ast.parameters)}'
+            # Use helper to get node name (compatible with Ren'Py 8.5+)
+            label_name = get_node_name(ast)
+            # Handle missing parameters attribute (Ren'Py 8.5+ may not always include it)
+            parameters = getattr(ast, 'parameters', None)
+            self.write(f'label {label_name}{reconstruct_paraminfo(parameters)}'
                        f'{" hide" if getattr(ast, "hide", False) else ""}:')
             self.print_nodes(ast.block, 1)
         finally:
@@ -355,56 +384,86 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.Jump)
     def print_jump(self, ast):
         self.indent()
-        self.write(f'jump {"expression " if ast.expression else ""}{ast.target}')
+        self.write(f'jump {"expression " if getattr(ast, "expression", False) else ""}{ast.target}')
 
     @dispatch(renpy.ast.Call)
     def print_call(self, ast):
         self.indent()
         words = WordConcatenator(False)
         words.append("call")
-        if ast.expression:
+        expression = getattr(ast, 'expression', False)
+        if expression:
             words.append("expression")
         words.append(ast.label)
 
-        if ast.arguments is not None:
-            if ast.expression:
+        arguments = getattr(ast, 'arguments', None)
+        if arguments is not None:
+            if expression:
                 words.append("pass")
-            words.append(reconstruct_arginfo(ast.arguments))
+            words.append(reconstruct_arginfo(arguments))
 
         # We don't have to check if there's enough elements here,
         # since a Label or a Pass is always emitted after a Call.
         next_block = self.block[self.index + 1]
         if isinstance(next_block, renpy.ast.Label):
-            words.append(f'from {next_block.name}')
+            words.append(f'from {get_node_name(next_block)}')
 
         self.write(words.join())
 
     @dispatch(renpy.ast.Return)
     def print_return(self, ast):
-        if (ast.expression is None
+        expression = getattr(ast, 'expression', None)
+        
+        # Check if this is an auto-added return at the end of the file
+        # As of Ren'Py commit 356c6e34, a return statement is added to
+        # the end of each rpyc file. These returns are:
+        # - At the top level (self.parent is None)
+        # - At or near the end of the file
+        # - Have no return expression
+        # We skip these as they're not in the original source
+        
+        is_at_end = (self.index + 1 == len(self.block) or 
+                     (self.index + 2 == len(self.block) and 
+                      isinstance(self.block[self.index + 1], renpy.ast.Return)))
+        
+        if (expression is None
                 and self.parent is None
-                and self.index + 1 == len(self.block)
-                and self.index
-                and ast.linenumber == self.block[self.index - 1].linenumber):
-            # As of Ren'Py commit 356c6e34, a return statement is added to
-            # the end of each rpyc file. Don't include this in the source.
+                and is_at_end
+                and self.index):
+            # Skip auto-added top-level returns at end of file
             return
 
         self.advance_to_line(ast.linenumber)
         self.indent()
         self.write("return")
 
-        if ast.expression is not None:
-            self.write(f' {ast.expression}')
+        if expression is not None:
+            self.write(f' {expression}')
 
     @dispatch(renpy.ast.If)
     def print_if(self, ast):
+        # Helper to check if a condition is a PyExpr (handles both renpy.ast.PyExpr and renpy.astsupport.PyExpr)
+        def is_pyexpr(condition):
+            """Check if condition is a PyExpr from either renpy.ast or renpy.astsupport module."""
+            cond_type = type(condition)
+            # Check for explicit PyExpr types
+            if isinstance(condition, renpy.ast.PyExpr):
+                return True
+            # Check for renpy.astsupport.PyExpr (Ren'Py 8.5+)
+            if hasattr(renpy, 'astsupport') and hasattr(renpy.astsupport, 'PyExpr'):
+                if isinstance(condition, renpy.astsupport.PyExpr):
+                    return True
+            # Also check by class name in case the class is reconstructed differently
+            if cond_type.__name__ in ('PyExpr', 'PyExprAstSupport'):
+                return True
+            return False
+
         statement = First("if", "elif")
 
         for i, (condition, block) in enumerate(ast.entries):
             # The unicode string "True" is used as the condition for else:.
-            # But if it's an actual expression, it's a renpy.ast.PyExpr
-            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
+            # But if it's an actual expression, it's a renpy.ast.PyExpr or renpy.astsupport.PyExpr
+            if (i + 1) == len(ast.entries) and not is_pyexpr(condition):
                 self.indent()
                 self.write("else:")
             else:
@@ -535,6 +594,18 @@ class Decompiler(DecompilerBase):
         self.say_inside_menu = None
 
     def print_menu_item(self, label, condition, block, arguments):
+        # Helper to check if a condition is a PyExpr (handles both renpy.ast.PyExpr and renpy.astsupport.PyExpr)
+        def is_pyexpr_condition(cond):
+            cond_type = type(cond)
+            if isinstance(cond, renpy.ast.PyExpr):
+                return True
+            if hasattr(renpy, 'astsupport') and hasattr(renpy.astsupport, 'PyExpr'):
+                if isinstance(cond, renpy.astsupport.PyExpr):
+                    return True
+            if cond_type.__name__ in ('PyExpr', 'PyExprAstSupport'):
+                return True
+            return False
+
         self.indent()
         self.write(f'"{string_escape(label)}"')
 
@@ -543,7 +614,7 @@ class Decompiler(DecompilerBase):
 
         if block is not None:
             # ren'py uses the unicode string "True" as condition when there isn't one.
-            if isinstance(condition, renpy.ast.PyExpr):
+            if is_pyexpr_condition(condition):
                 self.write(f' if {condition}')
             self.write(":")
             self.print_nodes(block, 1)
@@ -632,8 +703,14 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n':
-            code = code[1:]
+        # Check if this is a multiline python block or a single-line $ statement
+        # In Ren'Py 8.5+, the source may start with spaces/indentation instead of newline
+        # So we check if there are any newlines in the code (indicating multiline)
+        is_multiline = '\n' in code
+        
+        if is_multiline:
+            # Strip leading whitespace/newlines for multiline blocks
+            code = code.lstrip()
             self.write("python")
             if early:
                 self.write(" early")
