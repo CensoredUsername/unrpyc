@@ -624,7 +624,11 @@ class Decompiler(DecompilerBase):
         self.indent()
         self.write("menu")
         if self.label_inside_menu is not None:
-            self.write(f' {self.label_inside_menu.name}')
+            # Get the label name (using helper for Ren'Py 8.5+ compatibility)
+            label_name = get_node_name(self.label_inside_menu)
+            # Only write the label name if it exists and is not None
+            if label_name is not None:
+                self.write(f' {label_name}')
             self.label_inside_menu = None
 
         # arguments attribute added in 7.1.4
