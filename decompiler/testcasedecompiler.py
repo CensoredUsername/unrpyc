@@ -46,12 +46,19 @@ class TestcaseDecompiler(DecompilerBase):
 
     @dispatch(testast.Python)
     def print_python(self, ast):
+        import textwrap
         self.indent()
         code = ast.code.source
-        if code[0] == '\n':
+        # In Ren'Py 8.5+, the source may start with spaces/indentation instead of newline
+        # Check if there are any newlines (indicating multiline) rather than checking first char
+        if '\n' in code:
+            # Strip leading blank lines, then dedent to remove common indentation
+            code = code.lstrip('\n')
+            code = textwrap.dedent(code)
+            code = code.strip('\n')
             self.write("python:")
             with self.increase_indent():
-                self.write_lines(split_logical_lines(code[1:]))
+                self.write_lines(split_logical_lines(code))
         else:
             self.write(f'$ {code}')
 

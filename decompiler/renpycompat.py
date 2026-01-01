@@ -67,18 +67,43 @@ SPECIAL_CLASSES.append(oldfrozenset)
 class PyExpr(magic.FakeStrict, str):
     __module__ = "renpy.ast"
 
-    def __new__(cls, s, filename, linenumber, py=None):
+    def __new__(cls, s, filename, linenumber, col_offset=None, hashcode=None, py=None):
         self = str.__new__(cls, s)
         self.filename = filename
         self.linenumber = linenumber
+        self.col_offset = col_offset
+        self.hashcode = hashcode
         self.py = py
         return self
 
     def __getnewargs__(self):
         if self.py is not None:
-            return str(self), self.filename, self.linenumber, self.py
+            return str(self), self.filename, self.linenumber, self.col_offset, self.hashcode, self.py
         else:
             return str(self), self.filename, self.linenumber
+
+
+# Also register PyExpr for the new module location in Ren'Py 8.5+
+class PyExprAstSupport(magic.FakeStrict, str):
+    __module__ = "renpy.astsupport"
+    
+    def __new__(cls, s, filename, linenumber, col_offset=None, hashcode=None, py=None):
+        self = str.__new__(cls, s)
+        self.filename = filename
+        self.linenumber = linenumber
+        self.col_offset = col_offset
+        self.hashcode = hashcode
+        self.py = py
+        return self
+
+    def __getnewargs__(self):
+        if self.py is not None:
+            return str(self), self.filename, self.linenumber, self.col_offset, self.hashcode, self.py
+        else:
+            return str(self), self.filename, self.linenumber
+
+PyExprAstSupport.__name__ = "PyExpr"
+SPECIAL_CLASSES.append(PyExprAstSupport)
 
 
 @SPECIAL_CLASSES.append
@@ -86,11 +111,30 @@ class PyCode(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     def __setstate__(self, state):
-        if len(state) == 4:
+        col_offset = 0
+        py = 2
+        hashcode = None
+
+        if len(state) == 7:
+            # Ren'Py 8.5+ format: (version, source, location, mode, py, hashcode, col_offset)
+            (_, self.source, self.location, self.mode, self.py, self.hashcode, self.col_offset) = state
+        elif len(state) == 6:
+            # Ren'Py 8.x format: (version, source, location, mode, py, hashcode)
+            (_, self.source, self.location, self.mode, self.py, self.hashcode) = state
+            self.col_offset = 0
+        elif len(state) == 5:
+            # Older format: (version, source, location, mode, py)
+            (_, self.source, self.location, self.mode, self.py) = state
+            self.hashcode = None
+            self.col_offset = 0
+        elif len(state) == 4:
+            # Oldest format: (version, source, location, mode)
             (_, self.source, self.location, self.mode) = state
             self.py = None
+            self.hashcode = None
+            self.col_offset = 0
         else:
-            (_, self.source, self.location, self.mode, self.py) = state
+            raise ValueError(f"Unknown PyCode state format with {len(state)} elements: {state}")
         self.bytecode = None
 
 

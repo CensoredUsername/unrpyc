@@ -29,6 +29,17 @@ from renpy.text import text
 from renpy.sl2 import sldisplayables as sld
 from renpy.display import layout, behavior, im, motion, dragdrop, transform
 
+# Helper to check if a value is a PyExpr (handles both renpy.ast.PyExpr and renpy.astsupport.PyExpr)
+def is_pyexpr(value):
+    """Check if value is a PyExpr from either renpy.ast or renpy.astsupport module."""
+    val_type = type(value)
+    if isinstance(value, PyExpr):
+        return True
+    # Check by class name in case the class is from renpy.astsupport (Ren'Py 8.5+)
+    if val_type.__name__ in ('PyExpr', 'PyExprAstSupport'):
+        return True
+    return False
+
 # Main API
 
 def pprint(out_file, ast, options,
@@ -161,13 +172,18 @@ class SL2Decompiler(DecompilerBase):
 
     @dispatch(sl2.slast.SLPython)
     def print_python(self, ast):
+        import textwrap
         self.indent()
 
-        # Extract the source code from the slast.SLPython object. If it starts with a
-        # newline, print it as a python block, else, print it as a $ statement
+        # Extract the source code from the slast.SLPython object. If it contains
+        # newlines, print it as a python block, else, print it as a $ statement
+        # In Ren'Py 8.5+, the source may start with spaces/indentation instead of newline
         code = ast.code.source
-        if code.startswith("\n"):
-            code = code[1:]
+        if '\n' in code:
+            # Strip leading blank lines, then dedent to remove common indentation
+            code = code.lstrip('\n')
+            code = textwrap.dedent(code)
+            code = code.strip('\n')
             self.write("python:")
             with self.increase_indent():
                 self.write_lines(split_logical_lines(code))
@@ -186,7 +202,7 @@ class SL2Decompiler(DecompilerBase):
         self.indent()
         self.write("use ")
         args = reconstruct_arginfo(ast.args)
-        if isinstance(ast.target, PyExpr):
+        if is_pyexpr(ast.target):
             self.write(f'expression {ast.target}')
             if args:
                 self.write(" pass ")
