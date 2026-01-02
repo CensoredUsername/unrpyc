@@ -397,8 +397,8 @@ def main():
         choices=list(range(1, cc_num)),
         default=cc_num - 1 if cc_num > 2 else 1,
         help="Use the specified number or processes to decompile. "
-        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing "
-        "unavailable is.")
+        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing is "
+        "unavailable.")
 
     astdump = ap.add_argument_group('astdump options', 'All unrpyc options related to ast-dumping.')
     astdump.add_argument(
@@ -429,7 +429,7 @@ def main():
         '--no-init-offset',
         dest='init_offset',
         action='store_false',
-        help="By default, unrpyc attempt to guess when init offset statements were used and insert "
+        help="By default, unrpyc attempts to guess when init offset statements were used and insert "
         "them. This is always safe to do for ren'py 8, but as it is based on a heuristic it can be "
         "disabled. The generated code is exactly equivalent, only slightly more cluttered.")
 
