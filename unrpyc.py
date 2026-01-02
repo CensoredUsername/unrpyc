@@ -35,37 +35,37 @@ import zlib
 from pathlib import Path
 
 try:
+    # this script is often used in environments where multiprocessing is not available
+    # or broken. So test if it's available, and then actually use it by creating a Lock
+    # because it lazily loads its C-backend and that might be missing.
     from multiprocessing import Lock, Pool, cpu_count, current_process, freeze_support
-    # - The above import only fails, if multiprocessing(MP) is not there at all
-    # - In some implementations of MP, the C-ext is not available, so we test for it
-    # - To make sure it really works, we try also to instantiate the Lock class
     import _multiprocessing
-    lock = Lock()
+    Lock()
+
 except ImportError:
     traceback.print_exc(file=sys.stdout)
-    print("The multiprocessing module is not available! Proceeding with only a single CPU "
-          "thread, which will be slow.\n")
-    # Mock required support when multiprocessing is unavailable
+    print("The multiprocessing module is not available or broken! Proceeding with single threaded "
+          "decompilation. This will be slow.\n")
+
+    # Mock the parts of multiprocessing that we need
     def cpu_count():
         return 1
 
+    # needed in case people use py2exe on the tool
     def freeze_support():
         pass
 
     class Pool:
         """
-        A mock of the Pool class and its imap method, which is used by our setup, in case
-        the multiprocessing module is not available.
+        A minimal single-threaded mock of the multiprocessing.Pool class.
         """
 
         def __init__(self, processes=None, initializer=None, initargs=None):
             pass
 
         def imap(self, func, iterable, chunksize=1):
-            """
-            In Python 3, the built-in map() returns a lazy iterator,
-            which is exactly what is needed to mimic pool.imap.
-            """
+            # In Python 3, the built-in map() returns a lazy iterator,
+            # which is exactly what is needed to mimic pool.imap.
             return map(func, iterable)
 
         def close(self):
@@ -79,11 +79,6 @@ except ImportError:
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
-
-else:
-    if current_process().name == 'MainProcess':
-        print("Multiprocessing functionality is available.")
-        del lock
 
 import decompiler
 import deobfuscate
