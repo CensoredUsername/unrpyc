@@ -362,7 +362,11 @@ def reconstruct_arginfo(arginfo):
     rv = ["("]
     sep = First("", ", ")
 
-    if hasattr(arginfo, 'starred_indexes'):
+    # ren'py 7.4 and below use arginfo.(arguments, extrapos, extrapw)
+    # ren'py 7.5 and above use arginfo.(arguments, starred_indexes, doublestarred_indexes)
+    # however, renṕy 8.4 and above do not store starred_indexes, doublestarred_indexes in the pickle
+    # so test for both the presence of starred_indexes and extrapos.
+    if hasattr(arginfo, 'starred_indexes') or not hasattr(arginfo, 'extrapos'):
         # ren'py 7.5 and above, PEP 448 compliant
         for i, (name, val) in enumerate(arginfo.arguments):
             rv.append(sep())
