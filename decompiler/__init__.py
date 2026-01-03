@@ -633,25 +633,37 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n':
-            code = code[1:]
-            self.write("python")
-            if early:
-                self.write(" early")
-            if ast.hide:
-                self.write(" hide")
-            # store attribute added in 6.14
-            if ast.store != "store":
-                self.write(" in ")
-                # Strip prepended "store."
-                self.write(ast.store[6:])
-            self.write(":")
 
+        # pre ren'py 8.4, python blocks were stored un-indented with a leading \n
+        # after this, python blocks are stored with indentation, without a leading \n.
+        indented = code and (code[0] == " ")
+        leading_newline = code and (code[0] == "\n")
+
+        if not (indented or leading_newline):
+            # single-line python statement
+            self.write(f'$ {code}')
+            return
+
+        if leading_newline:
+            code = code[1:]
+
+        self.write("python")
+        if early:
+            self.write(" early")
+        if ast.hide:
+            self.write(" hide")
+        # store attribute added in 6.14
+        if ast.store != "store":
+            self.write(" in ")
+            # Strip prepended "store."
+            self.write(ast.store[6:])
+        self.write(":")
+
+        if indented:
+            self.write(f"\n{code}")
+        else:
             with self.increase_indent():
                 self.write_lines(split_logical_lines(code))
-
-        else:
-            self.write(f'$ {code}')
 
     @dispatch(renpy.ast.EarlyPython)
     def print_earlypython(self, ast):
