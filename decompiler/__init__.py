@@ -73,6 +73,7 @@ class Decompiler(DecompilerBase):
         self.init_offset = 0
         self.most_lines_behind = 0
         self.last_lines_behind = 0
+        self.seen_label = False
 
     def advance_to_line(self, linenumber):
         self.last_lines_behind = max(
@@ -305,6 +306,9 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Label)
     def print_label(self, ast):
+        # record that we've seen labels in this script file, and cannot strip the final return
+        self.seen_label = True
+
         # If a Call block preceded us, it printed us as "from"
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             return
@@ -385,9 +389,18 @@ class Decompiler(DecompilerBase):
                 and self.parent is None
                 and self.index + 1 == len(self.block)
                 and self.index
-                and ast.linenumber == self.block[self.index - 1].linenumber):
+                and (
+                    ast.linenumber == self.block[self.index - 1].linenumber or
+                    isinstance(self.block[self.index - 1], (renpy.ast.Return, renpy.ast.Jump)) or
+                    not self.seen_label
+                    )
+                ):
             # As of Ren'Py commit 356c6e34, a return statement is added to
             # the end of each rpyc file. Don't include this in the source.
+            # As of Ren'Py commit e02c0a9 we can't detect if these return statements
+            # are automatically generated anymore, so now we auto-strip them if
+            # there was a return statement before this one, an unconditional jump, or
+            # if there were no labels in this file so there wouldn't be any script execution anyway.
             return
 
         self.advance_to_line(ast.linenumber)
