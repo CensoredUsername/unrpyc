@@ -916,4 +916,4 @@ class Decompiler(DecompilerBase):
     @dispatch(renpy.ast.RPY)
     def print_rpy_python(self, ast):
         self.indent()
-        self.write(f'rpy python {ast.rest}')
+        self.write(f"rpy {' '.join(map(str, ast.rest))}")
