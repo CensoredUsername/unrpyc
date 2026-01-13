@@ -877,6 +877,18 @@ class Decompiler(DecompilerBase):
         finally:
             self.in_init = in_init
 
+    # an optimized translate block with a single say statement
+    @dispatch(renpy.ast.TranslateSay)
+    def print_translate_say(self, ast):
+        if ast.language:
+            self.indent()
+            self.write(f'translate {ast.language} {ast.identifier}:')
+
+            with self.increase_indent():
+                self.print_say(ast, True)
+        else:
+            self.print_say(ast)
+
     # Screens
 
     @dispatch(renpy.ast.Screen)
