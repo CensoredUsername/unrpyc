@@ -293,7 +293,7 @@ class Decompiler(DecompilerBase):
         self.write("camera")
 
         if ast.layer != "master":
-            self.write(f' {ast.name}')
+            self.write(f' {ast.layer}')
 
         if ast.at_list:
             self.write(f' at {", ".join(ast.at_list)}')
