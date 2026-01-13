@@ -465,6 +465,7 @@ class TranslateBlock(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     translation_relevant = True
+    language = None
 
 
 @SPECIAL_CLASSES.append
@@ -472,6 +473,7 @@ class TranslateEarlyBlock(magic.FakeStrict):
     __module__ = "renpy.ast"
 
     translation_relevant = True
+    language = None
 
 
 # end of the declarative data section
