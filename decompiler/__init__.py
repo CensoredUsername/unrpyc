@@ -74,6 +74,7 @@ class Decompiler(DecompilerBase):
         self.most_lines_behind = 0
         self.last_lines_behind = 0
         self.seen_label = False
+        self.rpy_directive_arguments = []
 
     def advance_to_line(self, linenumber):
         self.last_lines_behind = max(
@@ -927,5 +928,19 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.RPY)
     def print_rpy_python(self, ast):
+        command, arg = ast.rest
+        assert command == "python"
+        self.rpy_directive_arguments.append(arg)
+
+        # detect multiple ast.RPY nodes emitted from the same rpy python line
+        next_index = self.index + 1
+        if (next_index < len(self.block)
+            and isinstance(self.block[next_index], renpy.ast.RPY)
+            and ast.linenumber == self.block[next_index].linenumber
+            and command == self.block[next_index].rest[0]):
+            # these arguments are to be merged with the next statement, so do nothing for now
+            return
+
         self.indent()
-        self.write(f'rpy python {ast.rest}')
+        self.write(f"rpy {command} {', '.join(self.rpy_directive_arguments)}")
+        self.rpy_directive_arguments = []
