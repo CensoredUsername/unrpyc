@@ -37,7 +37,7 @@ class ATLDecompiler(DecompilerBase):
     def dump(self, ast, indent_level=0, linenumber=1, skip_indent_until_write=False):
         # At this point, the preceding ":" has been written, and indent hasn't been increased
         # yet. There's no common syntax for starting an ATL node, and the base block that is
-        # created is just a RawBlock. normally RawBlocks are created witha block: statement
+        # created is just a RawBlock. normally RawBlocks are created with a block: statement
         # so we cannot just reuse the node for that. Instead, we implement the top level node
         # directly here
         self.indent_level = indent_level
@@ -89,7 +89,7 @@ class ATLDecompiler(DecompilerBase):
         # warpers
         # I think something changed about the handling of pause, that last special case
         # doesn't look necessary anymore as a proper pause warper exists now but we'll
-        # keep it around for backwards compatability
+        # keep it around for backwards compatibility
         if ast.warp_function:
             warp_words.append("warp", ast.warp_function, ast.duration)
         elif ast.warper:

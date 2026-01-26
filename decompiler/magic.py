@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This module provides tools for safely analyizing pickle files programmatically
+# This module provides tools for safely analyzing pickle files programmatically
 
 import sys
 
@@ -211,7 +211,7 @@ class FakeIgnore(FakeClass, object):
 
 class FakeClassFactory(object):
     """
-    Factory of fake classses. It will create fake class definitions on demand
+    Factory of fake classes. It will create fake class definitions on demand
     based on the passed arguments.
     """
 
@@ -298,7 +298,7 @@ class FakeModule(types.ModuleType):
 
     Using this behaviour, ``==``, ``!=``, ``hash()``, ``isinstance()`` and ``issubclass()``
     are implemented allowing comparison between :class:`FakeClassType` instances
-    and :class:`FakeModule` instances to succeed if they are pretending to bein the same
+    and :class:`FakeModule` instances to succeed if they are pretending to be in the same
     place in the python module hierarchy.
 
     It inherits from :class:`types.ModuleType`.
@@ -449,14 +449,14 @@ class FakeUnpicklingError(pickle.UnpicklingError):
 
 class FakeUnpickler(pickle.Unpickler if PY2 else pickle._Unpickler):
     """
-    A forgiving unpickler. On uncountering references to class definitions
+    A forgiving unpickler. On encountering references to class definitions
     in the pickle stream which it cannot locate, it will create fake classes
     and if necessary fake modules to house them in. Since it still allows access
     to all modules and builtins, it should only be used to unpickle trusted data.
 
     *file* is the :term:`binary file` to unserialize.
 
-    The optional keyword arguments are *class_factory*, *encoding and *errors*.
+    The optional keyword arguments are *class_factory*, *encoding* and *errors*.
     *class_factory* can be used to control how the missing class definitions are
     created. If set to ``None``, ``FakeClassFactory((), FakeStrict)`` will be used.
 
@@ -583,7 +583,7 @@ class SafePickler(pickle.Pickler if PY2 else pickle._Pickler):
 def load(file, class_factory=None, encoding="bytes", errors="errors"):
     """
     Read a pickled object representation from the open binary :term:`file object` *file*
-    and return the reconstitutded object hierarchy specified therein, generating
+    and return the reconstituted object hierarchy specified therein, generating
     any missing class definitions at runtime. This is equivalent to
     ``FakeUnpickler(file).load()``.
 
@@ -603,7 +603,7 @@ def load(file, class_factory=None, encoding="bytes", errors="errors"):
 
 def loads(string, class_factory=None, encoding="bytes", errors="errors"):
     """
-    Simjilar to :func:`load`, but takes an 8-bit string (bytes in Python 3, str in Python 2)
+    Similar to :func:`load`, but takes an 8-bit string (bytes in Python 3, str in Python 2)
     as its first argument instead of a binary :term:`file object`.
     """
     return FakeUnpickler(StringIO(string), class_factory,
@@ -613,7 +613,7 @@ def safe_load(file, class_factory=None, safe_modules=(), use_copyreg=False,
               encoding="bytes", errors="errors"):
     """
     Read a pickled object representation from the open binary :term:`file object` *file*
-    and return the reconstitutded object hierarchy specified therein, substituting any
+    and return the reconstituted object hierarchy specified therein, substituting any
     class definitions by fake classes, ensuring safety in the unpickling process.
     This is equivalent to ``SafeUnpickler(file).load()``.
 

@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This module holds some special classes and shorthand functions for support of renpy compatiblity.
+# This module holds some special classes and shorthand functions for support of renpy compatibility.
 # They're separate so there will be less code duplication, simpler dependencies between files and
 # to avoid middle-of-file imports.
 

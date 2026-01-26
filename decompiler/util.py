@@ -301,8 +301,8 @@ def reconstruct_paraminfo(paraminfo):
     else:
         # ren'py 7.7/8.2 and above.
         # positional only, /, positional or keyword, *, keyword only, ***
-        # prescence of the / is indicated by positional only arguments being present
-        # prescence of the * (if no *args) are present is indicated by keyword only args
+        # presence of the / is indicated by positional only arguments being present
+        # presence of the * (if no *args) are present is indicated by keyword only args
         # being present.
         state = 1  # (0 = positional only, 1 = pos/key, 2 = keyword only)
 
@@ -514,7 +514,7 @@ class Lexer:
         return word
 
     def simple_expression(self):
-        # check if there's anything in here acctually
+        # check if there's anything in here actually
         if self.eol():
             return False
 

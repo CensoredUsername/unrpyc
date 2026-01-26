@@ -207,7 +207,7 @@ class AstDumper(object):
         return True
 
     def print_object(self, ast):
-        # handles the printing of anything unknown which inherts from object.
+        # handles the printing of anything unknown which inherits from object.
         # prints the values of relevant attributes in a dictionary-like way
         # it will not print anything which is a bound method or starts with a _
         self.p('<')
@@ -296,7 +296,7 @@ class AstDumper(object):
 
     def ind(self, diff_indent=0, ast=None):
         # print a newline and indent. diff_indent represents the difference in indentation
-        # compared to the last line. it will chech the length of ast to determine if it
+        # compared to the last line. it will check the length of ast to determine if it
         # shouldn't indent in case there's only one or zero objects in this object to print
         if ast is None or len(ast) > 1:
             self.indent += diff_indent

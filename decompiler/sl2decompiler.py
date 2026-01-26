@@ -497,7 +497,7 @@ class SL2Decompiler(DecompilerBase):
         # additionally, since 7.3 upwards, tag cannot be placed on the same line as `screen`
         # for whatever reason.
         # it is currently impossible to have both an `as` and a `tag` keyword in the same
-        # displayble `as` is only used for displayables, `tag` for screens.
+        # displayable. `as` is only used for displayables, `tag` for screens.
         # strategies:
         # - if there's several empty lines before any line, we can make some new lines for them
         # - if the first line is a keyword line, we can merge them with it

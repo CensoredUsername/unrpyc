@@ -27,7 +27,7 @@ from pathlib import Path
 from corrupy import pickleast as p, minimize
 
 parser = argparse.ArgumentParser(
-    description="Pack unpryc into un.rpyc which can be ran from inside renpy")
+    description="Pack unrpyc into un.rpyc which can be ran from inside renpy")
 
 parser.add_argument(
     "-d",
