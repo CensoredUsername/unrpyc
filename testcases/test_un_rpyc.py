@@ -114,7 +114,7 @@ def main():
     assert lines[0] == "Beginning decompiling\n"
     assert lines[-1] == "end decompiling\n"
 
-    # rudinemtary parse of the log file contents
+    # rudimentary parse of the log file contents
     success = []
     failure = []
     for line in lines[1:-1]:

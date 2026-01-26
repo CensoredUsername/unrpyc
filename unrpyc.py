@@ -368,7 +368,7 @@ def main():
         choices=list(range(1, cc_num)),
         default=cc_num - 1 if cc_num > 2 else 1,
         help="Use the specified number or processes to decompile. "
-        "Defaults to the amount of hw threads available minus one, disabled when muliprocessing "
+        "Defaults to the amount of hw threads available minus one, disabled when multiprocessing "
         "unavailable is.")
 
     astdump = ap.add_argument_group('astdump options', 'All unrpyc options related to ast-dumping.')

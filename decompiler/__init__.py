@@ -55,10 +55,10 @@ def pprint(out_file, ast, options=Options()):
 
 class Decompiler(DecompilerBase):
     """
-    An object which hanldes the decompilation of renpy asts to a given stream
+    An object which handles the decompilation of renpy asts to a given stream
     """
 
-    # This dictionary is a mapping of Class: unbount_method, which is used to determine
+    # This dictionary is a mapping of Class: unbound_method, which is used to determine
     # what method to call for which ast class
     dispatch = Dispatcher()
 
