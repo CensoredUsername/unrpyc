@@ -35,11 +35,50 @@ import zlib
 from pathlib import Path
 
 try:
-    from multiprocessing import Pool, cpu_count
+    # this script is often used in environments where multiprocessing is not available
+    # or broken. So test if it's available, and then actually use it by creating a Lock
+    # because it lazily loads its C-backend and that might be missing.
+    from multiprocessing import Lock, Pool, cpu_count, current_process, freeze_support
+    import _multiprocessing
+    Lock()
+
 except ImportError:
-    # Mock required support when multiprocessing is unavailable
+    traceback.print_exc(file=sys.stdout)
+    print("The multiprocessing module is not available or broken! Proceeding with single threaded "
+          "decompilation. This will be slow.\n")
+
+    # Mock the parts of multiprocessing that we need
     def cpu_count():
         return 1
+
+    # needed in case people use py2exe on the tool
+    def freeze_support():
+        pass
+
+    class Pool:
+        """
+        A minimal single-threaded mock of the multiprocessing.Pool class.
+        """
+
+        def __init__(self, processes=None, initializer=None, initargs=None):
+            pass
+
+        def imap(self, func, iterable, chunksize=1):
+            # In Python 3, the built-in map() returns a lazy iterator,
+            # which is exactly what is needed to mimic pool.imap.
+            return map(func, iterable)
+
+        def close(self):
+            pass
+
+        def join(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
 
 import decompiler
 import deobfuscate
@@ -267,18 +306,8 @@ def run_workers(worker, common_args, private_args, parallelism):
     worker_args = ((common_args, x) for x in private_args)
 
     results = []
-    if parallelism > 1:
-        with Pool(parallelism) as pool:
-            for result in pool.imap(worker, worker_args, 1):
-                results.append(result)
-
-                for line in result.log_contents:
-                    print(line)
-
-                print("")
-
-    else:
-        for result in map(worker, worker_args):
+    with Pool(parallelism) as pool:
+        for result in pool.imap(worker, worker_args, 1):
             results.append(result)
 
             for line in result.log_contents:
@@ -368,8 +397,8 @@ def main():
         choices=list(range(1, cc_num)),
         default=cc_num - 1 if cc_num > 2 else 1,
         help="Use the specified number or processes to decompile. "
-        "Defaults to the amount of hw threads available minus one, disabled when multiprocessing "
-        "unavailable is.")
+        "Defaults to the amount of hw threads available minus one, disabled when multiprocessing is "
+        "unavailable.")
 
     astdump = ap.add_argument_group('astdump options', 'All unrpyc options related to ast-dumping.')
     astdump.add_argument(
@@ -400,7 +429,7 @@ def main():
         '--no-init-offset',
         dest='init_offset',
         action='store_false',
-        help="By default, unrpyc attempt to guess when init offset statements were used and insert "
+        help="By default, unrpyc attempts to guess when init offset statements were used and insert "
         "them. This is always safe to do for ren'py 8, but as it is based on a heuristic it can be "
         "disabled. The generated code is exactly equivalent, only slightly more cluttered.")
 
@@ -563,4 +592,7 @@ def main():
         print("When making a bug report, please include this entire log.")
 
 if __name__ == '__main__':
+    if sys.platform == "win32":
+        freeze_support()
+
     main()

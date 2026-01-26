@@ -73,6 +73,8 @@ class Decompiler(DecompilerBase):
         self.init_offset = 0
         self.most_lines_behind = 0
         self.last_lines_behind = 0
+        self.seen_label = False
+        self.rpy_directive_arguments = []
 
     def advance_to_line(self, linenumber):
         self.last_lines_behind = max(
@@ -292,7 +294,7 @@ class Decompiler(DecompilerBase):
         self.write("camera")
 
         if ast.layer != "master":
-            self.write(f' {ast.name}')
+            self.write(f' {ast.layer}')
 
         if ast.at_list:
             self.write(f' at {", ".join(ast.at_list)}')
@@ -305,6 +307,9 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.Label)
     def print_label(self, ast):
+        # record that we've seen labels in this script file, and cannot strip the final return
+        self.seen_label = True
+
         # If a Call block preceded us, it printed us as "from"
         if (self.index and isinstance(self.block[self.index - 1], renpy.ast.Call)):
             return
@@ -343,7 +348,7 @@ class Decompiler(DecompilerBase):
         self.missing_init = False
         try:
             self.write(f'label {ast.name}{reconstruct_paraminfo(ast.parameters)}'
-                       f'{" hide" if getattr(ast, "hide", False) else ""}:')
+                       f'{" hide" if ast.hide else ""}:')
             self.print_nodes(ast.block, 1)
         finally:
             if self.missing_init:
@@ -385,9 +390,18 @@ class Decompiler(DecompilerBase):
                 and self.parent is None
                 and self.index + 1 == len(self.block)
                 and self.index
-                and ast.linenumber == self.block[self.index - 1].linenumber):
+                and (
+                    ast.linenumber == self.block[self.index - 1].linenumber or
+                    isinstance(self.block[self.index - 1], (renpy.ast.Return, renpy.ast.Jump)) or
+                    not self.seen_label
+                    )
+                ):
             # As of Ren'Py commit 356c6e34, a return statement is added to
             # the end of each rpyc file. Don't include this in the source.
+            # As of Ren'Py commit e02c0a9 we can't detect if these return statements
+            # are automatically generated anymore, so now we auto-strip them if
+            # there was a return statement before this one, an unconditional jump, or
+            # if there were no labels in this file so there wouldn't be any script execution anyway.
             return
 
         self.advance_to_line(ast.linenumber)
@@ -404,7 +418,8 @@ class Decompiler(DecompilerBase):
         for i, (condition, block) in enumerate(ast.entries):
             # The unicode string "True" is used as the condition for else:.
             # But if it's an actual expression, it's a renpy.ast.PyExpr
-            if (i + 1) == len(ast.entries) and not isinstance(condition, renpy.ast.PyExpr):
+            if (i + 1) == len(ast.entries) and not isinstance(condition, (
+                    renpy.ast.PyExpr, renpy.astsupport.PyExpr)):
                 self.indent()
                 self.write("else:")
             else:
@@ -543,7 +558,7 @@ class Decompiler(DecompilerBase):
 
         if block is not None:
             # ren'py uses the unicode string "True" as condition when there isn't one.
-            if isinstance(condition, renpy.ast.PyExpr):
+            if isinstance(condition, (renpy.ast.PyExpr, renpy.astsupport.PyExpr)):
                 self.write(f' if {condition}')
             self.write(":")
             self.print_nodes(block, 1)
@@ -557,7 +572,7 @@ class Decompiler(DecompilerBase):
             self.label_inside_menu = None
 
         # arguments attribute added in 7.1.4
-        if getattr(ast, "arguments", None) is not None:
+        if ast.arguments is not None:
             self.write(reconstruct_arginfo(ast.arguments))
 
         self.write(":")
@@ -572,7 +587,7 @@ class Decompiler(DecompilerBase):
                 self.write(f'set {ast.set}')
 
             # item_arguments attribute since 7.1.4
-            if hasattr(ast, 'item_arguments'):
+            if ast.item_arguments is not None:
                 item_arguments = ast.item_arguments
             else:
                 item_arguments = [None] * len(ast.items)
@@ -632,25 +647,37 @@ class Decompiler(DecompilerBase):
         self.indent()
 
         code = ast.code.source
-        if code[0] == '\n':
-            code = code[1:]
-            self.write("python")
-            if early:
-                self.write(" early")
-            if ast.hide:
-                self.write(" hide")
-            # store attribute added in 6.14
-            if getattr(ast, "store", "store") != "store":
-                self.write(" in ")
-                # Strip prepended "store."
-                self.write(ast.store[6:])
-            self.write(":")
 
+        # pre ren'py 8.4, python blocks were stored un-indented with a leading \n
+        # after this, python blocks are stored with indentation, without a leading \n.
+        indented = code and (code[0] == " ")
+        leading_newline = code and (code[0] == "\n")
+
+        if not (indented or leading_newline):
+            # single-line python statement
+            self.write(f'$ {code}')
+            return
+
+        if leading_newline:
+            code = code[1:]
+
+        self.write("python")
+        if early:
+            self.write(" early")
+        if ast.hide:
+            self.write(" hide")
+        # store attribute added in 6.14
+        if ast.store != "store":
+            self.write(" in ")
+            # Strip prepended "store."
+            self.write(ast.store[6:])
+        self.write(":")
+
+        if indented:
+            self.write(f"\n{code}")
+        else:
             with self.increase_indent():
                 self.write_lines(split_logical_lines(code))
-
-        else:
-            self.write(f'$ {code}')
 
     @dispatch(renpy.ast.EarlyPython)
     def print_earlypython(self, ast):
@@ -673,14 +700,14 @@ class Decompiler(DecompilerBase):
 
         index = ""
         # index attribute added in 7.4
-        if getattr(ast, "index", None) is not None:
+        if ast.index is not None:
             index = f'[{ast.index.source}]'
 
         # operator attribute added in 7.4
-        operator = getattr(ast, "operator", "=")
+        operator = ast.operator
 
         # store attribute added in 6.18.2
-        if getattr(ast, "store", "store") == "store":
+        if ast.store == "store":
             self.write(f'define{priority} {ast.varname}{index} {operator} {ast.code.source}')
         else:
             self.write(
@@ -740,12 +767,16 @@ class Decompiler(DecompilerBase):
         self.write(ast.line)
 
         # block attribute since 6.13.0
-        if getattr(ast, "block", None):
+        if ast.block is not None:
             with self.increase_indent():
                 self.print_lex(ast.block)
 
     def print_lex(self, lex):
-        for file, linenumber, content, block in lex:
+        for entry in lex:
+            if len(entry) == 4:
+                file, linenumber, content, block = entry
+            else:
+                file, linenumber, _indent, content, block = entry
             self.advance_to_line(linenumber)
             self.indent()
             self.write(content)
@@ -847,6 +878,18 @@ class Decompiler(DecompilerBase):
         finally:
             self.in_init = in_init
 
+    # an optimized translate block with a single say statement
+    @dispatch(renpy.ast.TranslateSay)
+    def print_translate_say(self, ast):
+        if ast.language:
+            self.indent()
+            self.write(f'translate {ast.language} {ast.identifier}:')
+
+            with self.increase_indent():
+                self.print_say(ast, True)
+        else:
+            self.print_say(ast)
+
     # Screens
 
     @dispatch(renpy.ast.Screen)
@@ -885,5 +928,19 @@ class Decompiler(DecompilerBase):
 
     @dispatch(renpy.ast.RPY)
     def print_rpy_python(self, ast):
+        command, arg = ast.rest
+        assert command == "python"
+        self.rpy_directive_arguments.append(arg)
+
+        # detect multiple ast.RPY nodes emitted from the same rpy python line
+        next_index = self.index + 1
+        if (next_index < len(self.block)
+            and isinstance(self.block[next_index], renpy.ast.RPY)
+            and ast.linenumber == self.block[next_index].linenumber
+            and command == self.block[next_index].rest[0]):
+            # these arguments are to be merged with the next statement, so do nothing for now
+            return
+
         self.indent()
-        self.write(f'rpy python {ast.rest}')
+        self.write(f"rpy {command} {', '.join(self.rpy_directive_arguments)}")
+        self.rpy_directive_arguments = []

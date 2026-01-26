@@ -103,62 +103,54 @@ py -3 unrpyc.py [options] script1 script2 ...
 Options:
 ```
 $ py -3 unrpyc.py --help
-usage: unrpyc.py [-h] [-c] [-d] [-p {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}]
-                 [-t TRANSLATION_FILE] [-T WRITE_TRANSLATION_FILE]
-                 [-l LANGUAGE] [--sl1-as-python] [--comparable] [--no-pyexpr]
-                 [--no-init-offset] [--try-harder]
-                 [--register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]]
+usage: unrpyc.py [-h] [-c] [--try-harder] [-p {int}] [-d]
+                 [--comparable] [--no-pyexpr] [--no-init-offset]
+                 [--register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]] [-t TRANSLATE]
+                 [--version]
                  file [file ...]
 
 Decompile .rpyc/.rpymc files
 
 positional arguments:
-  file                  The filenames to decompile. All .rpyc files in any
-                        directories passed or their subdirectories will also
-                        be decompiled.
+  file                  The filenames to decompile. All .rpyc files in any sub-/directories passed
+                        will also be decompiled.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -c, --clobber         overwrites existing output files
-  -d, --dump            instead of decompiling, pretty print the ast to a file
-  -p, --processes
-                        use the specified number or processes to
-                        decompile. Defaults to the amount of hw threads
-                        available minus one, disabled when muliprocessing is
+  -c, --clobber         Overwrites output files if they already exist.
+  --try-harder          Tries some workarounds against common obfuscation methods. This is a lot
+                        slower.
+  -p, --processes {int}
+                        Use the specified number or processes to decompile. Defaults to the amount
+                        of hw threads available minus one, disabled when muliprocessing is
                         unavailable.
-  -t TRANSLATION_FILE, --translation-file TRANSLATION_FILE
-                        use the specified file to translate during
-                        decompilation
-  -T WRITE_TRANSLATION_FILE, --write-translation-file WRITE_TRANSLATION_FILE
-                        store translations in the specified file instead of
-                        decompiling
-  -l LANGUAGE, --language LANGUAGE
-                        if writing a translation file, the language of the
-                        translations to write
-  --comparable          Only for dumping, remove several false differences
-                        when comparing dumps. This suppresses attributes that
-                        are different even when the code is identical, such as
-                        file modification times.
-  --no-pyexpr           Only for dumping, disable special handling of PyExpr
-                        objects, instead printing them as strings. This is
-                        useful when comparing dumps from different versions of
-                        Ren'Py. It should only be used if necessary, since it
-                        will cause loss of information such as line numbers.
-  --no-init-offset      By default, unrpyc attempt to guess when init offset
-                        statements were used and insert them. This is always safe
-                        to do for ren'py 8, but as it is based on a heuristic it
-                        can be disabled.
-                        The generated code is exactly equivalent, only slightly more cluttered.
-  --try-harder          Tries some workarounds against common obfuscation
-                        methods. This is a lot slower.
+  --no-init-offset      By default, unrpyc attempts to guess when init offset statements were used
+                        and insert them. This is always safe to do for ren'py 8, but as it is
+                        based on a heuristic it can be disabled. The generated code is exactly
+                        equivalent, only slightly more cluttered.
   --register-sl-displayable SL_CUSTOM_NAMES [SL_CUSTOM_NAMES ...]
-                        Accepts mapping separated by '=', where the first
-                        argument is the name of the user-defined displayable
-                        object, and the second argument is a string containing
-                        the name of the displayable,potentially followed by a
-                        '-', and the amount of children the displayable
-                        takes(valid options are '0', '1' or 'many', with
-                        'many' being the default)
+                        Accepts mapping separated by '=', where the first argument is the name of
+                        the user-defined displayable object, and the second argument is a string
+                        containing the name of the displayable, potentially followed by a '-', and
+                        the amount of children the displayable takes(valid options are '0', '1' or
+                        'many', with 'many' being the default)
+  -t, --translate TRANSLATE
+                        Changes the dialogue language in the decompiled script files, using a
+                        translation already present in the tl dir.
+  --version             show program's version number and exit
+
+astdump options:
+  All unrpyc options related to ast-dumping.
+
+  -d, --dump            Instead of decompiling, pretty print the ast to a file
+  --comparable          Only for dumping, remove several false differences when comparing dumps.
+                        This suppresses attributes that are different even when the code is
+                        identical, such as file modification times.
+  --no-pyexpr           Only for dumping, disable special handling of PyExpr objects, instead
+                        printing them as strings. This is useful when comparing dumps from
+                        different versions of Ren'Py. It should only be used if necessary, since
+                        it will cause loss of information such as line numbers.
+
 ```
 
 You can give several .rpyc files on the command line. Each script will be decompiled to a

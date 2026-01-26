@@ -304,7 +304,7 @@ def read_ast(f, context):
         try:
             data, stmts, d = try_decrypt_section(raw_data)
         except ValueError as e:
-            diagnosis.append(e.message)
+            diagnosis.append("\n".join(e.args))
         else:
             diagnosis.extend(d)
             context.log("\n".join(diagnosis))
