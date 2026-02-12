@@ -66,11 +66,11 @@ label tutorial_playing:
 
     e "The history button displays a history of read text - but you can also use rollback, which is usually better."
 
-
-
     menu:
         e "Would you like to hear about rollback?"
         "Yes.":
+
+
 
             jump tutorial_rollback
         "No.":

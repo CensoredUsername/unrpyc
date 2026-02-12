@@ -252,10 +252,10 @@ label pong_done:
 
     show eileen happy
 
-
     menu:
         e "Would you like to play again?"
         "Sure.":
+
 
             jump play_pong
         "No thanks.":

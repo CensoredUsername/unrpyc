@@ -6,11 +6,11 @@ label screen_displayables_menu:
 
     $ reset_example()
 
-
-
     menu:
         e "What would you like to know about?"
         "Common properties all displayables share.":
+
+
             call screen_displayable_properties from _call_screen_displayable_properties
         "Adding images and other displayables.":
 

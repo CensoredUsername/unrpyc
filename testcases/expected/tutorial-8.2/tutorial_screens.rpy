@@ -168,11 +168,11 @@ label screens_menu:
 
     $ reset_example()
 
-
-
     menu:
         e "What would you like to know about screens?"
         "What screens can do.":
+
+
             call screens_demo from _call_screens_demo
         "How to show screens.":
 
@@ -202,11 +202,11 @@ label screens_demo:
 
     e "When I'm speaking to you, I'm using the 'say' screen. It's responsible for taking dialogue and presenting it to the player."
 
-
-
     menu:
         e "And when the menu statement displays an in-game choice, the 'choice' screen is used. Got it?"
         "Yes.":
+
+
             pass
         "I do.":
 

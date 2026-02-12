@@ -55,11 +55,11 @@ label demo_transitions:
 
     e "Ren'Py ships with a large number of built-in transitions, and also includes classes that let you define your own."
 
-
-
     menu demo_transitions_menu:
         e "What kind of transitions would you like demonstrated?"
         "Simple Transitions":
+
+
 
             call demo_simple_transitions from _call_demo_simple_transitions_1
         "ImageDissolve Transitions":

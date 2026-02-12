@@ -49,7 +49,9 @@ def normalize(source: Path, dest: Path):
 
 def copy_rpy(source: Path, dest: Path):
     if source.name.endswith(".rpy"):
-        shutil.copyfile(source, dest)
+        with source.open("r", encoding="utf-8-sig") as fin:
+            with dest.open("w", encoding="utf-8", newline="\n") as fout:
+                fout.write(fin.read())
 
 def process_recursively(source_dir, dest_dir, function):
     # Recursively traverses source_dir and ensures dest_dir has the same folder structure.
@@ -90,8 +92,8 @@ def main():
 
     subprocess.run(["diff", "-ur", temp_original, temp_expected])
 
-    temp_original.rmdir()
-    temp_expected.rmdir()
+    shutil.rmtree(temp_original)
+    shutil.rmtree(temp_expected)
 
 
 if __name__ == '__main__':

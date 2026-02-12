@@ -63,11 +63,11 @@ label styles_menu:
 
     $ reset_example()
 
-
-
     menu:
         e "What would you like to know about styles?"
         "Style basics.":
+
+
             call style_basics from _call_style_basics
         "General style properties.":
 

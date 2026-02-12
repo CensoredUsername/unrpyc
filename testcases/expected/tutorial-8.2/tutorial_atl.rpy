@@ -267,11 +267,11 @@ label tutorial_positions:
         linear .5 xpos .75 ypos .25
 
 
-
-
     menu:
         e "Can you guess where this position is, relative to the screen?"
         "xpos 1.0 ypos .5":
+
+
 
             e "Sorry, that's wrong. The xpos is .75, and the ypos is .25."
 

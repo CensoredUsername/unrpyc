@@ -94,11 +94,11 @@ label rightaway:
 
     show sylvie green smile
 
-
-
     menu:
         s "Sure, but what's a \"visual novel?\""
         "It's a videogame.":
+
+
             jump game
         "It's an interactive book.":
 
