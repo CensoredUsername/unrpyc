@@ -85,7 +85,7 @@ class Decompiler(DecompilerBase):
     def save_state(self):
         return (super(Decompiler, self).save_state(), self.paired_with, self.say_inside_menu,
                 self.label_inside_menu, self.in_init, self.missing_init, self.most_lines_behind,
-                self.last_lines_behind)
+                self.last_lines_behind, self.seen_label, self.rpy_directive_arguments)
 
     def commit_state(self, state):
         super(Decompiler, self).commit_state(state[0])
@@ -98,6 +98,8 @@ class Decompiler(DecompilerBase):
         self.missing_init = state[5]
         self.most_lines_behind = state[6]
         self.last_lines_behind = state[7]
+        self.seen_label = state[8]
+        self.rpy_directive_arguments = state[9]
         super(Decompiler, self).rollback_state(state[0])
 
     def dump(self, ast):
@@ -116,6 +118,11 @@ class Decompiler(DecompilerBase):
         assert not self.missing_init, "A required init, init label, or translate block was missing"
 
     def print_node(self, ast):
+        # if this is a say node that appears in a menu, we need to not advance to it and skip it
+        if isinstance(ast, renpy.ast.Say):
+            if self.handle_say_possibly_inside_menu(ast):
+                return
+
         # We special-case line advancement for some types in their print
         # methods, so don't advance lines for them here.
         if hasattr(ast, 'linenumber') and not isinstance(
@@ -546,7 +553,7 @@ class Decompiler(DecompilerBase):
             self.in_init = in_init
 
     def print_say_inside_menu(self):
-        self.print_say(self.say_inside_menu, inmenu=True)
+        self.print_say(self.say_inside_menu, True)
         self.say_inside_menu = None
 
     def print_menu_item(self, label, condition, block, arguments):
@@ -747,17 +754,19 @@ class Decompiler(DecompilerBase):
                 and menu.items[0][2] is not None
                 and not self.should_come_before(say, menu))
 
-    @dispatch(renpy.ast.Say)
-    def print_say(self, ast, inmenu=False):
+    def handle_say_possibly_inside_menu(self, ast):
         # if this say statement precedes a menu statement, postpone emitting it until we're
-        # handling the menu
-        if (not inmenu
-                and self.index + 1 < len(self.block)
+        # handling the menu, and return True so we can know that it needs to be skipped
+        if (self.index + 1 < len(self.block)
                 and self.say_belongs_to_menu(ast, self.block[self.index + 1])):
             self.say_inside_menu = ast
-            return
+            return True
+        else:
+            return False
 
-        # else just write it.
+
+    @dispatch(renpy.ast.Say)
+    def print_say(self, ast, inmenu=False):
         self.indent()
         self.write(say_get_code(ast, inmenu))
 
