@@ -63,6 +63,12 @@ class ATLDecompiler(DecompilerBase):
         # Prints a block of ATL statements
         # block is a renpy.atl.RawBlock instance.
         with self.increase_indent():
+            # ren'py requires that animation is the first statement in a block, so print it first
+            # it doesn't actually seem to check that though?
+            if block.animation:
+                self.indent()
+                self.write("animation")
+
             if block.statements:
                 self.print_nodes(block.statements)
 
